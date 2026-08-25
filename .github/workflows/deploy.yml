@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      statuses: write # pages-action marks the commit with deployment status
+      deployments: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
