@@ -6,6 +6,21 @@
     <meta name="description" content="EZDRIVES — book driving lessons online with a licensed instructor. 在线预约驾校课程。" />
     <meta name="theme-color" content="#3B82F6" />
     <title>EZDRIVES · Driving Lessons</title>
+    <script>
+      // HashRouter deep-link support: a path like /login (no hash) is served by
+      // the SPA fallback — rewrite it to /#/login so direct links land on the
+      // right page instead of the home route.
+      (function () {
+        try {
+          var p = window.location.pathname
+          if (p !== '/' && !window.location.hash) {
+            window.location.replace('/#' + p + window.location.search)
+          }
+        } catch (e) {
+          /* ignore — keep current URL */
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
