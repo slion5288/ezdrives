@@ -1,0 +1,130 @@
+/* ============================================================================
+   EZDRIVES — Hand-rolled SVG charts (shell-owned)
+   Source of truth: docs/DESIGN.md §4.18. Tokens only. All charts share a
+   480×160 viewBox, scale responsively, and render a token-dashed fallback
+   when data is empty.
+   ============================================================================ */
+
+.chart {
+  width: 100%;
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.chart--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-soft);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+.chart__grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.chart__axis-label {
+  fill: var(--color-text-soft);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.chart__line {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart__point {
+  fill: var(--color-accent);
+}
+.chart__point--hover {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+.chart__guide {
+  stroke: var(--color-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.chart__tooltip {
+  fill: var(--color-surface);
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+.chart__tooltip-text {
+  fill: var(--color-text);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+}
+.chart__bar {
+  fill: var(--color-accent);
+  transition: opacity var(--transition-fast);
+}
+.chart__bar:hover {
+  opacity: 0.85;
+}
+.chart__bar--max {
+  fill: var(--color-success);
+}
+.donut-chart {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.donut-chart__svg {
+  flex-shrink: 0;
+  width: 140px;
+  height: 140px;
+}
+.donut-chart__center-value {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  fill: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+.donut-chart__center-label {
+  font-size: 9px;
+  fill: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.donut-chart__legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.donut-chart__legend-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+.donut-chart__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.donut-chart__legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.donut-chart__legend-count {
+  margin-left: auto;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-medium);
+}

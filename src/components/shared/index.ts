@@ -1,0 +1,35 @@
+// ============================================================================
+// EZDRIVES — Shared components barrel (shell-owned)
+// Convenience re-exports so pages can `import { Button, Card, … } from
+// '../components/shared'`. Each module also works as a direct file import.
+// ============================================================================
+
+export { Avatar } from './Avatar'
+export type { AvatarProps, AvatarSize } from './Avatar'
+export { Badge } from './Badge'
+export type { BadgeProps, BadgeTone } from './Badge'
+export { Button } from './Button'
+export type { ButtonProps, ButtonSize, ButtonVariant } from './Button'
+export { Card } from './Card'
+export type { CardProps } from './Card'
+export { EmptyState } from './EmptyState'
+export type { EmptyStateProps } from './EmptyState'
+export { Field } from './Field'
+export type { FieldProps } from './Field'
+export { Input } from './Input'
+export type { InputProps } from './Input'
+export { LanguageSwitcher } from './LanguageSwitcher'
+export { Logo } from './Logo'
+export type { LogoProps, LogoSize } from './Logo'
+export { Modal } from './Modal'
+export type { ModalProps } from './Modal'
+export { Select } from './Select'
+export type { SelectOption, SelectProps } from './Select'
+export { StatCard } from './StatCard'
+export type { StatCardProps } from './StatCard'
+export { ThemeToggle } from './ThemeToggle'
+export type { Theme } from './ThemeToggle'
+export { ToastProvider, useToast } from './ToastProvider'
+export type { ToastApi, ToastTone } from './ToastProvider'
+export { Toggle } from './Toggle'
+export type { ToggleProps } from './Toggle'

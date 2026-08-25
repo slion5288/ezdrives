@@ -1,0 +1,770 @@
+/* ============================================================================
+   EZDRIVES — Calendar components (shell-owned)
+   iOS Calendar-style: week timeline with hour gutter + event cards + red
+   "now" line; month grid with red today + accent selected circle; day list.
+   Tokens only. Uses the .ios- prefix to avoid clashing with any legacy CSS.
+   ============================================================================ */
+
+/* ============================================================
+   Week timeline (day/week view)
+   ============================================================ */
+.ios-week {
+  width: 100%;
+}
+
+/* Navigation header (optional) */
+.ios-week__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 0 var(--space-3);
+}
+.ios-week__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.ios-week__nav-btn:hover {
+  background: var(--color-surface-2);
+}
+.ios-week__range {
+  flex: 1;
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+.ios-week__today-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.ios-week__today-btn:hover {
+  background: var(--color-accent-soft);
+}
+
+/* Scroll container: sticky day header (top) + sticky hour gutter (left) */
+.ios-week__scroller {
+  overflow: auto;
+  max-height: 640px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overscroll-behavior: contain;
+}
+.ios-week--compact .ios-week__scroller {
+  max-height: 460px;
+}
+
+/* --- Day header row --- */
+.ios-week__head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.ios-week__corner {
+  flex: 0 0 52px;
+  position: sticky;
+  left: 0;
+  z-index: 7;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+.ios-week__dayhead {
+  flex: 1;
+  min-width: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: var(--space-2) 2px var(--space-2);
+  border-left: 1px solid var(--color-border);
+}
+.ios-week__dow {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  letter-spacing: 0.2px;
+}
+.ios-week__num {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+/* Today = iOS red */
+.ios-week__dayhead--today .ios-week__dow,
+.ios-week__dayhead--today .ios-week__num {
+  color: var(--color-danger);
+}
+.ios-week__dayhead--today .ios-week__num {
+  font-weight: var(--font-weight-bold);
+}
+
+/* --- Body: gutter + columns --- */
+.ios-week__body {
+  display: flex;
+}
+.ios-week__gutter {
+  flex: 0 0 52px;
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+.ios-week__hour {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--color-text-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  background: var(--color-surface);
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.ios-week__cols {
+  flex: 1;
+  display: flex;
+  position: relative;
+  /* Hour lines every 60 min; faint lines every 30 min */
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-border) 60%, transparent) 0,
+      color-mix(in srgb, var(--color-border) 60%, transparent) 1px,
+      transparent 1px,
+      transparent calc(var(--min-h, 0.8px) * 30)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      var(--color-border) 0,
+      var(--color-border) 1px,
+      transparent 1px,
+      transparent calc(var(--min-h, 0.8px) * 60)
+    );
+}
+.ios-week__col {
+  flex: 1;
+  min-width: 88px;
+  position: relative;
+  border-left: 1px solid var(--color-border);
+}
+.ios-week__col:first-child {
+  border-left: none;
+}
+
+/* --- Wash zones: closed / override / past --- */
+.ios-week__wash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+}
+.ios-week__wash--closed {
+  background: color-mix(in srgb, var(--color-text-soft) 18%, transparent);
+}
+.ios-week__wash--override {
+  background: color-mix(in srgb, var(--color-text-soft) 11%, transparent);
+}
+.ios-week__wash--past {
+  background: color-mix(in srgb, var(--color-text-soft) 8%, transparent);
+}
+.ios-week__dayclosed {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-soft) 16%, var(--color-surface));
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+/* Empty (available) timeline area: click to book, neutral hover — no green blocks */
+.ios-week__col--pickable {
+  cursor: pointer;
+}
+.ios-week__col--pickable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
+  transition: background var(--transition-fast);
+}
+.ios-week__col--pickable:hover::after {
+  background: color-mix(in srgb, var(--color-surface-2) 55%, transparent);
+}
+
+/* Instructor break zones (课间休息) — grey strip after another student's lesson */
+.ios-week__break {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    color-mix(in srgb, var(--color-text-soft) 22%, transparent) 4px,
+    color-mix(in srgb, var(--color-text-soft) 22%, transparent) 5px
+  );
+  border-top: 1px dashed var(--color-border-strong);
+  border-bottom: 1px dashed var(--color-border-strong);
+  overflow: hidden;
+}
+.ios-week__break span {
+  display: inline-block;
+  padding: 0 4px;
+  font-size: 9px;
+  line-height: 12px;
+  color: var(--color-text-soft);
+  white-space: nowrap;
+}
+
+/* --- Available 30-min blocks (green, iOS "free slot") --- */
+.ios-week__block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ios-week__block--available {
+  background: color-mix(in srgb, var(--color-success) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 45%, transparent);
+  color: var(--color-success);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.ios-week__block--available:hover {
+  background: color-mix(in srgb, var(--color-success) 28%, transparent);
+}
+.ios-week__block--selected {
+  background: var(--color-success) !important;
+  color: var(--color-surface) !important;
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--color-success);
+}
+
+/* --- Appointment / event cards (iOS-style) --- */
+.ios-week__event {
+  position: absolute;
+  z-index: 2;
+  border-radius: 6px;
+  padding: 2px 4px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ev-color, #3B82F6) 22%, transparent);
+  border-left: 3px solid var(--ev-color, #3B82F6);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+  cursor: default;
+  transition: box-shadow var(--transition-fast), filter var(--transition-fast);
+  color: var(--color-text);
+}
+.ios-week__event--clickable {
+  cursor: pointer;
+}
+.ios-week__event--clickable:hover {
+  box-shadow:
+    0 2px 8px rgba(16, 24, 40, 0.16),
+    0 0 0 1px var(--ev-color, #3B82F6);
+}
+.ios-week__event--pending {
+  border-left-style: dashed;
+}
+.ios-week__event--mine {
+  background: color-mix(in srgb, var(--color-success) 24%, transparent);
+  border-left-color: var(--color-success);
+  --ev-color: var(--color-success);
+}
+.ios-week__event--other {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border-left-color: var(--color-danger);
+  --ev-color: var(--color-danger);
+}
+.ios-week__event--checked {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+.ios-week__event-time {
+  display: block;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  margin-bottom: 1px;
+}
+.ios-week__event-title {
+  display: block;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ios-week__event-sub {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ios-week__event-sub2 {
+  display: block;
+  font-size: 9px;
+  color: var(--color-text-soft);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ios-week__event-check {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--ev-color, #3B82F6) 30%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--ev-color, #3B82F6) 60%, transparent);
+  color: var(--color-surface);
+  cursor: pointer;
+}
+
+/* Red "now" line (spans all columns, like iOS/Google) */
+.ios-week__nowline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-danger);
+  z-index: 3;
+}
+.ios-week__nowdot {
+  position: absolute;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  transform: translateY(-50%);
+  z-index: 5;
+}
+
+/* Empty week */
+.ios-week__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  text-align: center;
+}
+
+/* ============================================================
+   Month grid (month view) — Sunday-first, like iOS
+   ============================================================ */
+.ios-mini {
+  width: 100%;
+  user-select: none;
+}
+.ios-mini__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 var(--space-2);
+}
+.ios-mini__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+.ios-mini__nav {
+  display: flex;
+  gap: var(--space-1);
+}
+.ios-mini__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.ios-mini__nav-btn:hover {
+  background: var(--color-surface-2);
+}
+.ios-mini__dow-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: var(--space-1);
+}
+.ios-mini__dow {
+  text-align: center;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-soft);
+  padding: var(--space-1) 0;
+}
+.ios-mini__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.ios-mini__cell {
+  position: relative;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.ios-mini__cell:hover {
+  background: var(--color-surface-2);
+}
+.ios-mini__cell--muted {
+  color: var(--color-text-soft);
+}
+/* Active week: soft accent rounded rectangle */
+.ios-mini__cell--week {
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+}
+/* Selected day: filled accent circle */
+.ios-mini__cell--selected {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-weight: var(--font-weight-semibold);
+}
+/* Today: iOS red ring */
+.ios-mini__cell--today {
+  color: var(--color-danger);
+  font-weight: var(--font-weight-bold);
+  box-shadow: inset 0 0 0 1.5px var(--color-danger);
+}
+.ios-mini__cell--today.ios-mini__cell--selected {
+  background: var(--color-danger);
+  color: var(--color-surface);
+  box-shadow: none;
+}
+.ios-mini__dots {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+}
+.ios-mini__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+.ios-mini__dot--event {
+  background: var(--color-info);
+}
+.ios-mini__dot--danger {
+  background: var(--color-danger);
+}
+.ios-mini__dot--warning {
+  background: var(--color-warning);
+}
+.ios-mini__cell--selected .ios-mini__dot {
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+}
+
+/* ============================================================
+   Day list (iOS "list" view)
+   ============================================================ */
+.ios-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.ios-list__item {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+}
+.ios-list__item--clickable {
+  cursor: pointer;
+}
+.ios-list__item--clickable:hover {
+  background: var(--color-surface-2);
+}
+.ios-list__time {
+  flex: 0 0 58px;
+  padding-top: 1px;
+  text-align: right;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ios-list__bar {
+  flex: 0 0 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+.ios-list__bar--avail {
+  background: var(--color-accent);
+}
+.ios-list__bar--booked {
+  background: var(--color-accent);
+}
+.ios-list__bar--closed {
+  background: var(--color-text-soft);
+}
+.ios-list__body {
+  flex: 1;
+  min-width: 0;
+}
+.ios-list__title {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  line-height: 1.3;
+}
+.ios-list__sub {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.3;
+  margin-top: 1px;
+}
+.ios-list__item--booked-row .ios-list__title,
+.ios-list__item--past-row .ios-list__title,
+.ios-list__item--closed-row .ios-list__title {
+  color: var(--color-text-muted);
+}
+.ios-list--empty {
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  text-align: center;
+}
+
+/* ============================================================
+   Day strip (week date selector)
+   ============================================================ */
+.ios-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ios-strip__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ios-strip__nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.ios-strip__nav-btn:hover {
+  background: var(--color-surface-2);
+}
+.ios-strip__range {
+  flex: 1;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+.ios-strip__today {
+  border: none;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.ios-strip__today:hover {
+  background: var(--color-accent-soft);
+}
+.ios-strip__scroller {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.ios-strip__scroller::-webkit-scrollbar {
+  display: none;
+}
+.ios-strip__day {
+  flex: 0 0 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-text);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+.ios-strip__day:hover {
+  background: var(--color-surface-2);
+}
+.ios-strip__dow {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+}
+.ios-strip__num {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.ios-strip__day--today .ios-strip__dow,
+.ios-strip__day--today .ios-strip__num {
+  color: var(--color-danger);
+}
+.ios-strip__day--selected {
+  background: var(--accent-gradient-fallback, var(--color-accent));
+  background: var(--gradient-brand);
+  border-color: transparent;
+}
+.ios-strip__day--selected .ios-strip__dow,
+.ios-strip__day--selected .ios-strip__num {
+  color: var(--color-on-brand);
+}
+
+/* Center the week day strip on larger screens */
+.ios-strip__scroller {
+  justify-content: center;
+}
+
+/* Selectable start-time boxes (可选时间方框) — brand accent, not green */
+.ios-week__block--start {
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  color: var(--color-accent);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+.ios-week__block--start:hover {
+  background: color-mix(in srgb, var(--color-accent) 26%, transparent);
+}
+.ios-week__block--start.ios-week__block--selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-brand);
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--color-accent);
+}
+
+/* Completed lessons (past confirmed/pending) — ✓ state, matches profile history */
+.ios-week__event--done {
+  background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  border-left-color: var(--color-success);
+  --ev-color: var(--color-success);
+  opacity: 0.92;
+}
+.ios-week__event--done .ios-week__event-title {
+  color: var(--color-success);
+}
+.ios-week__event--done .ios-week__event-sub,
+.ios-week__event--done .ios-week__event-sub2 {
+  color: var(--color-text-muted);
+}
