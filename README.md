@@ -5,7 +5,13 @@
 
 ## 快速开始
 
-**线上地址（Cloudflare Pages）**：https://ezdrives.pages.dev
+**线上地址（Cloudflare Pages + 自定义域名）**：
+- https://ezdrives.net （正式域名）
+- https://ezdrives.pages.dev （Pages 默认地址）
+
+**自动化部署（GitHub → Cloudflare）**：代码推送到 `main` 分支后，GitHub Actions
+（`.github/workflows/deploy.yml`）自动构建并部署到 Cloudflare Pages，无需手动操作。
+仓库：https://github.com/slion5288/ezdrives
 
 **方式一：无需终端，直接双击预览**
 双击项目根目录的 **`Preview.html`**，即可在浏览器中打开完整网站（中英文切换、明暗主题、学生/教练端全部可用；纯前端演示，无需服务器/网络）。改动代码后执行 `npm run make:preview` 可重新生成。
@@ -18,7 +24,7 @@ npm run dev        # 开发服务器 → http://localhost:5173
 npm run build      # 生产构建（tsc --noEmit && vite build）→ dist/
 npm run preview    # 预览生产构建
 npm run make:preview  # 重新生成单文件 Preview.html（自动先构建）
-npm run deploy     # 部署到 Cloudflare Pages（需先 npx wrangler login）
+npm run deploy     # 本地直接部署到 Cloudflare Pages（需先 npx wrangler login）
 ```
 
 > 部署与域名绑定详见 `docs/DEPLOY.md`；线上为 `dist/` 静态产物（HashRouter，含 `_redirects` SPA 回退与资源缓存策略）。
