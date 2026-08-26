@@ -9,8 +9,9 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Moon, Navigation, Star, Sun } from 'lucide-react'
+import { Moon, Star, Sun } from 'lucide-react'
 import { setLocale, useLocale, useT } from '../../i18n'
+import { LOGO_DATA_URL } from '../../data/assets'
 
 // --- Button (DESIGN §4.1) ---
 
@@ -210,15 +211,13 @@ export function ThemeToggle(): JSX.Element {
 }
 
 // --- Logo (DESIGN §4.11) ---
+// The brand logo (LOGO_DATA_URL) is a complete horizontal mark — no extra wordmark.
 
 export function Logo(): JSX.Element {
   const t = useT()
   return (
-    <Link to="/" className="landing-logo">
-      <span className="landing-logo__mark">
-        <Navigation size={18} strokeWidth={2.5} />
-      </span>
-      <span className="landing-logo__word">{t('nav.brand')}</span>
+    <Link to="/" className="landing-logo" aria-label={t('nav.brand')}>
+      <img src={LOGO_DATA_URL} alt={t('nav.brand')} className="landing-logo__img" />
     </Link>
   )
 }

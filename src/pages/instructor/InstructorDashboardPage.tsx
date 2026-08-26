@@ -21,7 +21,6 @@ import {
   Loader2,
   LogOut,
   Moon,
-  Navigation,
   Settings2,
   Sun,
   Users,
@@ -40,6 +39,7 @@ import StudentsPage from './StudentsPage'
 import PaymentsPage from './PaymentsPage'
 import SettingsPage from './SettingsPage'
 import NotificationsPage from './NotificationsPage'
+import { LOGO_DATA_URL } from '../../data/assets'
 import './InstructorDashboard.css'
 
 type Theme = 'light' | 'dark'
@@ -110,10 +110,7 @@ export default function InstructorDashboardPage(): JSX.Element {
       <div className="ins-shell">
         <aside className="ins-sidebar">
           <Link to="/" className="ins-brand" aria-label={t('nav.home')}>
-            <span className="ins-brand-mark">
-              <Navigation size={20} />
-            </span>
-            <span className="ins-brand-word">{t('nav.brand')}</span>
+            <img src={LOGO_DATA_URL} alt={t('nav.brand')} className="ins-brand-img" />
           </Link>
 
           <nav className="ins-nav" aria-label={t('nav.instructor')}>

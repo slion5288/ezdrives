@@ -1954,3 +1954,10 @@ html[data-theme='dark'] .landing-badge--info {
 .landing-hero__badge {
   display: inline-flex;
 }
+
+/* Brand logo image (user-supplied horizontal mark) */
+.landing-logo__img {
+  height: 38px;
+  width: auto;
+  display: block;
+}

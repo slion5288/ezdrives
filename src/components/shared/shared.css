@@ -743,3 +743,12 @@
 .logo--lg .logo__wordmark {
   font-size: var(--font-size-2xl);
 }
+
+/* Brand logo image */
+.logo__img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+.logo--sm .logo__img { height: 24px; }
+.logo--lg .logo__img { height: 40px; }

@@ -2312,3 +2312,10 @@
   color: var(--color-accent);
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Brand logo image in the student header */
+.student-logo-img {
+  height: 30px;
+  width: auto;
+  display: block;
+}

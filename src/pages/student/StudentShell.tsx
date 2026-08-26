@@ -8,10 +8,11 @@
 
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Bell, BookOpen, Calendar, Home, Loader2, LogOut, Moon, Navigation, Sun, User } from 'lucide-react'
+import { Bell, BookOpen, Calendar, Home, Loader2, LogOut, Moon, Sun, User } from 'lucide-react'
 import { Link, Navigate, NavLink, useNavigate } from 'react-router-dom'
 import { getSession, initStateFromServer, isStateLoaded, logout, useAppState } from '../../data/store'
 import { setLocale, useLocale, useT } from '../../i18n'
+import { LOGO_DATA_URL } from '../../data/assets'
 import { ToastProvider } from './StudentToast'
 import './student.css'
 
@@ -96,10 +97,7 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
         <div className="student-header-inner">
           <div className="student-header-left">
             <Link to="/student" className="student-logo" aria-label={t('nav.home')}>
-              <span className="student-logo-mark">
-                <Navigation size={16} strokeWidth={2.5} />
-              </span>
-              <span className="student-logo-word">{t('nav.brand')}</span>
+              <img src={LOGO_DATA_URL} alt={t('nav.brand')} className="student-logo-img" />
             </Link>
             <Link to="/student" className="student-icon-btn" aria-label={t('nav.home')} title={t('nav.home')}>
               <Home size={18} />
