@@ -8,6 +8,7 @@
 import type { AppState } from '../../data/store'
 import { useT } from '../../i18n'
 import { Car } from 'lucide-react'
+import WorkingHoursPage from './WorkingHoursPage'
 import VehiclesPage from './VehiclesPage'
 import VideoManager from './VideoManager'
 import PaymentMethodsManager from './PaymentMethodsManager'
@@ -18,6 +19,9 @@ export default function SettingsPage({ state }: { state: AppState }): JSX.Elemen
 
   return (
     <div className="ins-settings-page">
+      {/* 0. Working hours — weekly rules + exceptions + break */}
+      <WorkingHoursPage state={state} />
+
       {/* 1. Vehicles */}
       <section className="ins-panel ins-settings">
         <div className="ins-panel-head">

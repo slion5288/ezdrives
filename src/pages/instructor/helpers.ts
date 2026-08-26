@@ -7,13 +7,12 @@
 import type { AppState, Appointment, Course, Student } from '../../data/store'
 import { addDays, dateKey, fromLocalISO, startOfDay } from '../../data/timeEngine'
 
-export type InstructorTab = 'overview' | 'schedule' | 'workinghours' | 'courses' | 'settings' | 'notifications' | 'students' | 'payments'
+export type InstructorTab = 'overview' | 'schedule' | 'courses' | 'students' | 'payments' | 'notifications' | 'settings'
 
 /** Tab id → i18n key of the tab label (tabs share the page-title keys). */
 export const TAB_KEYS: Record<InstructorTab, string> = {
   overview: 'instructor.overview.title',
   schedule: 'instructor.schedule.title',
-  workinghours: 'instructor.workinghours.title',
   courses: 'instructor.courses.title',
   settings: 'instructor.settings.title',
   notifications: 'instructor.notifications.title',

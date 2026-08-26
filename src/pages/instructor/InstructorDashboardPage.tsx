@@ -13,9 +13,9 @@ import { formatHM, fromLocalISO } from '../../data/timeEngine'
 import {
   Bell,
   CalendarDays,
-  Clock,
   Cloud,
   GraduationCap,
+  Home,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -32,7 +32,6 @@ import { TAB_KEYS } from './helpers'
 import type { InstructorTab } from './helpers'
 import OverviewPage from './OverviewPage'
 import SchedulePage from './SchedulePage'
-import WorkingHoursPage from './WorkingHoursPage'
 import CoursesPage from './CoursesPage'
 import StudentsPage from './StudentsPage'
 import PaymentsPage from './PaymentsPage'
@@ -56,12 +55,11 @@ function loadTheme(): Theme {
 const NAV: { id: InstructorTab; icon: LucideIcon }[] = [
   { id: 'overview', icon: LayoutDashboard },
   { id: 'schedule', icon: CalendarDays },
-  { id: 'workinghours', icon: Clock },
   { id: 'courses', icon: GraduationCap },
-  { id: 'settings', icon: Settings2 },
   { id: 'students', icon: Users },
   { id: 'payments', icon: Wallet },
   { id: 'notifications', icon: Bell },
+  { id: 'settings', icon: Settings2 },
 ]
 
 export default function InstructorDashboardPage(): JSX.Element {
@@ -86,6 +84,14 @@ export default function InstructorDashboardPage(): JSX.Element {
     if (!isStateLoaded()) {
       initStateFromServer().then((ok) => setReady(ok))
     }
+  }, [])
+
+  // Live sync: poll the server every 30s so student purchases/bookings appear.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      initStateFromServer().catch(() => undefined)
+    }, 30000)
+    return () => window.clearInterval(id)
   }, [])
 
   const session = getSession()
@@ -162,7 +168,9 @@ export default function InstructorDashboardPage(): JSX.Element {
           <header className="ins-topbar">
             <h1 className="ins-page-title">{t(TAB_KEYS[tab])}</h1>
             <div className="ins-topbar-actions">
-
+              <Link to="/" className="ins-btn ins-btn--secondary ins-btn--sm" aria-label={t('nav.home')}>
+                <Home size={14} /> {t('nav.home')}
+              </Link>
               <span className="ins-sync-chip">
                 <Cloud size={14} />
                 {t('nav.synced')} · <span className="tabular-nums">{syncTime}</span>
@@ -172,7 +180,6 @@ export default function InstructorDashboardPage(): JSX.Element {
           <div className="ins-content">
             {tab === 'overview' ? <OverviewPage state={state} onNavigate={setTab} /> : null}
             {tab === 'schedule' ? <SchedulePage state={state} /> : null}
-            {tab === 'workinghours' ? <WorkingHoursPage state={state} /> : null}
             {tab === 'courses' ? <CoursesPage state={state} /> : null}
             {tab === 'settings' ? <SettingsPage state={state} /> : null}
             {tab === 'students' ? <StudentsPage state={state} /> : null}
