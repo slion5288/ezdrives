@@ -15,6 +15,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getSession, hasPendingPayment, isCoursePurchased, useAppState } from '../../data/store'
 import type { Course } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
+import { COURSE_IMAGES } from '../../data/assets'
 import { BookOpen, CheckCircle2, Clock, GraduationCap, Package } from 'lucide-react'
 import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher'
 import { ThemeToggle } from '../../components/shared/ThemeToggle'
@@ -195,8 +196,8 @@ function CatalogSection({
               onClick={() => (owned ? onPick(course.id) : onBuy(course.id))}
             >
               <div className="student-course-card__thumb">
-                {course.imageUrl ? (
-                  <img src={course.imageUrl} alt="" loading="lazy" />
+                {(course.imageUrl || COURSE_IMAGES[course.id]) ? (
+                  <img src={course.imageUrl || COURSE_IMAGES[course.id]} alt="" loading="lazy" />
                 ) : (
                   <span className="student-course-card__thumb-ph" aria-hidden="true">
                     {course.examCar ? <CheckCircle2 size={20} /> : course.type === 'package' ? <Package size={20} /> : <GraduationCap size={20} />}

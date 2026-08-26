@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Avatar, Badge, Button, Card, Field, Input, LanguageSwitcher, Logo, ThemeToggle, useToast } from '../../components/shared'
-import { getSession, login, maskPhone, register, useAppState } from '../../data/store'
+import { getSession, login, maskPhone, register, sendVerificationCode, useAppState } from '../../data/store'
 import { useT } from '../../i18n'
 import './LoginPage.css'
 
@@ -18,6 +18,58 @@ type Role = 'student' | 'instructor'
 
 function validPhone(value: string): boolean {
   return value.replace(/\D/g, '').length >= 10
+}
+
+/** International dialing codes for the phone input (most common first). */
+const PHONE_COUNTRIES: { code: string; flag: string }[] = [
+  { code: '+1', flag: '🇨🇦' },
+  { code: '+1', flag: '🇺🇸' },
+  { code: '+86', flag: '🇨🇳' },
+  { code: '+44', flag: '🇬🇧' },
+  { code: '+61', flag: '🇦🇺' },
+  { code: '+64', flag: '🇳🇿' },
+  { code: '+65', flag: '🇸🇬' },
+  { code: '+81', flag: '🇯🇵' },
+  { code: '+82', flag: '🇰🇷' },
+  { code: '+33', flag: '🇫🇷' },
+  { code: '+49', flag: '🇩🇪' },
+  { code: '+852', flag: '🇭🇰' },
+]
+
+function PhoneField({
+  value,
+  onChange,
+  country,
+  onCountry,
+  id,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  country: string
+  onCountry: (c: string) => void
+  id: string
+  placeholder?: string
+}): JSX.Element {
+  return (
+    <div className="phone-field">
+      <select className="phone-field__code" value={country} onChange={(e) => onCountry(e.target.value)} aria-label="Country code">
+        {PHONE_COUNTRIES.map((c) => (
+          <option key={`${c.code}-${c.flag}`} value={c.code}>
+            {c.flag} {c.code}
+          </option>
+        ))}
+      </select>
+      <input
+        id={id}
+        className="login__phone-input"
+        type="tel"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -31,12 +83,17 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
 
   // Login form
   const [loginPhone, setLoginPhone] = useState('')
+  const [loginCountry, setLoginCountry] = useState('+1')
   const [loginPassword, setLoginPassword] = useState('')
   // Register form
   const [regName, setRegName] = useState('')
   const [regPhone, setRegPhone] = useState('')
+  const [regCountry, setRegCountry] = useState('+1')
+  const [regCode, setRegCode] = useState('')
   const [regPassword, setRegPassword] = useState('')
-  const [errors, setErrors] = useState<{ phone?: string; password?: string; name?: string }>({})
+  const [codeSent, setCodeSent] = useState(false)
+  const [codeCountdown, setCodeCountdown] = useState(0)
+  const [errors, setErrors] = useState<{ phone?: string; password?: string; name?: string; code?: string }>({})
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
 
@@ -65,19 +122,47 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
       setErrors({ password: t('auth.error.passwordShort') })
       return
     }
-    void doLogin(loginPhone, loginPassword)
+    void doLogin(loginCountry + loginPhone, loginPassword)
+  }
+
+  const sendCode = async (): Promise<void> => {
+    if (!validPhone(regPhone)) {
+      setErrors({ phone: t('auth.error.phone') })
+      return
+    }
+    setErrors({})
+    setBusy(true)
+    const res = await sendVerificationCode((regCountry + regPhone).trim())
+    setBusy(false)
+    if (res.ok) {
+      setCodeSent(true)
+      setCodeCountdown(60)
+      const timer = window.setInterval(() => {
+        setCodeCountdown((s) => {
+          if (s <= 1) {
+            window.clearInterval(timer)
+            return 0
+          }
+          return s - 1
+        })
+      }, 1000)
+      if (res.demoCode) toast.info(t('auth.register.demoCodeToast', { code: res.demoCode }))
+    } else {
+      setErrors({ phone: res.error || t('auth.error.network') })
+    }
   }
 
   const submitRegister = async (e: FormEvent): Promise<void> => {
     e.preventDefault()
-    const next: { name?: string; phone?: string; password?: string } = {}
+    const next: { name?: string; phone?: string; password?: string; code?: string } = {}
     if (!regName.trim()) next.name = t('auth.error.name')
     if (!validPhone(regPhone)) next.phone = t('auth.error.phone')
     if (regPassword.length < 6) next.password = t('auth.error.passwordShort')
+    if (!/^\d{6}$/.test(regCode.trim())) next.code = t('auth.error.code')
     setErrors(next)
     if (Object.keys(next).length > 0) return
     setBusy(true)
-    const result = await register({ name: regName.trim(), phone: regPhone.trim(), password: regPassword })
+    const result = await register({ name: regName.trim(), phone: (regCountry + regPhone).trim(), password: regPassword, code: regCode.trim() })
     setBusy(false)
     if (result.ok) {
       toast.success(t('auth.register.welcome', { name: regName.trim() }))
@@ -114,13 +199,13 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
       {mode === 'login' ? (
         <form className="login__form" onSubmit={submitLogin}>
           <Field label={t('auth.login.phone')} error={errors.phone} htmlFor="login-phone">
-            <Input
+            <PhoneField
               id="login-phone"
-              type="tel"
               value={loginPhone}
-              invalid={errors.phone != null}
-              onChange={(e) => setLoginPhone(e.target.value)}
-              placeholder="+1 416-555-0131"
+              onChange={setLoginPhone}
+              country={loginCountry}
+              onCountry={setLoginCountry}
+              placeholder="416-555-0131"
             />
           </Field>
           <Field label={t('auth.login.password')} error={errors.password} htmlFor="login-password">
@@ -152,14 +237,37 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
             />
           </Field>
           <Field label={t('auth.register.phone')} error={errors.phone} htmlFor="reg-phone">
-            <Input
+            <PhoneField
               id="reg-phone"
-              type="tel"
               value={regPhone}
-              invalid={errors.phone != null}
-              onChange={(e) => setRegPhone(e.target.value)}
-              placeholder="+1 416-555-0100"
+              onChange={setRegPhone}
+              country={regCountry}
+              onCountry={setRegCountry}
+              placeholder="416-555-0100"
             />
+          </Field>
+          <Field label={t('auth.register.code')} error={errors.code} htmlFor="reg-code">
+            <div className="login__code-row">
+              <Input
+                id="reg-code"
+                inputMode="numeric"
+                maxLength={6}
+                value={regCode}
+                invalid={errors.code != null}
+                onChange={(e) => setRegCode(e.target.value)}
+                placeholder="6-digit code"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={busy || codeCountdown > 0}
+                onClick={() => void sendCode()}
+                icon={<Send size={14} aria-hidden="true" />}
+              >
+                {codeCountdown > 0 ? `${codeCountdown}s` : codeSent ? t('auth.register.resend') : t('auth.register.sendCode')}
+              </Button>
+            </div>
           </Field>
           <Field label={t('auth.register.password')} error={errors.password} htmlFor="reg-password">
             <Input
@@ -191,6 +299,7 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
   const t = useT()
   const toast = useToast()
   const [phone, setPhone] = useState('')
+  const [country, setCountry] = useState('+1')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -210,7 +319,7 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
 
   const submit = (e: FormEvent): void => {
     e.preventDefault()
-    void doLogin(phone, password)
+    void doLogin(country + phone, password)
   }
 
   const demo = (): void => {
@@ -220,13 +329,13 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
   return (
     <form className="login__form" onSubmit={submit}>
       <Field label={t('auth.login.phone')} error={error ?? undefined} htmlFor="instructor-phone">
-        <Input
+        <PhoneField
           id="instructor-phone"
-          type="tel"
           value={phone}
-          invalid={error != null}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="+1 416-555-0142"
+          onChange={setPhone}
+          country={country}
+          onCountry={setCountry}
+          placeholder="416-555-0142"
         />
       </Field>
       <Field label={t('auth.login.password')} error={error ?? undefined} htmlFor="instructor-password">

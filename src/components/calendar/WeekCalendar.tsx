@@ -403,7 +403,8 @@ export function WeekCalendar({
                     const { appt } = p
                     const selected = selectedIds ? selectedIds.has(appt.id) : false
                     const isMine = myStudentId !== undefined && appt.studentId === myStudentId
-                    const clickable = mode === 'schedule' && onSelectAppointment !== undefined
+                    const clickable =
+                      (mode === 'schedule' || (mode === 'availability' && isMine)) && onSelectAppointment !== undefined
                     const student = state.students.find((s) => s.id === appt.studentId)
                     // Completed = confirmed/pending lesson that has already finished.
                     const done = fromLocalISO(appt.end).getTime() < now.getTime()

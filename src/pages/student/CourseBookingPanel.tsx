@@ -13,10 +13,13 @@ import { useMemo, useState } from 'react'
 import { Check, CalendarClock, Coffee } from 'lucide-react'
 import { bookAppointment, bookPackageLessons, getSession, isCoursePurchased, lessonStatus, packageProgress, useAppState } from '../../data/store'
 import type { Course, Slot } from '../../data/store'
-import { formatHM, toLocalISO } from '../../data/timeEngine'
+import { formatHM, fromLocalISO, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
+import type { Appointment } from '../../data/store'
+import { MapPin, Phone, X } from 'lucide-react'
 import { DayStrip } from '../../components/calendar/DayStrip'
 import { slotId, WeekCalendar } from '../../components/calendar/WeekCalendar'
+import { lessonLabel } from '../../data/store'
 import { formatDateLabel, formatPrice, mondayOf } from './studentFormat'
 import { useToast } from './StudentToast'
 
@@ -58,6 +61,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()))
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
   const [selectedStart, setSelectedStart] = useState<Slot | null>(null)
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
 
   const selectedLessons = isPackage && course.lessons ? course.lessons.slice(autoLesson, autoLesson + selCount) : []
   const selectedTotal =
@@ -211,7 +215,55 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
         myStudentId={studentId}
         selectedSlotId={selectedStart ? slotId(selectedStart) : undefined}
         onSelectSlot={(slot) => setSelectedStart(slot)}
+        onSelectAppointment={(appt) => setDetailAppt(appt)}
       />
+
+      {/* Appointment detail — click an existing lesson to see full info */}
+      {detailAppt ? (
+        <div className="student-detail-scrim" onMouseDown={() => setDetailAppt(null)}>
+          <div className="student-detail-card" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="student-detail-card__head">
+              <span className="student-detail-card__title">{t('student.dashboard.detail')}</span>
+              <button type="button" className="student-icon-btn" onClick={() => setDetailAppt(null)} aria-label={t('common.close')}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="student-detail-card__body">
+              <div className="student-detail-row">
+                <span className="student-detail-label">{t('instructor.schedule.course')}</span>
+                <span className="student-detail-value">
+                  {locale === 'zh' ? course.name.zh : course.name.en}
+                  {detailAppt.lessonIndex !== undefined ? <span className="student-detail-sub">{lessonLabel(course, detailAppt.lessonIndex, locale)}</span> : null}
+                </span>
+              </div>
+              <div className="student-detail-row">
+                <span className="student-detail-label">{t('instructor.schedule.time')}</span>
+                <span className="student-detail-value tabular-nums">
+                  {formatDateLabel(locale, fromLocalISO(detailAppt.start))} · {formatHM(fromLocalISO(detailAppt.start))}–{formatHM(fromLocalISO(detailAppt.end))}
+                </span>
+              </div>
+              <div className="student-detail-row">
+                <span className="student-detail-label">{t('landing.instructors.title')}</span>
+                <span className="student-detail-value">{state.instructor.name}</span>
+              </div>
+              <div className="student-detail-row">
+                <span className="student-detail-label">{t('instructor.schedule.address')}</span>
+                <span className="student-detail-value">
+                  <MapPin size={13} /> {t('ics.location')}
+                </span>
+              </div>
+              <div className="student-detail-row">
+                <span className="student-detail-label">{t('student.profile.phone')}</span>
+                <span className="student-detail-value">
+                  <a href={`tel:${state.instructor.phone.replace(/\s/g, '')}`}>
+                    <Phone size={13} /> {state.instructor.phone}
+                  </a>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Confirm footer */}
       <div className="course-booking__foot">

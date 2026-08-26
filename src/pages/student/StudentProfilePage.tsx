@@ -23,7 +23,6 @@ import { formatDateLabel, formatDateTimeLabel, relativeTime } from './studentFor
 import { useToast } from './StudentToast'
 import './student.css'
 
-const SUBSCRIPTION_URL = 'https://calendar.ezdrives.ca/feed.ics'
 const ICS_FILENAME = 'ezdrives-lessons.ics'
 
 type HistoryTone = 'success' | 'info' | 'danger'
@@ -106,10 +105,12 @@ function StudentProfileContent(): JSX.Element {
     showToast('success', t('ics.exported'))
   }
 
+  const subscriptionUrl = `${window.location.origin}/api/ics/${studentId}`
+
   const handleCopySubscription = async (): Promise<void> => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(SUBSCRIPTION_URL)
+        await navigator.clipboard.writeText(subscriptionUrl)
         showToast('success', t('common.toast.saved'))
       } else {
         showToast('error', t('common.toast.error'))
@@ -334,7 +335,7 @@ function StudentProfileContent(): JSX.Element {
               </button>
             </div>
             <div className="student-sync-url">
-              <code>{SUBSCRIPTION_URL}</code>
+              <code>{subscriptionUrl}</code>
               <span className="student-demo-chip">{t('auth.instructor.demo')}</span>
             </div>
             <p className="student-sync-hint">{t('ics.howTo')}</p>

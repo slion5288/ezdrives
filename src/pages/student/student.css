@@ -2360,3 +2360,65 @@
 .student-notif-card-body {
   overflow-wrap: anywhere;
 }
+
+/* Student appointment detail card */
+.student-detail-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--color-overlay);
+}
+.student-detail-card {
+  width: 100%;
+  max-width: 440px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+}
+.student-detail-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.student-detail-card__title {
+  font-weight: var(--font-weight-semibold);
+}
+.student-detail-card__body {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  gap: var(--space-3);
+}
+.student-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.student-detail-label {
+  flex: 0 0 84px;
+  color: var(--color-text-soft);
+  font-size: var(--font-size-sm);
+}
+.student-detail-value {
+  flex: 1;
+  font-weight: var(--font-weight-medium);
+}
+.student-detail-value a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-accent);
+}
+.student-detail-sub {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+}

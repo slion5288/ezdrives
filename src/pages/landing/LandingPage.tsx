@@ -33,7 +33,7 @@ import { useLocale, useT } from '../../i18n'
 import { maskPhone, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
 import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
-import { G1_IMAGE, HERO_IMAGES } from '../../data/assets'
+import { COURSE_IMAGES, G1_IMAGE, HERO_IMAGES } from '../../data/assets'
 import { VideoPlayerModal } from '../../components/video/VideoPlayerModal'
 import {
   LandingAvatar,
@@ -135,9 +135,9 @@ function CourseCard({
           {t('landing.courses.popular')}
         </LandingBadge>
       )}
-      {course.imageUrl ? (
+      {(course.imageUrl || COURSE_IMAGES[course.id]) ? (
         <div className="landing-courses__media">
-          <img src={course.imageUrl} alt={pick(course.name)} loading="lazy" />
+          <img src={course.imageUrl || COURSE_IMAGES[course.id]} alt={pick(course.name)} loading="lazy" />
         </div>
       ) : (
         <div className="landing-courses__media landing-courses__media--placeholder" aria-hidden="true">

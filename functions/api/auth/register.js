@@ -15,6 +15,18 @@ export async function onRequestPost({ env, request }) {
   if (phone.replace(/\D/g, '').length < 10) return fail('Please enter a valid phone number.')
   if (password.length < 6) return fail('Password must be at least 6 characters.')
 
+  // SMS verification (Twilio): the 6-digit code must match a recent, unused code.
+  const smsCode = String(body.code || '').trim()
+  if (!/^\d{6}$/.test(smsCode)) return fail('Enter the 6-digit SMS code.')
+  const vc = await env.DB.prepare(
+    'SELECT * FROM verification_codes WHERE phone = ? AND used = 0 ORDER BY created_at DESC LIMIT 1',
+  ).bind(phone).first()
+  if (!vc) return fail('Send a verification code first.')
+  const age = Date.now() - new Date(vc.created_at).getTime()
+  if (age > 5 * 60 * 1000) return fail('The code has expired. Send a new one.')
+  if (vc.code !== smsCode) return fail('That code does not match. Try again.')
+  await env.DB.prepare('UPDATE verification_codes SET used = 1 WHERE phone = ? AND code = ?').bind(phone, smsCode).run()
+
   // Only one instructor account (the admin) — via setup only.
   if (role === 'instructor') {
     const inst = await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'instructor'").first()

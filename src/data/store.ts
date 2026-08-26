@@ -32,7 +32,7 @@ import {
   startOfDay,
   toLocalISO,
 } from './timeEngine'
-import { apiAction, apiFetchState, apiLogin, apiLogout, apiPutState, apiRegister } from './api'
+import { apiAction, apiFetchState, apiLogin, apiLogout, apiPutState, apiRegister, apiSendCode } from './api'
 import type { ApiUser } from './api'
 
 export type { AppState, Appointment, Course, CourseLesson, DayException, InstructorBank, Notification, PayApiConfig, Payment, PaymentMethod, Student, TeachingVideo, Vehicle, WeeklyRule } from './types'
@@ -650,8 +650,14 @@ export async function login(phone: string, password: string): Promise<LoginResul
   return { ok: true }
 }
 
-/** Real registration via the backend (student). */
-export async function register(body: { name: string; phone: string; password: string; address?: string }): Promise<LoginResult> {
+/** Request an SMS verification code (Twilio). Returns the demo code when unconfigured. */
+export async function sendVerificationCode(phone: string): Promise<{ ok: boolean; error?: string; demoCode?: string }> {
+  const res = await apiSendCode(phone)
+  return { ok: res.ok, error: res.error, demoCode: res.demo ? res.code : undefined }
+}
+
+/** Real registration via the backend (student, SMS-verified). */
+export async function register(body: { name: string; phone: string; password: string; address?: string; code?: string }): Promise<LoginResult> {
   const res = await apiRegister({ role: 'student', ...body })
   if (!res.ok || !res.token || !res.user) return { ok: false, error: res.error || 'Registration failed' }
   setSession({ token: res.token, role: res.user.role, user: res.user, studentId: res.user.studentId })
