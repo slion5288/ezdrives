@@ -48,6 +48,10 @@ import './LandingPage.css'
 
 // --- Hero carousel: full-bleed HD slides (Apple-style headline) ---
 
+// Prefers real photos placed in /hero/ (hero-1.jpg … hero-4.jpg — see
+// public/hero/README.txt); falls back to the bundled base64 images.
+const HERO_FILES = ['hero-1.jpg', 'hero-2.jpg', 'hero-3.jpg', 'hero-4.jpg']
+
 function HeroCarousel(): JSX.Element {
   const locale = useLocale()
   const [idx, setIdx] = useState(0)
@@ -59,7 +63,14 @@ function HeroCarousel(): JSX.Element {
     <div className="landing-hero__media" aria-hidden="true">
       {HERO_IMAGES.map((slide, i) => (
         <div key={i} className={`landing-hero__slide${i === idx ? ' is-active' : ''}`}>
-          <img src={slide.src} alt={locale === 'zh' ? slide.alt.zh : slide.alt.en} />
+          <img
+            src={HERO_FILES[i]}
+            onError={(e) => {
+              const target = e.currentTarget
+              if (target.src !== slide.src) target.src = slide.src
+            }}
+            alt={locale === 'zh' ? slide.alt.zh : slide.alt.en}
+          />
         </div>
       ))}
       <div className="landing-hero__dots">
@@ -179,6 +190,19 @@ export default function LandingPage(): JSX.Element {
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
 
   const closeMenu = (): void => setMenuOpen(false)
+
+  // Click anywhere outside the menu (or its toggle) closes it.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDocClick = (e: MouseEvent): void => {
+      const target = e.target as Node
+      if (!target) return
+      if (target instanceof Element && (target.closest('.landing-mobile-menu') || target.closest('.landing-menu-btn'))) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [menuOpen])
 
   /** Smooth-scroll to an in-page section (works under HashRouter). */
   const goToSection = (id: string): void => {
@@ -608,6 +632,7 @@ export default function LandingPage(): JSX.Element {
               >
                 {t('landing.faq.title')}
               </a>
+              <Link to="/login">{t('nav.login')}</Link>
               <Link to="/login?role=instructor">{t('nav.instructor')}</Link>
             </div>
             <div className="landing-footer__col">

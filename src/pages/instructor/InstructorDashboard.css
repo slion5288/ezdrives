@@ -2563,3 +2563,30 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
 .ins-notif-body {
   overflow-wrap: anywhere;
 }
+
+/* Detail modal: clickable phone / sms / address links */
+.ins-detail-phone {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 2px;
+}
+.ins-detail-phone a {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+.ins-detail-phone-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.ins-detail-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+}
+.ins-detail-action:hover {
+  text-decoration: underline;
+}

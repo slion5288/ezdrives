@@ -77,6 +77,45 @@ export default function OverviewPage({ state, onNavigate }: { state: AppState; o
         <StatCard label={t('instructor.overview.courseMix')} value={String(distribution.length)} />
       </div>
 
+      {/* Upcoming appointments — first block, right below the stats */}
+      <section className="ins-panel">
+        <div className="ins-panel-head">
+          <h2 className="ins-panel-title">{t('instructor.overview.appointments')}</h2>
+          <button type="button" className="ins-link-btn" onClick={() => onNavigate('schedule')}>
+            {t('instructor.overview.viewSchedule')} <ArrowRight size={14} />
+          </button>
+        </div>
+        {upcoming.length === 0 ? (
+          <EmptyState icon={<CalendarClock size={24} />} title={t('instructor.overview.noAppointments')} />
+        ) : (
+          <ul className="ins-upcoming">
+            {upcoming.map((a) => {
+              const start = fromLocalISO(a.start)
+              const student = studentById(state, a.studentId)
+              const course = courseById(state, a.courseId)
+              const courseName = course ? (locale === 'zh' ? course.name.zh : course.name.en) : a.courseId
+              const dayLabel = locale === 'zh' ? formatDateZh(start) : formatDateEn(start)
+              return (
+                <li key={a.id} className="ins-upcoming-item">
+                  <div className="ins-upcoming-when">
+                    <span className="ins-upcoming-date tabular-nums">{dayLabel}</span>
+                    <span className="ins-upcoming-time tabular-nums">{formatHM(start)}</span>
+                  </div>
+                  <div className="ins-upcoming-main">
+                    <span className="ins-upcoming-name">{student ? student.name : a.studentId}</span>
+                    <span className="ins-upcoming-course">{courseName}</span>
+                  </div>
+                  <div className="ins-upcoming-side">
+                    <Badge tone={a.status === 'confirmed' ? 'success' : 'warning'}>{statusLabel(a.status, t)}</Badge>
+                    <span className="ins-upcoming-price tabular-nums">{course ? formatMoney(course.price) : ''}</span>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
       <div className="ins-chart-grid">
         <section className="ins-panel">
           <div className="ins-panel-head">
@@ -101,43 +140,6 @@ export default function OverviewPage({ state, onNavigate }: { state: AppState; o
             <span className="ins-panel-sub">{t('stats.peakAxis')}</span>
           </div>
           <BarChart state={state} />
-        </section>
-        <section className="ins-panel">
-          <div className="ins-panel-head">
-            <h2 className="ins-panel-title">{t('instructor.overview.appointments')}</h2>
-            <button type="button" className="ins-link-btn" onClick={() => onNavigate('schedule')}>
-              {t('instructor.overview.viewSchedule')} <ArrowRight size={14} />
-            </button>
-          </div>
-          {upcoming.length === 0 ? (
-            <EmptyState icon={<CalendarClock size={24} />} title={t('instructor.overview.noAppointments')} />
-          ) : (
-            <ul className="ins-upcoming">
-              {upcoming.map((a) => {
-                const start = fromLocalISO(a.start)
-                const student = studentById(state, a.studentId)
-                const course = courseById(state, a.courseId)
-                const courseName = course ? (locale === 'zh' ? course.name.zh : course.name.en) : a.courseId
-                const dayLabel = locale === 'zh' ? formatDateZh(start) : formatDateEn(start)
-                return (
-                  <li key={a.id} className="ins-upcoming-item">
-                    <div className="ins-upcoming-when">
-                      <span className="ins-upcoming-date tabular-nums">{dayLabel}</span>
-                      <span className="ins-upcoming-time tabular-nums">{formatHM(start)}</span>
-                    </div>
-                    <div className="ins-upcoming-main">
-                      <span className="ins-upcoming-name">{student ? student.name : a.studentId}</span>
-                      <span className="ins-upcoming-course">{courseName}</span>
-                    </div>
-                    <div className="ins-upcoming-side">
-                      <Badge tone={a.status === 'confirmed' ? 'success' : 'warning'}>{statusLabel(a.status, t)}</Badge>
-                      <span className="ins-upcoming-price tabular-nums">{course ? formatMoney(course.price) : ''}</span>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
         </section>
       </div>
     </div>

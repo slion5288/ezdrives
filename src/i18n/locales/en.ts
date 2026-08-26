@@ -236,6 +236,8 @@ export const messages = {
   'instructor.schedule.moved': '{count} lesson(s) moved',
   'instructor.schedule.failed': '{count} could not be moved',
   'instructor.schedule.pickNewTime': 'New time',
+'instructor.schedule.sms': 'Text',
+'student.profile.noAddress': 'No address on file',
   'instructor.schedule.selected': '{count} selected',
 
   // --- instructor.workinghours ---

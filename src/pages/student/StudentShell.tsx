@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Bell, BookOpen, Calendar, Home, Loader2, LogOut, Moon, Sun, User } from 'lucide-react'
+import { Bell, BookOpen, Calendar, Loader2, LogOut, Moon, Sun, User } from 'lucide-react'
 import { Link, Navigate, NavLink, useNavigate } from 'react-router-dom'
 import { getSession, initStateFromServer, isStateLoaded, logout, useAppState } from '../../data/store'
 import { setLocale, useLocale, useT } from '../../i18n'
@@ -96,11 +96,8 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
       <header className="student-header">
         <div className="student-header-inner">
           <div className="student-header-left">
-            <Link to="/student" className="student-logo" aria-label={t('nav.home')}>
+            <Link to="/" className="student-logo" aria-label={t('nav.home')}>
               <img src={LOGO_DATA_URL} alt={t('nav.brand')} className="student-logo-img" />
-            </Link>
-            <Link to="/student" className="student-icon-btn" aria-label={t('nav.home')} title={t('nav.home')}>
-              <Home size={18} />
             </Link>
           </div>
 

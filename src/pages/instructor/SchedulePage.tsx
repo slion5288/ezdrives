@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import type { AppState, Appointment } from '../../data/store'
-import { batchReschedule, cancelAppointment, lessonLabel, maskPhone, rescheduleAppointment } from '../../data/store'
+import { batchReschedule, cancelAppointment, lessonLabel, rescheduleAppointment } from '../../data/store'
 import {
   addDays,
   addMinutes,
@@ -21,14 +21,14 @@ import {
   toLocalISO,
 } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
-import { CalendarDays, ChevronLeft, ChevronRight, Download, X } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Download, X } from 'lucide-react'
 import { DayStrip } from '../../components/calendar/DayStrip'
 import { WeekCalendar } from '../../components/calendar/WeekCalendar'
 import { Badge, ConfirmDialog, Modal } from './ui'
 import { useToast } from './toast'
 import { appointmentsToCSV, downloadCSV } from '../../utils/csv'
 import type { AppointmentCSVRow } from '../../utils/csv'
-import { courseById, fmtMin, isLiveAppointment, minuteOptions, overlappingIds, startOfWeek, statusLabel, studentById, weekDates } from './helpers'
+import { courseById, fmtMin, isLiveAppointment, overlappingIds, startOfWeek, statusLabel, studentById, weekDates } from './helpers'
 
 // --- Precise time picker (single reschedule + batch move) -----------------
 
@@ -57,12 +57,48 @@ function TimePickerModal({
 
   const day = parseDateKey(date)
   const interval = getEffectiveInterval(day, state.weeklyRules, state.exceptions)
-  const allMinutes = interval ? minuteOptions(interval.startMin, interval.endMin, 60) : []
   const nowMs = Date.now()
-  const futureMinutes = allMinutes.filter((m) => {
-    const d = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(m / 60), m % 60, 0)
-    return d.getTime() > nowMs
-  })
+  const br = Math.max(0, state.instructor.breakMin ?? 0) * 60000
+
+  /**
+   * Candidate start minutes (15-min granularity — break-aware starts like
+   * 10:15 are valid) that are FREE: not overlapping another live appointment
+   * (or its post-lesson break) and not colliding with the other appointments
+   * being moved (exceptIds).
+   */
+  const futureMinutes: number[] = []
+  if (interval) {
+    const except = new Set(exceptIds)
+    const exceptAppts = state.appointments.filter((a) => except.has(a.id))
+    for (let m = interval.startMin; m + windowMin <= interval.endMin; m += 15) {
+      const s = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(m / 60), m % 60, 0).getTime()
+      if (s <= nowMs) continue
+      const e = s + windowMin * 60000
+      let blocked = false
+      for (const a of state.appointments) {
+        if (a.status !== 'confirmed' && a.status !== 'pending') continue
+        const aS = fromLocalISO(a.start).getTime()
+        const aE = fromLocalISO(a.end).getTime()
+        if (except.has(a.id)) {
+          // Moving appointments must not land on top of each other.
+          if (s < aE && e > aS) {
+            blocked = true
+            break
+          }
+          continue
+        }
+        // Other appointments: same student may chain back-to-back (no break);
+        // different students must respect the instructor's break.
+        const sameStudent = exceptAppts.some((x) => x.studentId === a.studentId)
+        const effEnd = sameStudent ? aE : aE + br
+        if (s < effEnd && e > aS) {
+          blocked = true
+          break
+        }
+      }
+      if (!blocked) futureMinutes.push(m)
+    }
+  }
 
   useEffect(() => {
     const next = futureMinutes[0]
@@ -394,13 +430,35 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
               <span className="ins-detail-label">{t('instructor.schedule.student')}</span>
               <span className="ins-detail-value">
                 {detailStudent ? detailStudent.name : detail.studentId}
-                {detailStudent ? <span className="ins-detail-sub tabular-nums">{maskPhone(detailStudent.phone)}</span> : null}
+                {detailStudent ? (
+                  <span className="ins-detail-phone tabular-nums">
+                    <a href={`tel:${detailStudent.phone.replace(/\s/g, '')}`}>{detailStudent.phone}</a>
+                    <span className="ins-detail-phone-actions">
+                      <a href={`sms:${detailStudent.phone.replace(/\s/g, '')}`} className="ins-detail-action">
+                        {t('instructor.schedule.sms')}
+                      </a>
+                    </span>
+                  </span>
+                ) : null}
               </span>
             </div>
             {detailStudent ? (
               <div className="ins-detail-row">
                 <span className="ins-detail-label">{t('instructor.schedule.address')}</span>
-                <span className="ins-detail-value">{detailStudent.address}</span>
+                <span className="ins-detail-value">
+                  {detailStudent.address ? (
+                    <a
+                      className="ins-detail-action"
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(detailStudent.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {detailStudent.address} <ArrowUpRight size={13} />
+                    </a>
+                  ) : (
+                    <span className="ins-detail-sub">{t('student.profile.noAddress')}</span>
+                  )}
+                </span>
               </div>
             ) : null}
             <div className="ins-detail-row">

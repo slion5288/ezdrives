@@ -238,6 +238,8 @@ export const messages: Record<MessageKey, string> = {
   'instructor.schedule.moved': '已移动 {count} 节课',
   'instructor.schedule.failed': '{count} 节课无法移动',
   'instructor.schedule.pickNewTime': '新时间',
+'instructor.schedule.sms': '发短信',
+'student.profile.noAddress': '暂无地址',
   'instructor.schedule.selected': '已选 {count} 项',
 
   // --- instructor.workinghours ---

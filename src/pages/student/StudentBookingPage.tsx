@@ -64,6 +64,9 @@ export default function StudentBookingPage(): JSX.Element {
             <div className="student-public-actions">
               <LanguageSwitcher />
               <ThemeToggle />
+              <Link to="/login" className="student-btn student-btn-primary student-btn-sm">
+                {t('nav.login')}
+              </Link>
             </div>
           </div>
         </header>

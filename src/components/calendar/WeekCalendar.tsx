@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react'
 import type { AppState, Appointment, Slot } from '../../data/store'
-import { lessonLabel, maskPhone } from '../../data/store'
+import { lessonLabel } from '../../data/store'
 import { addDays, dateKey, formatDateEn, formatDateZh, formatHM, fromLocalISO, generateSlots, getLessonStarts, getWeekSlots } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
 import type { Locale } from '../../i18n'
@@ -441,12 +441,12 @@ export function WeekCalendar({
                             ? courseLabel(appt.courseId, appt.lessonIndex)
                             : t('student.booking.slotTaken')
                     // Instructor blocks show the student's phone and address.
-                    const sub = mode === 'schedule' ? (showStudentName ? maskPhone(student?.phone ?? '') : courseLabel(appt.courseId, appt.lessonIndex)) : undefined
+                    const sub = mode === 'schedule' ? (showStudentName ? (student?.phone ?? '') : courseLabel(appt.courseId, appt.lessonIndex)) : undefined
                     const sub2 = mode === 'schedule' && showStudentName ? student?.address : undefined
                     const time = hourLabel(fromLocalISO(appt.start), locale)
                     const tall = p.height >= 42
                     const cardTitle = `${studentNames.get(appt.studentId) ?? appt.studentId} · ${courseLabel(appt.courseId, appt.lessonIndex)}${
-                      student ? ` · ${maskPhone(student.phone)}${student.address ? ` · ${student.address}` : ''}` : ''
+                      student ? ` · ${student.phone}${student.address ? ` · ${student.address}` : ''}` : ''
                     }`
                     return (
                       <div

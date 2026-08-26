@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { getLastSyncISO, getSession, initStateFromServer, isStateLoaded, logout, useAppState } from '../../data/store'
 import { setLocale, useLocale, useT } from '../../i18n'
 import { formatHM, fromLocalISO } from '../../data/timeEngine'
@@ -16,7 +16,6 @@ import {
   Clock,
   Cloud,
   GraduationCap,
-  Home,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -69,7 +68,6 @@ export default function InstructorDashboardPage(): JSX.Element {
   const state = useAppState()
   const t = useT()
   const locale = useLocale()
-  const navigate = useNavigate()
   const [tab, setTab] = useState<InstructorTab>('overview')
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [ready, setReady] = useState<boolean>(() => isStateLoaded())
@@ -164,9 +162,7 @@ export default function InstructorDashboardPage(): JSX.Element {
           <header className="ins-topbar">
             <h1 className="ins-page-title">{t(TAB_KEYS[tab])}</h1>
             <div className="ins-topbar-actions">
-              <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={() => navigate('/')}>
-                <Home size={14} /> {t('nav.home')}
-              </button>
+
               <span className="ins-sync-chip">
                 <Cloud size={14} />
                 {t('nav.synced')} · <span className="tabular-nums">{syncTime}</span>
