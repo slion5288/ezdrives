@@ -5,6 +5,18 @@
 
 ---
 
+## Change 6 — G1 模拟题库页面与入口调整
+
+- **我的要求**：① G1 页顶栏 logo 旁边的「G1 模拟题库」标题链接取消；② G1 页左下方加返回主页链接；③ 移动端菜单的「模拟题库」直接跳转 /g1 页面（不再先滚到主页栏目再点开始练习）。
+- **涉及页面**：`/g1`（G1MockPage）、首页移动菜单（LandingPage）。
+- **涉及功能**：G1 页导航、首页移动端导航。
+- **修改文件**：`src/pages/g1/G1MockPage.tsx`（删除顶栏标题链接、新增左下角固定返回主页链接）、`src/pages/g1/g1.css`（`.g1-back-home` 样式、移除已废弃 `.g1-header__nav` 样式）、`src/pages/landing/LandingPage.tsx`（移动菜单「模拟题库」改为 `<Link to="/g1">` 直接跳转）。
+- **是否影响旧功能**：桌面顶栏与页脚「模拟题库」仍为滚动到主页栏目（用户仅要求改移动端）；如需一并改为直接跳转 /g1，另行确认。
+- **测试结果**：编译通过；已在新鲜部署 URL 验证——G1 顶栏无标题链接、左下角出现「Back to home」、移动菜单点击「模拟题库」直接跳转 `#/g1`。已部署；自定义域名 ezdrives.net 存在边缘缓存延迟（见下）。
+- **缓存备注**：部署后 `ezdrives.net` / `ezdrives.pages.dev` 别名一度仍返回旧 index.html（具体部署 URL 为新内容），因 API token 无缓存清除权限，需在 Cloudflare 控制台执行 Quick Purge 或等待传播。
+
+---
+
 ## Change 5 — Twilio 21608 合规拦截排障（已解决，代码未改）
 
 - **问题**：升级付费后仍报「To send messages or make calls to unverified numbers, you must have an approved Primary Compliance Profile」。

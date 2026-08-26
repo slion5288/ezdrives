@@ -88,17 +88,6 @@ export default function G1MockPage(): JSX.Element {
           <Link to="/" className="g1-header__home" aria-label={t('g1.back')}>
             <Logo size="sm" />
           </Link>
-          <nav className="g1-header__nav">
-            <a
-              href="#g1-title"
-              onClick={(e) => {
-                e.preventDefault()
-                document.getElementById('g1-title')?.scrollIntoView({ behavior: 'smooth' })
-              }}
-            >
-              {t('g1.title')}
-            </a>
-          </nav>
           <div className="g1-header__actions">
             <LanguageSwitcher />
             <ThemeToggle />
@@ -275,6 +264,11 @@ export default function G1MockPage(): JSX.Element {
           </div>
         ) : null}
       </main>
+
+      {/* Always-available back-to-home link (bottom-left) */}
+      <Link to="/" className="g1-back-home">
+        <ChevronLeft size={16} /> {t('g1.back')}
+      </Link>
     </div>
   )
 }

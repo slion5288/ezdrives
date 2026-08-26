@@ -317,15 +317,9 @@ export default function LandingPage(): JSX.Element {
             >
               {t('landing.courses.title')}
             </a>
-            <a
-              href="#g1"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('g1')
-              }}
-            >
+            <Link to="/g1" onClick={closeMenu}>
               {t('nav.g1')}
-            </a>
+            </Link>
             <a
               href="#videos"
               onClick={(e) => {

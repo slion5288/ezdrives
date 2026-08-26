@@ -36,24 +36,38 @@
 .g1-header__home:hover {
   opacity: 0.85;
 }
-.g1-header__nav {
-  flex: 1;
-  display: flex;
-  gap: var(--space-4);
-}
-.g1-header__nav a {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  text-decoration: none;
-}
-.g1-header__nav a:hover {
-  color: var(--color-text);
-}
 .g1-header__actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  margin-left: auto;
+}
+
+/* Always-available back-to-home link (bottom-left) */
+.g1-back-home {
+  position: fixed;
+  left: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-card);
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.g1-back-home:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .g1-main {
