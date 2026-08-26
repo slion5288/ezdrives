@@ -6,6 +6,12 @@ import { hashPassword, createSession, uuid } from '../../lib/auth.js'
 import { icsToken } from '../../lib/db.js'
 import { checkRate } from '../../lib/rate.js'
 
+function pad2(n) { return String(n).padStart(2, '0') }
+/** Local wall-clock ISO (no timezone) — matches the app's datetime convention. */
+function toLocalISO(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+}
+
 export async function onRequestPost({ env, request }) {
   const body = await readJson(request)
   const name = String(body.name || '').trim()
@@ -50,7 +56,7 @@ export async function onRequestPost({ env, request }) {
 
   const hash = await hashPassword(password)
   const userId = uuid()
-  const now = new Date().toISOString()
+  const now = toLocalISO(new Date())
 
   const maxRow = await env.DB.prepare('SELECT id FROM students ORDER BY CAST(SUBSTR(id, 2) AS INTEGER) DESC LIMIT 1').first()
   const maxNum = maxRow ? Number(maxRow.id.slice(1)) : 0

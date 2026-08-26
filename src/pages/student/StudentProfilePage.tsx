@@ -7,8 +7,8 @@
 // src/utils/ics.ts plus a subscription link.
 // ============================================================================
 
-import { useState } from 'react'
-import { CalendarPlus, Download, History, Link2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { CalendarPlus, Download, History } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cancelAppointment, getSession, lessonLabel, maskPhone, rescheduleAppointment, updateStudentAddress, useAppState } from '../../data/store'
 import type { Appointment, Course } from '../../data/store'
@@ -16,6 +16,7 @@ import { dateKey, formatHM, fromLocalISO, fromServerISO, getLessonStarts, parseD
 import { useLocale, useT } from '../../i18n'
 import { downloadICS } from '../../utils/ics'
 import type { IcsEvent } from '../../utils/ics'
+import { GOOGLE_MAPS_API_KEY } from '../../config'
 import { Avatar, ConfirmModal, EmptyState, ModalFrame, StatusBadge } from './StudentShared'
 import type { BadgeTone } from './StudentShared'
 import { StudentShell } from './StudentShell'
@@ -160,6 +161,43 @@ function StudentProfileContent(): JSX.Element {
 
   // Editable pickup address (接送地址)
   const [addressDraft, setAddressDraft] = useState<string>(student?.address ?? '')
+  const addressInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Google Places autocomplete for the pickup address (enabled when a key is
+  // configured; otherwise the field stays a plain input).
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) return
+    const win = window as unknown as Record<string, unknown>
+    const attach = (): void => {
+      const el = addressInputRef.current
+      const g = win.google as { maps?: { places?: { Autocomplete: new (input: HTMLInputElement, opts?: object) => { addListener: (ev: string, cb: () => void) => void; getPlace: () => { formatted_address?: string } } } } } | undefined
+      if (!el || !g?.maps?.places) return
+      const ac = new g.maps.places.Autocomplete(el, { fields: ['formatted_address'] })
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace()
+        if (place?.formatted_address) setAddressDraft(place.formatted_address)
+      })
+    }
+    if ((win.google as { maps?: unknown } | undefined) && (win.google as { maps?: { places?: unknown } } | undefined)?.maps?.places) {
+      attach()
+      return
+    }
+    if (win.__ezdAddressAutocomplete) {
+      ;(win.__ezdAddressAutocomplete as () => void)()
+      return
+    }
+    win.__ezdAddressAutocomplete = attach
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=__ezdAddressAutocomplete`
+    script.async = true
+    script.defer = true
+    script.onerror = () => {
+      // Key/network issue — keep the plain input working.
+      delete win.__ezdAddressAutocomplete
+    }
+    document.head.appendChild(script)
+  }, [])
+
   const saveAddress = async (): Promise<void> => {
     const result = await updateStudentAddress(addressDraft)
     if (result.ok) showToast('success', t('common.toast.saved'))
@@ -204,22 +242,6 @@ function StudentProfileContent(): JSX.Element {
   const handleDownloadIcs = (): void => {
     downloadICS(icsEvents, ICS_FILENAME)
     showToast('success', t('ics.exported'))
-  }
-
-  // Private subscription feed: per-student token + client timezone offset.
-  const subscriptionUrl = `${window.location.origin}/api/ics/${studentId}?t=${encodeURIComponent(student?.icsToken ?? '')}&tz=${-new Date().getTimezoneOffset()}`
-
-  const handleCopySubscription = async (): Promise<void> => {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(subscriptionUrl)
-        showToast('success', t('common.toast.saved'))
-      } else {
-        showToast('error', t('common.toast.error'))
-      }
-    } catch {
-      showToast('error', t('common.toast.error'))
-    }
   }
 
   const handleCancel = async (): Promise<void> => {
@@ -275,10 +297,12 @@ function StudentProfileContent(): JSX.Element {
                 <span className="student-summary-label">{t('student.profile.address')}</span>
                 <div className="student-profile-address">
                   <input
+                    ref={addressInputRef}
                     className="student-address-input"
                     value={addressDraft}
                     onChange={(e) => setAddressDraft(e.target.value)}
                     placeholder={t('student.profile.addressPlaceholder')}
+                    autoComplete="street-address"
                   />
                   <button
                     type="button"
@@ -440,13 +464,6 @@ function StudentProfileContent(): JSX.Element {
                 <Download size={16} />
                 {t('ics.export')}
               </button>
-              <button type="button" className="student-btn student-btn-secondary" onClick={handleCopySubscription}>
-                <Link2 size={16} />
-                {t('ics.subscribe')}
-              </button>
-            </div>
-            <div className="student-sync-url">
-              <code>{subscriptionUrl}</code>
             </div>
             <p className="student-sync-hint">{t('ics.howTo')}</p>
           </section>

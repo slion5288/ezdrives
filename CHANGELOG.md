@@ -5,6 +5,21 @@
 
 ---
 
+## Change 8 — 个人中心：Google 地址自动补全、注册时间修复、日历订阅改为预约后弹「添加到日历」
+
+- **我的要求**：① 接送地址用 Google 地图自动填写防填错；② 修复注册时间显示错误；③ 日历同步不需要专门的订阅链接，预约新课程后直接弹出「添加到日历」按钮。
+- **涉及页面**：学员个人中心（/student/profile）、学员预约面板（CourseBookingPanel）。
+- **涉及功能**：地址填写、注册时间展示、日历同步。
+- **修改文件**：
+  - 时间修复：`functions/api/auth/register.js`（`registeredAt` 由 `toISOString()` 改为本地 ISO 格式）、`src/data/timeEngine.ts`（`fromLocalISO` 兼容旧数据带 Z/毫秒的 UTC 格式，正确转本地显示）——测试学员 Ping 的坏时间戳现在能正确显示。
+  - 日历：`src/pages/student/StudentProfilePage.tsx`（移除订阅链接 UI：订阅按钮、链接展示、复制功能；保留 .ics 导出）、`src/pages/student/CourseBookingPanel.tsx`（预约成功后弹出「添加到日历 (.ics)」弹窗，下载该次预约的日历文件，可"稍后再说"）、i18n（`ics.addToCalendar`/`addLater`/`addCalendarHint` 新增；`ics.subscribe` 删除；`calendarSyncBody` 文案更新）。
+  - Google 地址：新增 `src/config.ts`（`GOOGLE_MAPS_API_KEY`，默认空 = 关闭自动补全，行为不变）；`StudentProfilePage.tsx` 地址输入框接入 Places Autocomplete（配置 key 后启用）。
+- **是否影响旧功能**：是——个人中心去掉日历订阅链接（按需求）；其余不变。
+- **测试结果**：编译通过；时间解析器单元测试通过（新旧格式均显示正确日期）；bundle 确认无订阅残留、含「添加到日历」；已部署，ezdrives.net 已为新版本。
+- **待办（需要你提供）**：Google Maps 自动补全需 **Google Cloud API Key**（启用 Places API + 限制来源域名）后填入 `src/config.ts` 并重新部署，否则地址框保持普通输入。
+
+---
+
 ## Change 7 — 全站菜单一致性（/courses 与首页菜单统一 + 同类检查）
 
 - **我的要求**：「全部课程」页右上角菜单与首页不一致，改为与首页一致；并检查修复所有同类问题。

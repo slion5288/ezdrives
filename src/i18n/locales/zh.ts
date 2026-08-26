@@ -199,7 +199,7 @@ export const messages: Record<MessageKey, string> = {
   'student.profile.smsNotifs': '短信提醒',
   'student.profile.inAppNotifs': '应用内通知',
   'student.profile.calendarSync': '日历同步',
-  'student.profile.calendarSyncBody': '自动将课程同步到您的手机日历。',
+  'student.profile.calendarSyncBody': '将您即将开始的课程导出为日历文件。',
   'student.profile.save': '保存修改',
   'student.profile.saved': '设置已保存',
 
@@ -440,13 +440,15 @@ export const messages: Record<MessageKey, string> = {
   'ics.subtitle': '将课程导出为 .ics 文件，或在手机日历中订阅。',
   'ics.export': '导出 .ics 文件',
   'ics.download': '下载 .ics',
-  'ics.subscribe': '订阅',
-  'ics.apple': '苹果日历',
+    'ics.apple': '苹果日历',
   'ics.google': '谷歌日历',
   'ics.summary': 'EZDRIVES · {course}',
   'ics.description': 'EZDRIVES 的驾驶课程预约。',
   'ics.location': '多伦多，安大略省',
   'ics.howTo': '打开下载的文件即可将课程添加到日历。',
+  'ics.addToCalendar': '添加到日历',
+  'ics.addLater': '稍后再说',
+  'ics.addCalendarHint': '将这节课添加到您的手机日历。',
   'ics.exported': '日历文件已下载',
 
   // --- landing: G1 模拟题库栏目 ---

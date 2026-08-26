@@ -29,6 +29,11 @@ export function toLocalISO(d: Date): string {
 export function fromLocalISO(s: string): Date {
   const dt = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(s)
   if (dt) return new Date(+dt[1], +dt[2] - 1, +dt[3], +dt[4], +dt[5], +dt[6])
+  // Legacy rows written as UTC with milliseconds/zone (e.g. '…T20:16:35.507Z').
+  const utc = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z?$/.exec(s)
+  if (utc && /Z$/.test(s)) {
+    return new Date(Date.UTC(+utc[1], +utc[2] - 1, +utc[3], +utc[4], +utc[5], +utc[6]))
+  }
   const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
   if (d) return new Date(+d[1], +d[2] - 1, +d[3])
   return new Date(NaN)

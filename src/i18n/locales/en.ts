@@ -197,7 +197,7 @@ export const messages = {
   'student.profile.smsNotifs': 'SMS reminders',
   'student.profile.inAppNotifs': 'In-app notifications',
   'student.profile.calendarSync': 'Calendar sync',
-  'student.profile.calendarSyncBody': 'Keep your lessons in your phone calendar automatically.',
+  'student.profile.calendarSyncBody': 'Export your upcoming lessons as a calendar file.',
   'student.profile.save': 'Save changes',
   'student.profile.saved': 'Settings saved',
 
@@ -438,13 +438,15 @@ export const messages = {
   'ics.subtitle': 'Export your lessons as an .ics file or subscribe from your phone calendar.',
   'ics.export': 'Export .ics file',
   'ics.download': 'Download .ics',
-  'ics.subscribe': 'Subscribe',
-  'ics.apple': 'Apple Calendar',
+    'ics.apple': 'Apple Calendar',
   'ics.google': 'Google Calendar',
   'ics.summary': '{course} with EZDRIVES',
   'ics.description': 'Driving lesson booked with EZDRIVES.',
   'ics.location': 'Toronto, ON',
   'ics.howTo': 'Open the downloaded file to add the lesson to your calendar.',
+  'ics.addToCalendar': 'Add to calendar',
+  'ics.addLater': 'Not now',
+  'ics.addCalendarHint': 'Add this lesson to your phone calendar.',
   'ics.exported': 'Calendar file downloaded',
 
   // --- landing: G1 mock test section ---

@@ -22,6 +22,11 @@ import { slotId, WeekCalendar } from '../../components/calendar/WeekCalendar'
 import { lessonLabel } from '../../data/store'
 import { formatDateLabel, formatPrice, mondayOf } from './studentFormat'
 import { useToast } from './StudentToast'
+import { ModalFrame } from './StudentShared'
+import { downloadICS } from '../../utils/ics'
+import type { IcsEvent } from '../../utils/ics'
+
+const ICS_FILENAME = 'ezdrives-lessons.ics'
 
 interface CourseBookingPanelProps {
   course: Course
@@ -62,6 +67,29 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
   const [selectedStart, setSelectedStart] = useState<Slot | null>(null)
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
+  /** Appointments just created — shows the "add to calendar" prompt. */
+  const [justBooked, setJustBooked] = useState<Appointment[] | null>(null)
+
+  /** One .ics event for an appointment (per this course panel). */
+  const apptToEvent = (appt: Appointment): IcsEvent => {
+    const name = locale === 'zh' ? course.name.zh : course.name.en
+    const label = `${name}${course.type === 'package' && appt.lessonIndex !== undefined ? lessonLabel(course, appt.lessonIndex, locale) : ''}`
+    return {
+      uid: `lesson-${appt.id}@ezdrives.example`,
+      summary: t('ics.summary', { course: label }),
+      description: t('ics.description'),
+      location: t('ics.location'),
+      start: fromLocalISO(appt.start),
+      end: fromLocalISO(appt.end),
+    }
+  }
+
+  const addJustBookedToCalendar = (): void => {
+    if (!justBooked) return
+    downloadICS(justBooked.map(apptToEvent), ICS_FILENAME)
+    showToast('success', t('ics.exported'))
+    setJustBooked(null)
+  }
 
   const selectedLessons = isPackage && course.lessons ? course.lessons.slice(autoLesson, autoLesson + selCount) : []
   const selectedTotal =
@@ -102,6 +130,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
           t('student.booking.packageConfirmed', { count: selCount, n: autoLesson + 1, total: formatPrice(selectedTotal) }),
         )
         setSelectedStart(null)
+        setJustBooked(result.appointments)
       } else {
         showToast('error', bookingErrorMessage(String(result.error)))
       }
@@ -111,6 +140,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
     if (result.ok) {
       showToast('success', t('student.booking.bookedOk'))
       setSelectedStart(null)
+      setJustBooked([result.appointment])
     } else {
       showToast('error', bookingErrorMessage(String(result.error)))
     }
@@ -304,6 +334,21 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
       </div>
         </>
       )}
+
+      {/* Post-booking prompt: add the new lesson(s) to the phone calendar */}
+      {justBooked ? (
+        <ModalFrame open title={t('student.booking.bookedOk')} onClose={() => setJustBooked(null)}>
+          <p className="student-confirm-body">{t('ics.addCalendarHint')}</p>
+          <div className="student-modal-actions">
+            <button type="button" className="student-btn student-btn-secondary" onClick={() => setJustBooked(null)}>
+              {t('ics.addLater')}
+            </button>
+            <button type="button" className="student-btn student-btn-primary" onClick={addJustBookedToCalendar}>
+              <CalendarClock size={16} /> {t('ics.addToCalendar')}
+            </button>
+          </div>
+        </ModalFrame>
+      ) : null}
     </div>
   )
 }
