@@ -1,14 +1,16 @@
-// POST /api/auth/login — phone + password → session token + user.
+// POST /api/auth/login — phone/email + password → session token + user.
 import { json, fail, readJson } from '../../lib/util.js'
 import { verifyPassword, createSession } from '../../lib/auth.js'
 
 export async function onRequestPost({ env, request }) {
   const body = await readJson(request)
-  const phone = String(body.phone || '').trim()
+  const identifier = String(body.phone || body.identifier || '').trim()
   const password = String(body.password || '')
 
-  const user = await env.DB.prepare('SELECT * FROM users WHERE phone = ?').bind(phone).first()
-  if (!user) return fail('No account found for this phone number.')
+  const user = await env.DB.prepare('SELECT * FROM users WHERE phone = ? OR email = ?')
+    .bind(identifier, identifier)
+    .first()
+  if (!user) return fail('No account found for this phone number or email.')
   if (!(await verifyPassword(password, user.password_hash))) return fail('Incorrect password.')
 
   const token = await createSession(env, user.id)

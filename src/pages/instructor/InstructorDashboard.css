@@ -8,99 +8,77 @@
 
 .ins-shell {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--color-bg);
 }
 
-.ins-sidebar {
+/* --- Top header: logo (left) · centered menu · actions (right) ------------ */
+
+.ins-header {
   position: sticky;
   top: 0;
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 240px;
-  height: 100vh;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
-}
-
-.ins-brand {
+  z-index: 40;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-5) var(--space-4);
+  gap: var(--space-4);
+  height: 64px;
+  padding: 0 var(--space-5);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
   border-bottom: 1px solid var(--color-border);
 }
 
-.ins-brand-mark {
+.ins-header-brand {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--gradient-brand);
-  color: #ffffff;
-  box-shadow: 0 2px 8px -2px rgba(59, 130, 246, 0.5), 0 1px 3px rgba(16, 24, 40, 0.15);
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
-.ins-brand-word {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.ins-header-brand .ins-brand-img {
+  height: 32px;
 }
 
-.ins-nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-4) var(--space-3);
-  flex: 1;
-  overflow-y: auto;
-}
-
-.ins-nav-item {
-  position: relative;
+.ins-header-nav {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  width: 100%;
+  justify-content: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.ins-header-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 40px;
   padding: 0 var(--space-3);
+  border: none;
   border-radius: var(--radius-md);
+  background: transparent;
   color: var(--color-text-muted);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.ins-nav-item:hover {
+.ins-header-item:hover {
   background: var(--color-surface-2);
   color: var(--color-text);
 }
 
-.ins-nav-item.is-active {
+.ins-header-item.is-active {
   background: var(--color-accent-soft);
   color: var(--color-accent);
 }
 
-.ins-nav-item.is-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-}
-
-.ins-nav-label {
-  flex: 1;
-  text-align: left;
+.ins-header-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -120,15 +98,14 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.ins-sidebar-foot {
-  border-top: 1px solid var(--color-border);
-  padding: var(--space-3);
+.ins-header-actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--space-3);
+  flex: 0 0 auto;
 }
 
-.ins-sidebar-toggles {
+.ins-header-toggles {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -150,20 +127,21 @@
   background: var(--color-surface-2);
 }
 
-.ins-sidebar-user {
+.ins-header-user {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--color-border);
 }
 
-.ins-sidebar-user-info {
-  flex: 1;
+.ins-header-user-info {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.ins-sidebar-user-name {
+.ins-header-user-name {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
@@ -172,7 +150,7 @@
   text-overflow: ellipsis;
 }
 
-.ins-sidebar-user-role {
+.ins-header-user-role {
   font-size: var(--font-size-xs);
   color: var(--color-text-soft);
 }
@@ -195,7 +173,7 @@
   min-width: 0;
 }
 
-.ins-topbar {
+.ins-main-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -208,7 +186,7 @@
   font-weight: var(--font-weight-bold);
 }
 
-.ins-topbar-actions {
+.ins-main-head-actions {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -1681,48 +1659,19 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
 /* --- Responsive ------------------------------------------------------------ */
 
 @media (max-width: 1100px) {
-  .ins-sidebar {
-    flex-basis: 72px;
+  .ins-header-user-info {
+    display: none;
   }
 
-  .ins-brand {
-    justify-content: center;
+  .ins-header {
+    padding-inline: var(--space-4);
+  }
+
+  .ins-header-item {
     padding-inline: var(--space-2);
   }
 
-  .ins-brand-word,
-  .ins-nav-label,
-  .ins-sidebar-user-info {
-    display: none;
-  }
-
-  .ins-nav-item {
-    justify-content: center;
-    padding: 0;
-  }
-
-  .ins-nav-item.is-active::before {
-    display: none;
-  }
-
-  .ins-sidebar-foot {
-    align-items: center;
-  }
-
-  .ins-sidebar-toggles {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .ins-lang-pill {
-    text-align: center;
-  }
-
-  .ins-sidebar-user {
-    justify-content: center;
-  }
-
-  .ins-topbar {
+  .ins-main-head {
     padding-inline: var(--space-5);
   }
 
@@ -1754,7 +1703,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
 }
 
 @media (max-width: 600px) {
-  .ins-topbar {
+  .ins-main-head {
     padding: var(--space-4) var(--space-4) 0;
   }
 
@@ -2060,7 +2009,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   display: none;
 }
 @media (max-width: 900px) {
-  .ins-sidebar {
+  .ins-header-nav {
     display: none;
   }
   .ins-bottom-nav {
@@ -2539,7 +2488,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   color: var(--color-accent);
 }
 
-/* Brand logo image in the instructor sidebar */
+/* Brand logo image in the instructor header (clicking it returns home) */
 .ins-brand-img {
   height: 34px;
   width: auto;

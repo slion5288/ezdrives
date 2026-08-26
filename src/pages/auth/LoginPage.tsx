@@ -1,16 +1,17 @@
 // ============================================================================
 // EZDRIVES — LoginPage (shell-owned)
-// REAL authentication against the Cloudflare D1 backend: phone + password.
-// Role selector (student / instructor), student registration (name + phone +
-// password), demo accounts for quick testing. All strings through useT().
+// REAL authentication against the Cloudflare D1 backend.
+// Student: phone + password login, or register with an SMS-verified phone.
+// Instructor: phone/email + password (single-instructor deployment).
+// All strings through useT().
 // ============================================================================
 
 import { ArrowLeft, ArrowRight, KeyRound, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { Avatar, Badge, Button, Card, Field, Input, LanguageSwitcher, Logo, ThemeToggle, useToast } from '../../components/shared'
-import { getSession, login, maskPhone, register, sendVerificationCode, useAppState } from '../../data/store'
+import { Badge, Button, Card, Field, Input, LanguageSwitcher, Logo, ThemeToggle, useToast } from '../../components/shared'
+import { getSession, login, register, sendVerificationCode } from '../../data/store'
 import { useT } from '../../i18n'
 import './LoginPage.css'
 
@@ -73,13 +74,12 @@ function PhoneField({
 }
 
 // ---------------------------------------------------------------------------
-// Student: login (phone + password), register, or one-tap demo account.
+// Student: login (phone + password) or register (name + SMS-verified phone).
 // ---------------------------------------------------------------------------
 
 function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
   const t = useT()
   const toast = useToast()
-  const state = useAppState()
 
   // Login form
   const [loginPhone, setLoginPhone] = useState('')
@@ -96,8 +96,6 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
   const [errors, setErrors] = useState<{ phone?: string; password?: string; name?: string; code?: string }>({})
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
-
-  const demoStudents = state.students
 
   const doLogin = async (phone: string, password: string): Promise<void> => {
     setBusy(true)
@@ -146,7 +144,6 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
           return s - 1
         })
       }, 1000)
-      if (res.demoCode) toast.info(t('auth.register.demoCodeToast', { code: res.demoCode }))
     } else {
       setErrors({ phone: res.error || t('auth.error.network') })
     }
@@ -174,28 +171,6 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
 
   return (
     <>
-      {/* One-tap demo accounts */}
-      <p className="login__section-heading">{t('auth.demo.student')}</p>
-      <div className="login__students">
-        {demoStudents.slice(0, 6).map((student) => (
-          <button
-            key={student.id}
-            type="button"
-            className="login__student"
-            disabled={busy}
-            onClick={() => void doLogin(student.phone, 'demo1234')}
-          >
-            <Avatar name={student.name} color={student.avatarColor} size="sm" />
-            <span className="login__student-name">{student.name}</span>
-            <span className="login__student-phone">{maskPhone(student.phone)}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="login__divider">
-        <span>{t('auth.student.or')}</span>
-      </div>
-
       {mode === 'login' ? (
         <form className="login__form" onSubmit={submitLogin}>
           <Field label={t('auth.login.phone')} error={errors.phone} htmlFor="login-phone">
@@ -292,57 +267,24 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
 }
 
 // ---------------------------------------------------------------------------
-// Instructor: phone + password, or one-click demo account.
+// Instructor: phone/email + password (single-instructor deployment — no SMS
+// verification, no registration flow).
 // ---------------------------------------------------------------------------
 
 function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
   const t = useT()
   const toast = useToast()
-  const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [phone, setPhone] = useState('')
-  const [country, setCountry] = useState('+1')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
-  const [regName, setRegName] = useState('')
-  const [regCode, setRegCode] = useState('')
-  const [codeSent, setCodeSent] = useState(false)
-  const [codeCountdown, setCodeCountdown] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const sendCode = async (): Promise<void> => {
-    if (phone.replace(/\D/g, '').length < 10) {
-      setError(t('auth.error.phone'))
-      return
-    }
-    setError(null)
-    setBusy(true)
-    const res = await sendVerificationCode((country + phone).trim())
-    setBusy(false)
-    if (res.ok) {
-      setCodeSent(true)
-      setCodeCountdown(60)
-      const timer = window.setInterval(() => {
-        setCodeCountdown((s) => {
-          if (s <= 1) {
-            window.clearInterval(timer)
-            return 0
-          }
-          return s - 1
-        })
-      }, 1000)
-      if (res.demoCode) toast.info(t('auth.register.demoCodeToast', { code: res.demoCode }))
-    } else {
-      setError(res.error || t('auth.error.network'))
-    }
-  }
-
-  const submitRegister = async (e: FormEvent): Promise<void> => {
+  const submit = async (e: FormEvent): Promise<void> => {
     e.preventDefault()
-    if (!regName.trim()) {
-      setError(t('auth.error.name'))
-      return
-    }
-    if (phone.replace(/\D/g, '').length < 10) {
+    const value = identifier.trim()
+    const isPhone = value.replace(/\D/g, '').length >= 10
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+    if (!isPhone && !isEmail) {
       setError(t('auth.error.phone'))
       return
     }
@@ -350,57 +292,31 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
       setError(t('auth.error.passwordShort'))
       return
     }
-    if (!/^\d{6}$/.test(regCode.trim())) {
-      setError(t('auth.error.code'))
-      return
-    }
-    setBusy(true)
-    const result = await register({ role: 'instructor', name: regName.trim(), phone: (country + phone).trim(), password, code: regCode.trim() })
-    setBusy(false)
-    if (result.ok) {
-      toast.success(t('auth.register.welcome', { name: regName.trim() }))
-      onLoggedIn()
-    } else {
-      setError(result.error || t('auth.error.network'))
-    }
-  }
-
-  const doLogin = async (p: string, pw: string): Promise<void> => {
     setBusy(true)
     setError(null)
-    const result = await login(p, pw)
+    const result = await login(value, password)
     setBusy(false)
     if (result.ok) {
-      toast.success(t('auth.loggedInAs', { name: p }))
+      toast.success(t('auth.loggedInAs', { name: value }))
       onLoggedIn()
     } else {
       setError(t('auth.error.credentials'))
     }
   }
 
-  const submit = (e: FormEvent): void => {
-    e.preventDefault()
-    if (mode === 'register') {
-      void submitRegister(e)
-      return
-    }
-    void doLogin(country + phone, password)
-  }
-
-  const demo = (): void => {
-    void doLogin('+1 416-555-0142', 'demo123')
-  }
-
   return (
-    <form className="login__form" onSubmit={submit}>
-      <Field label={t('auth.login.phone')} error={error ?? undefined} htmlFor="instructor-phone">
-        <PhoneField
-          id="instructor-phone"
-          value={phone}
-          onChange={setPhone}
-          country={country}
-          onCountry={setCountry}
-          placeholder="416-555-0142"
+    <form className="login__form" onSubmit={(e) => void submit(e)}>
+      <Field label={t('auth.instructor.identifier')} error={error ?? undefined} htmlFor="instructor-identifier">
+        <Input
+          id="instructor-identifier"
+          value={identifier}
+          invalid={error != null}
+          onChange={(e) => {
+            setIdentifier(e.target.value)
+            setError(null)
+          }}
+          placeholder="+1 416-555-0142 / name@email.com"
+          autoComplete="username"
         />
       </Field>
       <Field label={t('auth.login.password')} error={error ?? undefined} htmlFor="instructor-password">
@@ -414,74 +330,14 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
             setError(null)
           }}
           placeholder="••••••••"
+          autoComplete="current-password"
         />
       </Field>
-      {mode === 'login' ? (
-        <>
-          <div className="login__actions">
-            <Button type="submit" disabled={busy} icon={<KeyRound size={16} aria-hidden="true" />}>
-              {busy ? t('auth.login.loading') : t('auth.instructor.login')}
-            </Button>
-            <Button type="button" variant="secondary" disabled={busy} onClick={demo}>
-              {t('auth.instructor.demo')}
-            </Button>
-          </div>
-          <button type="button" className="login__switch" onClick={() => setMode('register')}>
-            {t('auth.instructor.register')}
-          </button>
-        </>
-      ) : (
-        <>
-          <Field label={t('auth.register.name')} error={error ?? undefined} htmlFor="instructor-reg-name">
-            <Input
-              id="instructor-reg-name"
-              value={regName}
-              onChange={(e) => setRegName(e.target.value)}
-              placeholder={t('auth.register.name')}
-            />
-          </Field>
-          <Field label={t('auth.login.phone')} error={error ?? undefined} htmlFor="instructor-reg-phone">
-            <PhoneField
-              id="instructor-reg-phone"
-              value={phone}
-              onChange={setPhone}
-              country={country}
-              onCountry={setCountry}
-              placeholder="416-555-0142"
-            />
-          </Field>
-          <Field label={t('auth.register.code')} error={error ?? undefined} htmlFor="instructor-reg-code">
-            <div className="login__code-row">
-              <Input
-                id="instructor-reg-code"
-                inputMode="numeric"
-                maxLength={6}
-                value={regCode}
-                onChange={(e) => setRegCode(e.target.value)}
-                placeholder="6-digit code"
-              />
-              <Button type="button" variant="secondary" size="sm" disabled={busy || codeCountdown > 0} onClick={() => void sendCode()} icon={<Send size={14} aria-hidden="true" />}>
-                {codeCountdown > 0 ? `${codeCountdown}s` : codeSent ? t('auth.register.resend') : t('auth.register.sendCode')}
-              </Button>
-            </div>
-          </Field>
-          <Field label={t('auth.login.password')} error={error ?? undefined} htmlFor="instructor-reg-password">
-            <Input
-              id="instructor-reg-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t('auth.register.passwordHint')}
-            />
-          </Field>
-          <Button type="submit" disabled={busy} icon={<Send size={16} aria-hidden="true" />}>
-            {busy ? t('auth.login.loading') : t('auth.instructor.registerSubmit')}
-          </Button>
-          <button type="button" className="login__switch" onClick={() => setMode('login')}>
-            {t('auth.register.switch')}
-          </button>
-        </>
-      )}
+      <div className="login__actions">
+        <Button type="submit" disabled={busy} icon={<KeyRound size={16} aria-hidden="true" />}>
+          {busy ? t('auth.login.loading') : t('auth.instructor.login')}
+        </Button>
+      </div>
     </form>
   )
 }

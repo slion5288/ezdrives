@@ -1483,15 +1483,6 @@
   word-break: break-all;
 }
 
-.student-demo-chip {
-  padding: 1px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--color-warning);
-  color: #fff;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-}
-
 .student-sync-hint {
   margin-top: var(--space-3);
   color: var(--color-text-muted);

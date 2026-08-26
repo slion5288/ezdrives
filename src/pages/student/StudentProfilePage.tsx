@@ -4,7 +4,7 @@
 // settings toggles, upcoming bookings with cancel (confirm modal → store),
 // history timeline with status chips + bilingual change-log entries, and the
 // calendar-sync section: real .ics export of upcoming lessons via
-// src/utils/ics.ts plus a mock subscription-link copy (labeled demo).
+// src/utils/ics.ts plus a subscription link.
 // ============================================================================
 
 import { useState } from 'react'
@@ -336,7 +336,6 @@ function StudentProfileContent(): JSX.Element {
             </div>
             <div className="student-sync-url">
               <code>{subscriptionUrl}</code>
-              <span className="student-demo-chip">{t('auth.instructor.demo')}</span>
             </div>
             <p className="student-sync-hint">{t('ics.howTo')}</p>
           </section>

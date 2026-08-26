@@ -1,8 +1,9 @@
 // ============================================================================
 // EZDRIVES — InstructorDashboardPage (instructor-owned)
-// The instructor "control room": sidebar (logo, tabs, language/theme toggles,
-// avatar) + content area. Requires an instructor session, else redirects to
-// /login?role=instructor. Internal tab state drives the six sub-pages.
+// The instructor "control room": top header (logo → home, centered tab menu,
+// language/theme toggles, avatar) + content area. Requires an instructor
+// session, else redirects to /login?role=instructor. Internal tab state drives
+// the seven sub-pages.
 // ============================================================================
 
 import { useEffect, useState } from 'react'
@@ -15,7 +16,6 @@ import {
   CalendarDays,
   Cloud,
   GraduationCap,
-  Home,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -112,28 +112,28 @@ export default function InstructorDashboardPage(): JSX.Element {
   return (
     <ToastProvider>
       <div className="ins-shell">
-        <aside className="ins-sidebar">
-          <Link to="/" className="ins-brand" aria-label={t('nav.home')}>
+        <header className="ins-header">
+          <Link to="/" className="ins-header-brand" aria-label={t('nav.home')}>
             <img src={LOGO_DATA_URL} alt={t('nav.brand')} className="ins-brand-img" />
           </Link>
 
-          <nav className="ins-nav" aria-label={t('nav.instructor')}>
+          <nav className="ins-header-nav" aria-label={t('nav.instructor')}>
             {NAV.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                className={`ins-nav-item${tab === item.id ? ' is-active' : ''}`}
+                className={`ins-header-item${tab === item.id ? ' is-active' : ''}`}
                 onClick={() => setTab(item.id)}
               >
                 <item.icon size={18} />
-                <span className="ins-nav-label">{t(TAB_KEYS[item.id])}</span>
+                <span className="ins-header-label">{t(TAB_KEYS[item.id])}</span>
                 {item.id === 'notifications' && unread > 0 ? <span className="ins-nav-badge tabular-nums">{unread}</span> : null}
               </button>
             ))}
           </nav>
 
-          <div className="ins-sidebar-foot">
-            <div className="ins-sidebar-toggles">
+          <div className="ins-header-actions">
+            <div className="ins-header-toggles">
               <button
                 type="button"
                 className="ins-lang-pill"
@@ -151,32 +151,29 @@ export default function InstructorDashboardPage(): JSX.Element {
                 {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
               </button>
             </div>
-            <div className="ins-sidebar-user">
-              <Avatar name={instructor.name} color={instructor.avatarColor} size={36} />
-              <div className="ins-sidebar-user-info">
-                <span className="ins-sidebar-user-name">{instructor.name}</span>
-                <span className="ins-sidebar-user-role">{t('nav.instructor')}</span>
+            <div className="ins-header-user">
+              <Avatar name={instructor.name} color={instructor.avatarColor} size={34} />
+              <div className="ins-header-user-info">
+                <span className="ins-header-user-name">{instructor.name}</span>
+                <span className="ins-header-user-role">{t('nav.instructor')}</span>
               </div>
               <button type="button" className="ins-icon-btn" aria-label={t('nav.logout')} onClick={logout}>
                 <LogOut size={16} />
               </button>
             </div>
           </div>
-        </aside>
+        </header>
 
         <main className="ins-main">
-          <header className="ins-topbar">
+          <div className="ins-main-head">
             <h1 className="ins-page-title">{t(TAB_KEYS[tab])}</h1>
-            <div className="ins-topbar-actions">
-              <Link to="/" className="ins-btn ins-btn--secondary ins-btn--sm" aria-label={t('nav.home')}>
-                <Home size={14} /> {t('nav.home')}
-              </Link>
+            <div className="ins-main-head-actions">
               <span className="ins-sync-chip">
                 <Cloud size={14} />
                 {t('nav.synced')} · <span className="tabular-nums">{syncTime}</span>
               </span>
             </div>
-          </header>
+          </div>
           <div className="ins-content">
             {tab === 'overview' ? <OverviewPage state={state} onNavigate={setTab} /> : null}
             {tab === 'schedule' ? <SchedulePage state={state} /> : null}

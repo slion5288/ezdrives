@@ -48,9 +48,9 @@ import './LandingPage.css'
 
 // --- Hero carousel: full-bleed HD slides (Apple-style headline) ---
 
-// Prefers real photos placed in /hero/ (hero-1.jpg … hero-4.jpg — see
-// public/hero/README.txt); falls back to the bundled base64 images.
-const HERO_FILES = ['hero-1.jpg', 'hero-2.jpg', 'hero-3.jpg', 'hero-4.jpg', 'hero-5.jpg', 'hero-6.jpg']
+// Uses the real photos placed in /hero/ (hero-1.jpg … hero-6.jpg — see
+// public/hero/README.txt); falls back to the bundled base64 images on error.
+const HERO_FILES = ['/hero/hero-1.jpg', '/hero/hero-2.jpg', '/hero/hero-3.jpg', '/hero/hero-4.jpg', '/hero/hero-5.jpg', '/hero/hero-6.jpg']
 
 function HeroCarousel(): JSX.Element {
   const locale = useLocale()
@@ -280,10 +280,6 @@ export default function LandingPage(): JSX.Element {
             <a href="#contact" onClick={closeMenu}>
               {t('landing.footer.contact')}
             </a>
-            <div className="landing-mobile-menu__divider" />
-            <LandingButton to="/login" className="landing-mobile-menu__login" onClick={closeMenu}>
-              {t('nav.login')}
-            </LandingButton>
           </nav>
         ) : null}
       </header>
@@ -620,7 +616,6 @@ export default function LandingPage(): JSX.Element {
               </a>
               <Link to="/courses">{t('nav.courses')}</Link>
               <a href="#faq">{t('landing.faq.title')}</a>
-              <Link to="/login">{t('nav.login')}</Link>
               <Link to="/login?role=instructor">{t('nav.instructor')}</Link>
             </div>
             <div className="landing-footer__col">
