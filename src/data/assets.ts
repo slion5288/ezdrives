@@ -31,8 +31,8 @@ export const COURSE_IMAGES: Record<string, string> = {
   c2: '/course/exterior-2.jpg',
   c3: '/course/exterior-3.jpg',
   c4: '/course/interior-1.jpg',
-  c5: '/course/exterior-1.jpg',
-  c6: '/course/exterior-2.jpg',
+  c5: '/course/exterior-4.png',
+  c6: '/course/exterior-5.jpg',
 }
 
 /** Fallback used when a course has neither an uploaded image nor a mapping. */

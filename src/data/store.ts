@@ -657,8 +657,8 @@ export async function sendVerificationCode(phone: string): Promise<{ ok: boolean
 }
 
 /** Real registration via the backend (student, SMS-verified). */
-export async function register(body: { name: string; phone: string; password: string; address?: string; code?: string }): Promise<LoginResult> {
-  const res = await apiRegister({ role: 'student', ...body })
+export async function register(body: { role?: 'student' | 'instructor'; name: string; phone: string; password: string; address?: string; code?: string }): Promise<LoginResult> {
+  const res = await apiRegister({ role: body.role ?? 'student', ...body })
   if (!res.ok || !res.token || !res.user) return { ok: false, error: res.error || 'Registration failed' }
   setSession({ token: res.token, role: res.user.role, user: res.user, studentId: res.user.studentId })
   const loaded = await initStateFromServer()

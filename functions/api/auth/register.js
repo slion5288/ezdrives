@@ -44,7 +44,8 @@ export async function onRequestPost({ env, request }) {
     await env.DB.prepare('UPDATE verification_codes SET used = 1 WHERE phone = ? AND code = ?').bind(phone, smsCode).run()
   }
 
-  // Only one instructor account (the admin) — via setup only.
+  // Only one instructor account (the admin). The FIRST registered user may be
+  // the instructor; afterwards instructor signup is closed.
   if (role === 'instructor') {
     const inst = await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'instructor'").first()
     if (inst && inst.n > 0) return fail('Instructor account already exists.', 403)
@@ -76,6 +77,18 @@ export async function onRequestPost({ env, request }) {
       avatarColor: '#3B82F6',
     }
     stmts.push(env.DB.prepare('INSERT INTO students (id, user_id, payload) VALUES (?, ?, ?)').bind(studentId, userId, JSON.stringify(student)))
+  } else {
+    // Instructor registration: fill the profile row with their details.
+    const row = await env.DB.prepare('SELECT payload FROM instructor WHERE id = 1').first()
+    const prof = row ? JSON.parse(row.payload) : { breakMin: 10 }
+    const updated = {
+      ...prof,
+      name,
+      phone,
+      email: String(body.email || '').trim() || prof.email,
+      avatarColor: prof.avatarColor || '#A21CAF',
+    }
+    stmts.push(env.DB.prepare('INSERT OR REPLACE INTO instructor (id, payload) VALUES (1, ?)').bind(JSON.stringify(updated)))
   }
   await env.DB.batch(stmts)
 

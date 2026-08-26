@@ -298,11 +298,72 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
 function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
   const t = useT()
   const toast = useToast()
+  const [mode, setMode] = useState<'login' | 'register'>('login')
   const [phone, setPhone] = useState('')
   const [country, setCountry] = useState('+1')
   const [password, setPassword] = useState('')
+  const [regName, setRegName] = useState('')
+  const [regCode, setRegCode] = useState('')
+  const [codeSent, setCodeSent] = useState(false)
+  const [codeCountdown, setCodeCountdown] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  const sendCode = async (): Promise<void> => {
+    if (phone.replace(/\D/g, '').length < 10) {
+      setError(t('auth.error.phone'))
+      return
+    }
+    setError(null)
+    setBusy(true)
+    const res = await sendVerificationCode((country + phone).trim())
+    setBusy(false)
+    if (res.ok) {
+      setCodeSent(true)
+      setCodeCountdown(60)
+      const timer = window.setInterval(() => {
+        setCodeCountdown((s) => {
+          if (s <= 1) {
+            window.clearInterval(timer)
+            return 0
+          }
+          return s - 1
+        })
+      }, 1000)
+      if (res.demoCode) toast.info(t('auth.register.demoCodeToast', { code: res.demoCode }))
+    } else {
+      setError(res.error || t('auth.error.network'))
+    }
+  }
+
+  const submitRegister = async (e: FormEvent): Promise<void> => {
+    e.preventDefault()
+    if (!regName.trim()) {
+      setError(t('auth.error.name'))
+      return
+    }
+    if (phone.replace(/\D/g, '').length < 10) {
+      setError(t('auth.error.phone'))
+      return
+    }
+    if (password.length < 6) {
+      setError(t('auth.error.passwordShort'))
+      return
+    }
+    if (!/^\d{6}$/.test(regCode.trim())) {
+      setError(t('auth.error.code'))
+      return
+    }
+    setBusy(true)
+    const result = await register({ role: 'instructor', name: regName.trim(), phone: (country + phone).trim(), password, code: regCode.trim() })
+    setBusy(false)
+    if (result.ok) {
+      toast.success(t('auth.register.welcome', { name: regName.trim() }))
+      onLoggedIn()
+    } else {
+      setError(result.error || t('auth.error.network'))
+    }
+  }
 
   const doLogin = async (p: string, pw: string): Promise<void> => {
     setBusy(true)
@@ -319,6 +380,10 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
 
   const submit = (e: FormEvent): void => {
     e.preventDefault()
+    if (mode === 'register') {
+      void submitRegister(e)
+      return
+    }
     void doLogin(country + phone, password)
   }
 
@@ -351,15 +416,72 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
           placeholder="••••••••"
         />
       </Field>
-      <p className="login__hint">{t('auth.instructor.demoHint')}</p>
-      <div className="login__actions">
-        <Button type="submit" disabled={busy} icon={<KeyRound size={16} aria-hidden="true" />}>
-          {busy ? t('auth.login.loading') : t('auth.instructor.login')}
-        </Button>
-        <Button type="button" variant="secondary" disabled={busy} onClick={demo}>
-          {t('auth.instructor.demo')}
-        </Button>
-      </div>
+      {mode === 'login' ? (
+        <>
+          <div className="login__actions">
+            <Button type="submit" disabled={busy} icon={<KeyRound size={16} aria-hidden="true" />}>
+              {busy ? t('auth.login.loading') : t('auth.instructor.login')}
+            </Button>
+            <Button type="button" variant="secondary" disabled={busy} onClick={demo}>
+              {t('auth.instructor.demo')}
+            </Button>
+          </div>
+          <button type="button" className="login__switch" onClick={() => setMode('register')}>
+            {t('auth.instructor.register')}
+          </button>
+        </>
+      ) : (
+        <>
+          <Field label={t('auth.register.name')} error={error ?? undefined} htmlFor="instructor-reg-name">
+            <Input
+              id="instructor-reg-name"
+              value={regName}
+              onChange={(e) => setRegName(e.target.value)}
+              placeholder={t('auth.register.name')}
+            />
+          </Field>
+          <Field label={t('auth.login.phone')} error={error ?? undefined} htmlFor="instructor-reg-phone">
+            <PhoneField
+              id="instructor-reg-phone"
+              value={phone}
+              onChange={setPhone}
+              country={country}
+              onCountry={setCountry}
+              placeholder="416-555-0142"
+            />
+          </Field>
+          <Field label={t('auth.register.code')} error={error ?? undefined} htmlFor="instructor-reg-code">
+            <div className="login__code-row">
+              <Input
+                id="instructor-reg-code"
+                inputMode="numeric"
+                maxLength={6}
+                value={regCode}
+                onChange={(e) => setRegCode(e.target.value)}
+                placeholder="6-digit code"
+              />
+              <Button type="button" variant="secondary" size="sm" disabled={busy || codeCountdown > 0} onClick={() => void sendCode()} icon={<Send size={14} aria-hidden="true" />}>
+                {codeCountdown > 0 ? `${codeCountdown}s` : codeSent ? t('auth.register.resend') : t('auth.register.sendCode')}
+              </Button>
+            </div>
+          </Field>
+          <Field label={t('auth.login.password')} error={error ?? undefined} htmlFor="instructor-reg-password">
+            <Input
+              id="instructor-reg-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('auth.register.passwordHint')}
+            />
+          </Field>
+          <Button type="submit" disabled={busy} icon={<Send size={16} aria-hidden="true" />}>
+            {busy ? t('auth.login.loading') : t('auth.instructor.registerSubmit')}
+          </Button>
+          <button type="button" className="login__switch" onClick={() => setMode('login')}>
+            {t('auth.register.switch')}
+          </button>
+        </>
+      )}
     </form>
   )
 }

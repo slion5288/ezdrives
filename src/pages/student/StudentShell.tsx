@@ -58,6 +58,14 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
     }
   }, [])
 
+  // Live sync: poll the server so instructor confirmations appear automatically.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      initStateFromServer().catch(() => undefined)
+    }, 30000)
+    return () => window.clearInterval(id)
+  }, [])
+
   const session = getSession()
   if (session.role !== 'student') return <Navigate to="/login?role=student" replace />
   if (!ready) {
