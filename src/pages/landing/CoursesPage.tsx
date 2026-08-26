@@ -7,6 +7,7 @@
 
 import { ArrowLeft, ArrowRight, Check, Clock, GraduationCap, Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLocale, useT } from '../../i18n'
 import { useAppState } from '../../data/store'
 import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
@@ -17,16 +18,41 @@ export default function CoursesPage(): JSX.Element {
   const t = useT()
   const locale = useLocale()
   const state = useAppState()
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
   const courses = state.courses.filter((c) => c.active)
   const popularIndex = courses.length > 1 ? 1 : 0
 
-  const navLinks = [
-    { href: '#/', label: t('nav.home') },
-    { href: '#/g1', label: t('nav.g1') },
-    { href: '#/login', label: t('nav.login') },
+  const closeMenu = (): void => setMenuOpen(false)
+
+  /** Go to the homepage and scroll to one of its sections (cross-page). */
+  const goHomeSection = (id: string): void => {
+    closeMenu()
+    navigate('/')
+    let tries = 0
+    const timer = window.setInterval(() => {
+      tries += 1
+      const el = document.getElementById(id)
+      if (el) {
+        window.clearInterval(timer)
+        el.scrollIntoView({ behavior: 'smooth' })
+      } else if (tries > 25) {
+        window.clearInterval(timer)
+      }
+    }, 100)
+  }
+
+  // Same menu as the homepage (desktop nav + mobile menu), so the site
+  // navigation stays consistent across public pages.
+  const navItems: { key: string; type: 'section' | 'g1'; id?: string; label: string }[] = [
+    { key: 'how-it-works', type: 'section', id: 'how-it-works', label: t('landing.steps.title') },
+    { key: 'courses', type: 'section', id: 'courses', label: t('landing.courses.title') },
+    { key: 'g1', type: 'g1', label: t('nav.g1') },
+    { key: 'videos', type: 'section', id: 'videos', label: t('landing.videos.title') },
+    { key: 'instructor', type: 'section', id: 'instructor', label: t('landing.instructors.title') },
+    { key: 'contact', type: 'section', id: 'contact', label: t('landing.footer.contact') },
   ]
 
   return (
@@ -35,15 +61,31 @@ export default function CoursesPage(): JSX.Element {
         <div className="landing-header__inner container">
           <Logo />
           <nav className="landing-nav">
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href}>
-                {link.label}
-              </a>
-            ))}
+            {navItems.map((item) =>
+              item.type === 'g1' ? (
+                <Link key={item.key} to="/g1">
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.key}
+                  href={`#${item.id}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    goHomeSection(item.id as string)
+                  }}
+                >
+                  {item.label}
+                </a>
+              ),
+            )}
           </nav>
           <div className="landing-header__actions">
             <LanguageSwitcher />
             <ThemeToggle />
+            <LandingButton to="/login" variant="secondary" size="sm" className="landing-header__login">
+              {t('nav.studentLogin')}
+            </LandingButton>
             <button
               type="button"
               className="landing-menu-btn"
@@ -56,15 +98,32 @@ export default function CoursesPage(): JSX.Element {
           </div>
         </div>
 
-        {menuOpen ? <div className="landing-menu-scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" /> : null}
+        {menuOpen ? <div className="landing-menu-scrim" onClick={closeMenu} aria-hidden="true" /> : null}
 
         {menuOpen ? (
           <nav className="landing-mobile-menu" aria-label={t('nav.menu')}>
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
-                {link.label}
-              </a>
-            ))}
+            {navItems.map((item) =>
+              item.type === 'g1' ? (
+                <Link key={item.key} to="/g1" onClick={closeMenu}>
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.key}
+                  href={`#${item.id}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    goHomeSection(item.id as string)
+                  }}
+                >
+                  {item.label}
+                </a>
+              ),
+            )}
+            <div className="landing-mobile-menu__divider" />
+            <LandingButton to="/login" className="landing-mobile-menu__login" onClick={closeMenu}>
+              {t('nav.studentLogin')}
+            </LandingButton>
           </nav>
         ) : null}
       </header>
