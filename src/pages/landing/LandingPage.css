@@ -1898,9 +1898,17 @@ html[data-theme='dark'] .landing-badge--info {
   color: var(--color-text);
   cursor: pointer;
 }
+/* Student login entry in the desktop header (top-right); hidden on mobile —
+   the mobile menu provides the entry instead. */
+.landing-header__login {
+  display: inline-flex;
+}
 @media (max-width: 900px) {
   .landing-menu-btn {
     display: inline-flex;
+  }
+  .landing-header__login {
+    display: none;
   }
 }
 .landing-mobile-menu {

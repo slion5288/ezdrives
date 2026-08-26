@@ -276,6 +276,9 @@ export default function LandingPage(): JSX.Element {
           <div className="landing-header__actions">
             <LanguageSwitcher />
             <ThemeToggle />
+            <LandingButton to="/login" variant="secondary" size="sm" className="landing-header__login">
+              {t('nav.studentLogin')}
+            </LandingButton>
             <button
               type="button"
               className="landing-menu-btn"
@@ -350,6 +353,10 @@ export default function LandingPage(): JSX.Element {
             >
               {t('landing.footer.contact')}
             </a>
+            <div className="landing-mobile-menu__divider" />
+            <LandingButton to="/login" className="landing-mobile-menu__login" onClick={closeMenu}>
+              {t('nav.studentLogin')}
+            </LandingButton>
           </nav>
         ) : null}
       </header>

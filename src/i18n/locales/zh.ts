@@ -77,6 +77,7 @@ export const messages: Record<MessageKey, string> = {
   'nav.notifications': '通知',
   'nav.instructor': '教练工作台',
   'nav.login': '登录',
+  'nav.studentLogin': '学生登录',
   'nav.menu': '菜单',
   'nav.logout': '退出登录',
   'nav.loading': '正在加载…',

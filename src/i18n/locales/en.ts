@@ -75,6 +75,7 @@ export const messages = {
   'nav.notifications': 'Notifications',
   'nav.instructor': 'Instructor portal',
   'nav.login': 'Log in',
+  'nav.studentLogin': 'Student login',
   'nav.menu': 'Menu',
   'nav.logout': 'Log out',
   'nav.loading': 'Loading…',
