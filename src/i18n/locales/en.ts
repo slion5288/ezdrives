@@ -22,7 +22,7 @@ export const messages = {
   'landing.steps.2.body': 'Beginner practice, road-test prep, highway confidence or defensive driving.',
   'landing.steps.3.title': 'Get confirmed instantly',
   'landing.steps.3.body': 'Your booking is confirmed on the spot, with reminders before every lesson.',
-  'landing.courses.title': 'Courses & pricing',
+  'landing.courses.title': 'Course booking',
   'landing.courses.subtitle': 'Transparent CAD pricing. Every course includes a modern dual-control vehicle.',
   'landing.courses.popular': 'Most popular',
   'landing.courses.viewAll': 'View all courses',
@@ -67,7 +67,7 @@ export const messages = {
 
   // --- nav ---
   'nav.brand': 'EZDRIVES',
-  'nav.g1': 'G1 Test',
+  'nav.g1': 'Mock Test',
   'nav.home': 'Home',
   'nav.book': 'My lessons',
   'nav.dashboard': 'Book a time',
@@ -157,6 +157,7 @@ export const messages = {
   'student.dashboard.bookAnother': 'Book another lesson',
 
   // --- student.booking ---
+  'student.booking.publicTitle': 'Course booking',
   'student.booking.title': 'My lessons',
   'student.booking.subtitle': 'Choose a course, then tap a start-time box on the calendar. Grey hours are closed; booked lessons are cards.',
   'student.booking.pickSlot': 'Pick a slot',

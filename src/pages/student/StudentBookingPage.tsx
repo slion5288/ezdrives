@@ -71,7 +71,7 @@ export default function StudentBookingPage(): JSX.Element {
             </div>
           </div>
         </header>
-        <h1>{t('student.booking.title')}</h1>
+        <h1>{t('student.booking.publicTitle')}</h1>
         <p className="student-page-sub">{t('student.booking.subtitle')}</p>
         <CourseCatalog
           studentId={null}

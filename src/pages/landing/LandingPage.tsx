@@ -195,19 +195,6 @@ export default function LandingPage(): JSX.Element {
 
   const closeMenu = (): void => setMenuOpen(false)
 
-  // Click anywhere outside the menu (or its toggle) closes it.
-  useEffect(() => {
-    if (!menuOpen) return
-    const onDocClick = (e: MouseEvent): void => {
-      const target = e.target as Node
-      if (!target) return
-      if (target instanceof Element && (target.closest('.landing-mobile-menu') || target.closest('.landing-menu-btn'))) return
-      setMenuOpen(false)
-    }
-    document.addEventListener('click', onDocClick)
-    return () => document.removeEventListener('click', onDocClick)
-  }, [menuOpen])
-
   /** Smooth-scroll to an in-page section (works under HashRouter). */
   const goToSection = (id: string): void => {
     closeMenu()
@@ -231,6 +218,9 @@ export default function LandingPage(): JSX.Element {
         <div className="landing-header__inner container">
           <Logo />
           <nav className="landing-nav">
+            <a href="#how-it-works">{t('landing.steps.title')}</a>
+            <a href="#courses">{t('landing.courses.title')}</a>
+            <a href="#g1">{t('nav.g1')}</a>
             <a
               href="#videos"
               onClick={(e) => {
@@ -240,9 +230,6 @@ export default function LandingPage(): JSX.Element {
             >
               {t('landing.videos.title')}
             </a>
-            <a href="#courses">{t('landing.courses.title')}</a>
-            <a href="#g1">{t('nav.g1')}</a>
-            <a href="#how-it-works">{t('landing.steps.title')}</a>
             <a href="#instructor">{t('landing.instructors.title')}</a>
             <a href="#contact">{t('landing.footer.contact')}</a>
           </nav>
@@ -261,9 +248,23 @@ export default function LandingPage(): JSX.Element {
           </div>
         </div>
 
+        {/* Click-away scrim: closes the menu when tapping anywhere outside */}
+        {menuOpen ? (
+          <div className="landing-menu-scrim" onClick={closeMenu} aria-hidden="true" />
+        ) : null}
+
         {/* Mobile menu — right-aligned dropdown under the menu button */}
         {menuOpen ? (
           <nav className="landing-mobile-menu" aria-label={t('nav.menu')}>
+            <a href="#how-it-works" onClick={closeMenu}>
+              {t('landing.steps.title')}
+            </a>
+            <a href="#courses" onClick={closeMenu}>
+              {t('landing.courses.title')}
+            </a>
+            <a href="#g1" onClick={closeMenu}>
+              {t('nav.g1')}
+            </a>
             <a
               href="#videos"
               onClick={(e) => {
@@ -272,15 +273,6 @@ export default function LandingPage(): JSX.Element {
               }}
             >
               {t('landing.videos.title')}
-            </a>
-            <a href="#courses" onClick={closeMenu}>
-              {t('landing.courses.title')}
-            </a>
-            <a href="#g1" onClick={closeMenu}>
-              {t('nav.g1')}
-            </a>
-            <a href="#how-it-works" onClick={closeMenu}>
-              {t('landing.steps.title')}
             </a>
             <a href="#instructor" onClick={closeMenu}>
               {t('landing.instructors.title')}
@@ -606,17 +598,6 @@ export default function LandingPage(): JSX.Element {
             </div>
             <div className="landing-footer__col">
               <h4>{t('landing.footer.links')}</h4>
-              <Link to="/student/book">{t('nav.book')}</Link>
-              <Link to="/courses">{t('nav.courses')}</Link>
-              <a
-                href="#videos"
-                onClick={(e) => {
-                  e.preventDefault()
-                  goToSection('videos')
-                }}
-              >
-                {t('landing.videos.title')}
-              </a>
               <a
                 href="#how-it-works"
                 onClick={(e) => {
@@ -627,15 +608,18 @@ export default function LandingPage(): JSX.Element {
                 {t('landing.steps.title')}
               </a>
               <a href="#courses">{t('landing.courses.title')}</a>
+              <a href="#g1">{t('nav.g1')}</a>
               <a
-                href="#faq"
+                href="#videos"
                 onClick={(e) => {
                   e.preventDefault()
-                  goToSection('faq')
+                  goToSection('videos')
                 }}
               >
-                {t('landing.faq.title')}
+                {t('landing.videos.title')}
               </a>
+              <Link to="/courses">{t('nav.courses')}</Link>
+              <a href="#faq">{t('landing.faq.title')}</a>
               <Link to="/login">{t('nav.login')}</Link>
               <Link to="/login?role=instructor">{t('nav.instructor')}</Link>
             </div>

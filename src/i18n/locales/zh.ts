@@ -24,7 +24,7 @@ export const messages: Record<MessageKey, string> = {
   'landing.steps.2.body': '新手基础、路考强化、高速驾驶或防御性驾驶，任您挑选。',
   'landing.steps.3.title': '立即确认',
   'landing.steps.3.body': '预约即时确认，每节课前自动发送上课提醒。',
-  'landing.courses.title': '课程与价格',
+  'landing.courses.title': '课程预约',
   'landing.courses.subtitle': '透明加元定价。每节课程均配备现代双控教练车。',
   'landing.courses.popular': '最受欢迎',
   'landing.courses.viewAll': '查看更多课程',
@@ -69,7 +69,7 @@ export const messages: Record<MessageKey, string> = {
 
   // --- nav ---
   'nav.brand': 'EZDRIVES',
-  'nav.g1': 'G1 题库',
+  'nav.g1': '模拟题库',
   'nav.home': '首页',
   'nav.book': '我的课程',
   'nav.dashboard': '预约时间',
@@ -159,6 +159,7 @@ export const messages: Record<MessageKey, string> = {
   'student.dashboard.bookAnother': '再约一节课',
 
   // --- student.booking ---
+  'student.booking.publicTitle': '课程预约',
   'student.booking.title': '我的课程',
   'student.booking.subtitle': '选择课程后，点击日历上的可选时间方框即可预约。灰色时段不可约，已预约课程以卡片显示。',
   'student.booking.pickSlot': '选择时段',
