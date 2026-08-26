@@ -159,43 +159,57 @@ function StudentProfileContent(): JSX.Element {
     return `${c.name[locale]}${lessonLabel(c, appt.lessonIndex, locale)}`
   }
 
-  // Editable pickup address (接送地址)
+  // Editable pickup address (接送地址) with Google Places autocomplete.
   const [addressDraft, setAddressDraft] = useState<string>(student?.address ?? '')
-  const addressInputRef = useRef<HTMLInputElement | null>(null)
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
+  const [addressFocused, setAddressFocused] = useState(false)
+  const addressSearchTimer = useRef<number | null>(null)
+  const addressWrapRef = useRef<HTMLDivElement | null>(null)
 
-  // Google Places autocomplete for the pickup address (enabled when a key is
-  // configured; otherwise the field stays a plain input).
-  useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY) return
-    const win = window as unknown as Record<string, unknown>
-    const attach = (): void => {
-      const el = addressInputRef.current
-      const g = win.google as { maps?: { places?: { Autocomplete: new (input: HTMLInputElement, opts?: object) => { addListener: (ev: string, cb: () => void) => void; getPlace: () => { formatted_address?: string } } } } } | undefined
-      if (!el || !g?.maps?.places) return
-      const ac = new g.maps.places.Autocomplete(el, { fields: ['formatted_address'] })
-      ac.addListener('place_changed', () => {
-        const place = ac.getPlace()
-        if (place?.formatted_address) setAddressDraft(place.formatted_address)
+  /** Places API (New) REST autocomplete — debounced by the caller. */
+  const fetchAddressSuggestions = (input: string): void => {
+    if (!GOOGLE_MAPS_API_KEY || input.trim().length < 3) {
+      setAddressSuggestions([])
+      return
+    }
+    fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY },
+      body: JSON.stringify({ input, region: 'ca' }),
+    })
+      .then((r) => r.json().catch(() => ({})))
+      .then((data: { suggestions?: { placePrediction?: { text?: { text?: string } } }[] }) => {
+        const list = (data.suggestions || []).map((s) => s.placePrediction?.text?.text || '').filter(Boolean)
+        setAddressSuggestions(list)
       })
+      .catch(() => setAddressSuggestions([]))
+  }
+
+  const onAddressChange = (value: string): void => {
+    setAddressDraft(value)
+    if (addressSearchTimer.current) window.clearTimeout(addressSearchTimer.current)
+    addressSearchTimer.current = window.setTimeout(() => fetchAddressSuggestions(value), 300)
+  }
+
+  const pickAddress = (value: string): void => {
+    setAddressDraft(value)
+    setAddressSuggestions([])
+    setAddressFocused(false)
+  }
+
+  // Close the suggestion dropdown on outside clicks; clean up the debounce.
+  useEffect(() => {
+    const onClick = (e: MouseEvent): void => {
+      if (addressWrapRef.current && !addressWrapRef.current.contains(e.target as Node)) {
+        setAddressSuggestions([])
+        setAddressFocused(false)
+      }
     }
-    if ((win.google as { maps?: unknown } | undefined) && (win.google as { maps?: { places?: unknown } } | undefined)?.maps?.places) {
-      attach()
-      return
+    document.addEventListener('mousedown', onClick)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      if (addressSearchTimer.current) window.clearTimeout(addressSearchTimer.current)
     }
-    if (win.__ezdAddressAutocomplete) {
-      ;(win.__ezdAddressAutocomplete as () => void)()
-      return
-    }
-    win.__ezdAddressAutocomplete = attach
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&callback=__ezdAddressAutocomplete`
-    script.async = true
-    script.defer = true
-    script.onerror = () => {
-      // Key/network issue — keep the plain input working.
-      delete win.__ezdAddressAutocomplete
-    }
-    document.head.appendChild(script)
   }, [])
 
   const saveAddress = async (): Promise<void> => {
@@ -296,14 +310,27 @@ function StudentProfileContent(): JSX.Element {
               <div className="student-profile-row">
                 <span className="student-summary-label">{t('student.profile.address')}</span>
                 <div className="student-profile-address">
-                  <input
-                    ref={addressInputRef}
-                    className="student-address-input"
-                    value={addressDraft}
-                    onChange={(e) => setAddressDraft(e.target.value)}
-                    placeholder={t('student.profile.addressPlaceholder')}
-                    autoComplete="street-address"
-                  />
+                  <div className="student-address-wrap" ref={addressWrapRef}>
+                    <input
+                      className="student-address-input"
+                      value={addressDraft}
+                      onChange={(e) => onAddressChange(e.target.value)}
+                      onFocus={() => setAddressFocused(true)}
+                      placeholder={t('student.profile.addressPlaceholder')}
+                      autoComplete="street-address"
+                    />
+                    {GOOGLE_MAPS_API_KEY && addressFocused && addressSuggestions.length > 0 ? (
+                      <ul className="student-address-suggest">
+                        {addressSuggestions.map((s) => (
+                          <li key={s}>
+                            <button type="button" onClick={() => pickAddress(s)}>
+                              {s}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
                   <button
                     type="button"
                     className="student-btn student-btn-primary student-btn-sm"
