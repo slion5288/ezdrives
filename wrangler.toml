@@ -1,0 +1,12 @@
+# EZDRIVES — Cloudflare Pages + D1 configuration
+# Pages static assets in dist/ (build output), API in functions/, D1 in migrations/.
+
+name = "ezdrives"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ezdrives-db"
+database_id = "5fcae10e-7f1b-4457-927a-42f34ac249a5"
+migrations_dir = "migrations"

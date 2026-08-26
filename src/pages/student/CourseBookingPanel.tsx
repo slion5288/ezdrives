@@ -72,11 +72,11 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
     else setSelCount(offset + 1) // tapping further selects through it
   }
 
-  const handleBook = (): void => {
+  const handleBook = async (): Promise<void> => {
     if (!selectedStart || !canBook) return
     const startISO = toLocalISO(selectedStart.start)
     if (isPackage) {
-      const result = bookPackageLessons(studentId, course.id, startISO, autoLesson, selCount)
+      const result = await bookPackageLessons(studentId, course.id, startISO, autoLesson, selCount)
       if (result.ok) {
         showToast(
           'success',
@@ -88,7 +88,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
       }
       return
     }
-    const result = bookAppointment(studentId, course.id, startISO)
+    const result = await bookAppointment(studentId, course.id, startISO)
     if (result.ok) {
       showToast('success', t('student.booking.bookedOk'))
       setSelectedStart(null)

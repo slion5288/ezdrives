@@ -1,10 +1,9 @@
 // ============================================================================
 // EZDRIVES — Store (code contract)
-// Source of truth: docs/ARCHITECTURE.md §4. Singleton store over AppState.
-// On module load it reads localStorage 'dw.state.v1'; if absent it seeds from
-// seed.ts and persists. Every mutator: deep-clones → mutates the clone →
-// persists → refreshes the demo sync stamp → notifies subscribers. The
-// notification engine is internal to this module.
+// Singleton store over AppState, backed by the Cloudflare D1 backend.
+// On login the authoritative state is pulled from GET /api/state; mutations
+// are optimistic in memory and persisted asynchronously (instructor → PUT
+// /api/state, student/instructor actions → POST /api/student/actions).
 // ============================================================================
 
 import { useSyncExternalStore } from 'react'
@@ -18,32 +17,35 @@ import type {
   PayApiConfig,
   Payment,
   PaymentMethod,
-  Student,
   TeachingVideo,
   Vehicle,
   WeeklyRule,
 } from './types'
 import { seed } from './seed'
 import {
-  addMinutes,
   dateKey,
   formatDateEn,
   formatDateZh,
   formatHM,
   fromLocalISO,
   getEffectiveInterval,
-  getLessonStarts,
   startOfDay,
   toLocalISO,
 } from './timeEngine'
+import { apiAction, apiFetchState, apiLogin, apiLogout, apiPutState, apiRegister } from './api'
+import type { ApiUser } from './api'
 
 export type { AppState, Appointment, Course, CourseLesson, DayException, InstructorBank, Notification, PayApiConfig, Payment, PaymentMethod, Student, TeachingVideo, Vehicle, WeeklyRule } from './types'
 export type { Slot } from './timeEngine'
 
-const STATE_KEY = 'dw.state.v5' // v5: course purchases & instructor payment confirmation
-const SESSION_KEY = 'dw.session.v1'
+const SESSION_KEY = 'dw.session.v2' // { token, user }
 
-export type Session = { role: 'student' | 'instructor' | null; studentId?: string }
+export interface Session {
+  token: string
+  role: 'instructor' | 'student' | null
+  user?: ApiUser
+  studentId?: string
+}
 
 const cloneState = (s: AppState): AppState => JSON.parse(JSON.stringify(s)) as AppState
 
@@ -59,31 +61,28 @@ const nextId = (prefix: 'c' | 'v' | 's' | 'a' | 'n' | 'p' | 'vid', rows: { id: s
   return `${prefix}${max + 1}`
 }
 
-function loadState(): AppState {
+function readSession(): Session {
   try {
-    const raw = localStorage.getItem(STATE_KEY)
+    const raw = localStorage.getItem(SESSION_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw) as AppState
-      if (parsed && Array.isArray(parsed.appointments) && Array.isArray(parsed.courses) && Array.isArray(parsed.weeklyRules)) {
-        // Light migration: fields added after the persisted version.
-        if (!Array.isArray(parsed.videos)) parsed.videos = []
-        return parsed
+      const parsed = JSON.parse(raw) as { token: string; user?: ApiUser }
+      if (parsed && parsed.token && parsed.user) {
+        return { token: parsed.token, role: parsed.user.role, user: parsed.user, studentId: parsed.user.studentId }
       }
     }
   } catch {
-    // fall through to fresh seed
+    // fall through
   }
-  const fresh = seed()
-  try {
-    localStorage.setItem(STATE_KEY, JSON.stringify(fresh))
-  } catch {
-    // storage unavailable — keep in-memory only
-  }
-  return fresh
+  return { token: '', role: null }
 }
 
-let state: AppState = loadState()
+// In-memory snapshot. Starts as a seed placeholder; replaced by the server
+// state once the user logs in (initStateFromServer).
+let state: AppState = seed()
+let stateLoaded = false
 let lastSyncISO: string = toLocalISO(new Date())
+
+let session: Session = readSession()
 
 const listeners = new Set<() => void>()
 
@@ -108,18 +107,53 @@ const notifyListeners = (): void => {
   listeners.forEach((l) => l())
 }
 
-/** Deep-clone → mutate → persist → refresh sync stamp → notify. */
+/** Deep-clone → mutate → refresh sync stamp → notify → persist (instructor). */
 function mutate(fn: (draft: AppState) => void): void {
   const draft = cloneState(state)
   fn(draft)
   state = draft
   lastSyncISO = toLocalISO(new Date())
-  try {
-    localStorage.setItem(STATE_KEY, JSON.stringify(state))
-  } catch {
-    // storage unavailable — state stays valid in memory
-  }
   notifyListeners()
+  pushState()
+}
+
+/** After an instructor mutation, persist the whole state to the backend. */
+function pushState(): void {
+  if (!session.token) return
+  const snapshot = state
+  apiPutState(session.token, snapshot)
+    .then((res) => {
+      if (!res.ok) console.error('[store] pushState failed:', res.error)
+    })
+    .catch((e) => console.error('[store] pushState error:', e))
+}
+
+/**
+ * Pull the authoritative state from the backend for the current session.
+ * Call after login and on page refresh. Returns false on failure.
+ */
+export async function initStateFromServer(): Promise<boolean> {
+  if (!session.token) return false
+  try {
+    const res = await apiFetchState(session.token)
+    if (res.ok && res.state) {
+      state = res.state as AppState
+      stateLoaded = true
+      lastSyncISO = toLocalISO(new Date())
+      notifyListeners()
+      return true
+    }
+    if (res.error === 'Not authenticated') clearSession()
+    return false
+  } catch (e) {
+    console.error('[store] initStateFromServer error:', e)
+    return false
+  }
+}
+
+/** True once the server state has been loaded for this session. */
+export function isStateLoaded(): boolean {
+  return stateLoaded
 }
 
 // --- Notification engine (internal) ---
@@ -168,20 +202,6 @@ export function hasPendingPayment(source: AppState, studentId: string, courseId:
   )
 }
 
-/** Per-lesson duration: packages are one hour per lesson, singles use course.durationMin. */
-function courseDuration(course: Course): number {
-  return course.type === 'package' ? 60 : course.durationMin
-}
-
-/** Price of a single lesson (package lesson prices may differ per lesson). */
-function lessonPriceOf(course: Course, lessonIndex?: number): number {
-  if (course.type === 'package') {
-    const lesson = course.lessons?.[lessonIndex ?? 0]
-    return lesson ? lesson.price : course.price
-  }
-  return course.price
-}
-
 /** 'free' | 'booked' (upcoming) | 'done' (attended) for one package lesson of a student. */
 function lessonState(source: AppState, studentId: string, courseId: string, lessonIndex: number): 'free' | 'booked' | 'done' {
   const now = new Date().getTime()
@@ -195,108 +215,34 @@ function lessonState(source: AppState, studentId: string, courseId: string, less
   return booked ? 'booked' : 'free'
 }
 
-function validateBooking(
-  source: AppState,
-  courseId: string,
-  startISO: string,
-  exceptAppointmentId?: string,
-  studentId?: string,
-  lessonIndex?: number,
-  count = 1,
-): { ok: true; course: Course } | { ok: false; error: BookingError } {
-  const course = source.courses.find((c) => c.id === courseId)
-  if (!course || !course.active) return { ok: false, error: 'closed' }
-  // Only purchased courses can be booked (payment confirmed by the instructor).
-  if (studentId && !isCoursePurchased(source, studentId, courseId)) return { ok: false, error: 'not_purchased' }
-  const isPackage = course.type === 'package'
-  if (isPackage && (lessonIndex === undefined || lessonIndex < 0 || lessonIndex >= (course.lessons?.length ?? 0))) {
-    return { ok: false, error: 'closed' }
-  }
-  if (!isPackage && count !== 1) return { ok: false, error: 'closed' }
-  const duration = courseDuration(course)
-  const start = fromLocalISO(startISO)
-  if (Number.isNaN(start.getTime())) return { ok: false, error: 'closed' }
-  const now = new Date()
-  if (start.getTime() < now.getTime() - 60000) return { ok: false, error: 'past' }
-  const date = startOfDay(start)
-  const interval = getEffectiveInterval(date, source.weeklyRules, source.exceptions)
-  if (!interval) return { ok: false, error: 'closed' }
+// --- Appointments (server-backed) ---
 
-  // Package lessons are per-student: each lesson number can only be taken once.
-  if (isPackage && studentId) {
-    const baseLesson = lessonIndex ?? 0
-    for (let i = 0; i < count; i++) {
-      if (lessonState(source, studentId, courseId, baseLesson + i) !== 'free') return { ok: false, error: 'conflict' }
-    }
+async function applyServerState(res: { ok?: boolean; state?: unknown; error?: string }): Promise<boolean> {
+  if (res.ok && res.state) {
+    state = res.state as AppState
+    stateLoaded = true
+    lastSyncISO = toLocalISO(new Date())
+    notifyListeners()
+    return true
   }
-
-  // Every start in the (possibly consecutive) block must be a valid break-aware start.
-  for (let i = 0; i < count; i++) {
-    const startI = addMinutes(start, i * duration)
-    const starts = getLessonStarts(date, source, duration, studentId, exceptAppointmentId)
-    if (!starts.some((d) => d.getTime() === startI.getTime())) {
-      const minute = startI.getHours() * 60 + startI.getMinutes()
-      if (minute < interval.startMin || minute + duration > interval.endMin) return { ok: false, error: 'closed' }
-      return { ok: false, error: 'conflict' }
-    }
-  }
-  return { ok: true, course }
+  return false
 }
 
-// --- Appointments ---
-
-export function bookAppointment(
+export async function bookAppointment(
   studentId: string,
   courseId: string,
   startISO: string,
   lessonIndex?: number,
-): { ok: true; appointment: Appointment } | { ok: false; error: BookingError } {
-  const check = validateBooking(state, courseId, startISO, undefined, studentId, lessonIndex, 1)
-  if (!check.ok) return check
-  const { course } = check
-  const duration = courseDuration(course)
-  const start = fromLocalISO(startISO)
-  const end = addMinutes(start, duration)
-  const price = lessonPriceOf(course, lessonIndex)
-  const appt: Appointment = {
-    id: nextId('a', state.appointments),
-    studentId,
-    courseId,
-    start: startISO,
-    end: toLocalISO(end),
-    status: 'confirmed',
-    history: [{ at: nowISO(), note: bookingNote('Booked', '已预约') }],
-    createdAt: nowISO(),
-    lessonIndex: course.type === 'package' ? lessonIndex : undefined,
-    price,
+): Promise<{ ok: true; appointment: Appointment } | { ok: false; error: BookingError | string }> {
+  if (!session.token) return { ok: false, error: 'not_authenticated' }
+  const res = await apiAction(session.token, 'bookAppointment', { studentId, courseId, startISO, lessonIndex })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    const appts = (res.state as AppState).appointments.filter((a) => a.studentId === studentId && a.courseId === courseId)
+    const appt = appts[appts.length - 1]
+    return appt ? { ok: true, appointment: appt } : { ok: false, error: 'error' }
   }
-  const student = state.students.find((s) => s.id === studentId)
-  mutate((draft) => {
-    draft.appointments.push(appt)
-    notify(
-      draft,
-      'student',
-      studentId,
-      'booking_confirmed',
-      bookingNote('Lesson confirmed', '课程已确认'),
-      bookingNote(
-        `Your ${course.name.en}${lessonLabel(course, lessonIndex, 'en')} lesson is confirmed for ${formatDateEn(start)} at ${formatHM(start)}.`,
-        `您的${course.name.zh}${lessonLabel(course, lessonIndex, 'zh')}课程已确认：${formatDateZh(start)} ${formatHM(start)}。`,
-      ),
-    )
-    notify(
-      draft,
-      'instructor',
-      'instructor',
-      'new_booking',
-      bookingNote('New booking', '新预约'),
-      bookingNote(
-        `${student ? student.name : studentId} booked ${course.name.en}${lessonLabel(course, lessonIndex, 'en')} — ${formatDateEn(start)} ${formatHM(start)}.`,
-        `${student ? student.name : studentId} 预约了${course.name.zh}${lessonLabel(course, lessonIndex, 'zh')} — ${formatDateZh(start)} ${formatHM(start)}。`,
-      ),
-    )
-  })
-  return { ok: true, appointment: appt }
+  return { ok: false, error: res.error || 'error' }
 }
 
 /**
@@ -304,65 +250,23 @@ export function bookAppointment(
  * is one hour, starting at `startISO`, one right after the other. The whole
  * block must be break-aware valid for this student.
  */
-export function bookPackageLessons(
+export async function bookPackageLessons(
   studentId: string,
   courseId: string,
   startISO: string,
   firstLessonIndex: number,
   count: number,
-): { ok: true; appointments: Appointment[] } | { ok: false; error: BookingError } {
-  const check = validateBooking(state, courseId, startISO, undefined, studentId, firstLessonIndex, count)
-  if (!check.ok) return check
-  const { course } = check
-  const duration = courseDuration(course)
-  const start = fromLocalISO(startISO)
-  const appts: Appointment[] = []
-  const student = state.students.find((s) => s.id === studentId)
-  for (let i = 0; i < count; i++) {
-    const lessonIndex = firstLessonIndex + i
-    const startISO_i = toLocalISO(addMinutes(start, i * duration))
-    const appt: Appointment = {
-      id: nextId('a', state.appointments.concat(appts)),
-      studentId,
-      courseId,
-      start: startISO_i,
-      end: toLocalISO(addMinutes(fromLocalISO(startISO_i), duration)),
-      status: 'confirmed',
-      history: [{ at: nowISO(), note: bookingNote('Booked', '已预约') }],
-      createdAt: nowISO(),
-      lessonIndex,
-      price: lessonPriceOf(course, lessonIndex),
-    }
-    appts.push(appt)
+): Promise<{ ok: true; appointments: Appointment[] } | { ok: false; error: BookingError | string }> {
+  if (!session.token) return { ok: false, error: 'not_authenticated' }
+  const res = await apiAction(session.token, 'bookPackageLessons', { studentId, courseId, startISO, firstLessonIndex, count })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    const appts = (res.state as AppState).appointments.filter(
+      (a) => a.studentId === studentId && a.courseId === courseId && a.start >= startISO,
+    )
+    return { ok: true, appointments: appts }
   }
-  mutate((draft) => {
-    draft.appointments.push(...appts)
-    const first = fromLocalISO(appts[0].start)
-    const last = fromLocalISO(appts[appts.length - 1].end)
-    notify(
-      draft,
-      'student',
-      studentId,
-      'booking_confirmed',
-      bookingNote('Package lessons confirmed', '套餐课时已确认'),
-      bookingNote(
-        `${course.name.en} lessons ${firstLessonIndex + 1}–${firstLessonIndex + count} confirmed (${formatDateEn(first)} ${formatHM(first)}–${formatHM(last)}).`,
-        `已确认${course.name.zh}第 ${firstLessonIndex + 1}–${firstLessonIndex + count} 课时（${formatDateZh(first)} ${formatHM(first)}–${formatHM(last)}）。`,
-      ),
-    )
-    notify(
-      draft,
-      'instructor',
-      'instructor',
-      'new_booking',
-      bookingNote('New package booking', '新套餐预约'),
-      bookingNote(
-        `${student ? student.name : studentId} booked ${course.name.en} lessons ${firstLessonIndex + 1}–${firstLessonIndex + count} on ${formatDateEn(first)}.`,
-        `${student ? student.name : studentId} 预约了${course.name.zh}第 ${firstLessonIndex + 1}–${firstLessonIndex + count} 课时（${formatDateZh(first)}）。`,
-      ),
-    )
-  })
-  return { ok: true, appointments: appts }
+  return { ok: false, error: res.error || 'error' }
 }
 
 /** ' · Lesson 3' / ' · 第 3 课时' suffix for package appointments (empty for singles). */
@@ -371,77 +275,31 @@ export function lessonLabel(course: Course, lessonIndex: number | undefined, loc
   return locale === 'zh' ? `第 ${lessonIndex + 1} 课时` : ` · Lesson ${lessonIndex + 1}`
 }
 
-export function cancelAppointment(id: string, reason?: string): void {
-  mutate((draft) => {
-    const appt = draft.appointments.find((a) => a.id === id)
-    if (!appt || appt.status === 'cancelled') return
-    appt.status = 'cancelled'
-    appt.history.push({
-      at: nowISO(),
-      note: reason ? bookingNote(`Cancelled — ${reason}`, `已取消 — ${reason}`) : bookingNote('Cancelled', '已取消'),
-    })
-    const course = draft.courses.find((c) => c.id === appt.courseId)
-    const student = draft.students.find((s) => s.id === appt.studentId)
-    const start = fromLocalISO(appt.start)
-    notify(
-      draft,
-      'student',
-      appt.studentId,
-      'booking_cancelled',
-      bookingNote('Lesson cancelled', '课程已取消'),
-      bookingNote(
-        `Your ${course ? course.name.en : 'lesson'} on ${formatDateEn(start)} at ${formatHM(start)} was cancelled.`,
-        `您${formatDateZh(start)} ${formatHM(start)}的${course ? course.name.zh : '课程'}已被取消。`,
-      ),
-    )
-    notify(
-      draft,
-      'instructor',
-      'instructor',
-      'booking_cancelled',
-      bookingNote('Booking cancelled', '预约已取消'),
-      bookingNote(
-        `${student ? student.name : appt.studentId} cancelled their lesson (${formatDateEn(start)} ${formatHM(start)}).`,
-        `${student ? student.name : appt.studentId} 取消了课程（${formatDateZh(start)} ${formatHM(start)}）。`,
-      ),
-    )
-  })
+export async function cancelAppointment(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!session.token) return { ok: false, error: 'not_authenticated' }
+  const res = await apiAction(session.token, 'cancelAppointment', { id })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error || 'error' }
 }
 
-export function rescheduleAppointment(id: string, newStartISO: string): { ok: true } | { ok: false; error: string } {
-  const appt = state.appointments.find((a) => a.id === id)
-  if (!appt || appt.status === 'cancelled') return { ok: false, error: 'not_found' }
-  const check = validateBooking(state, appt.courseId, newStartISO, id, appt.studentId, appt.lessonIndex, 1)
-  if (!check.ok) return { ok: false, error: check.error }
-  mutate((draft) => {
-    const target = draft.appointments.find((a) => a.id === id)
-    if (!target) return
-    const course = draft.courses.find((c) => c.id === target.courseId)
-    const duration = course ? courseDuration(course) : 60
-    target.start = newStartISO
-    target.end = toLocalISO(addMinutes(fromLocalISO(newStartISO), duration))
-    target.history.push({ at: nowISO(), note: bookingNote('Rescheduled', '已改期') })
-    const start = fromLocalISO(target.start)
-    notify(
-      draft,
-      'student',
-      target.studentId,
-      'booking_rescheduled',
-      bookingNote('Lesson rescheduled', '课程已改期'),
-      bookingNote(
-        `Your ${course ? course.name.en : 'lesson'}${course && target.lessonIndex !== undefined ? lessonLabel(course, target.lessonIndex, 'en') : ''} is now ${formatDateEn(start)} at ${formatHM(start)}.`,
-        `您的${course ? course.name.zh : '课程'}${course && target.lessonIndex !== undefined ? lessonLabel(course, target.lessonIndex, 'zh') : ''}已改期至 ${formatDateZh(start)} ${formatHM(start)}。`,
-      ),
-    )
-  })
-  return { ok: true }
+export async function rescheduleAppointment(id: string, newStartISO: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!session.token) return { ok: false, error: 'not_authenticated' }
+  const res = await apiAction(session.token, 'rescheduleAppointment', { id, newStartISO })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error || 'error' }
 }
 
-export function batchReschedule(ids: string[], newStartISO: string): { moved: string[]; failed: { id: string; error: string }[] } {
+export async function batchReschedule(ids: string[], newStartISO: string): Promise<{ moved: string[]; failed: { id: string; error: string }[] }> {
   const moved: string[] = []
   const failed: { id: string; error: string }[] = []
   for (const id of ids) {
-    const result = rescheduleAppointment(id, newStartISO)
+    const result = await rescheduleAppointment(id, newStartISO)
     if (result.ok) moved.push(id)
     else failed.push({ id, error: result.error })
   }
@@ -690,128 +548,56 @@ export function paymentMethodLabel(method: PaymentMethod, locale: 'en' | 'zh'): 
   return locale === 'zh' ? METHOD_LABELS_ZH[method] : METHOD_LABELS_EN[method]
 }
 
-function methodLabelEn(method: PaymentMethod): string {
-  return METHOD_LABELS_EN[method]
-}
 
-function methodLabelZhOf(method: PaymentMethod): string {
-  return METHOD_LABELS_ZH[method]
-}
 
 /** Student submits a payment — it stays pending until the instructor confirms. */
-export function addPayment(studentId: string, courseId: string, method: PaymentMethod): Payment {
-  const course = state.courses.find((c) => c.id === courseId)
-  const amount = course ? course.price : 0
-  const payment: Payment = {
-    id: nextId('p', state.payments),
-    studentId,
-    courseId,
-    method,
-    amount,
-    status: 'pending',
-    createdAt: nowISO(),
+export async function addPayment(
+  studentId: string,
+  courseId: string,
+  method: PaymentMethod,
+): Promise<{ ok: true; payment: Payment } | { ok: false; error: string }> {
+  if (!session.token) return { ok: false, error: 'not_authenticated' }
+  const res = await apiAction(session.token, 'addPayment', { studentId, courseId, method })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    const payments = (res.state as AppState).payments.filter((p) => p.studentId === studentId && p.courseId === courseId)
+    const payment = payments[payments.length - 1]
+    return payment ? { ok: true, payment } : { ok: false, error: 'error' }
   }
-  const student = state.students.find((s) => s.id === studentId)
-  const methodLabel = methodLabelEn(method)
-  const methodLabelZh = methodLabelZhOf(method)
-  mutate((draft) => {
-    draft.payments.push(payment)
-    notify(
-      draft,
-      'student',
-      studentId,
-      'payment_pending',
-      bookingNote('Payment submitted', '支付已提交'),
-      bookingNote(
-        `Your ${course ? course.name.en : 'course'} payment (${methodLabel}) awaits instructor confirmation.`,
-        `您对${course ? course.name.zh : '课程'}的支付（${methodLabelZh}）等待教练确认。`,
-      ),
-      payment.id,
-    )
-    notify(
-      draft,
-      'instructor',
-      'instructor',
-      'payment_pending',
-      bookingNote('New payment awaiting confirmation', '新支付待确认'),
-      bookingNote(
-        `${student ? student.name : studentId} submitted a payment for ${course ? course.name.en : courseId} ($${amount}, ${methodLabel}).`,
-        `${student ? student.name : studentId} 提交了${course ? course.name.zh : courseId}的支付（${amount} 加元，${methodLabelZh}）。`,
-      ),
-      payment.id,
-    )
-  })
-  return payment
+  return { ok: false, error: res.error || 'error' }
 }
 
 /** Instructor confirms the payment → the course becomes purchased. */
-export function confirmPayment(id: string): void {
-  mutate((draft) => {
-    const p = draft.payments.find((x) => x.id === id)
-    if (!p || p.status !== 'pending') return
-    p.status = 'confirmed'
-    p.confirmedAt = nowISO()
-    const course = draft.courses.find((c) => c.id === p.courseId)
-    notify(
-      draft,
-      'student',
-      p.studentId,
-      'payment_confirmed',
-      bookingNote('Payment confirmed', '支付已确认'),
-      bookingNote(
-        `Your ${course ? course.name.en : 'course'} is paid — you can now book a time.`,
-        `${course ? course.name.zh : '课程'}已支付成功，现在可以预约时间了。`,
-      ),
-    )
-  })
+export async function confirmPayment(id: string): Promise<void> {
+  if (!session.token) return
+  const res = await apiAction(session.token, 'confirmPayment', { id })
+  if (res.ok && res.state) await applyServerState(res)
 }
 
 /** Instructor rejects the payment. */
-export function rejectPayment(id: string): void {
-  mutate((draft) => {
-    const p = draft.payments.find((x) => x.id === id)
-    if (!p || p.status !== 'pending') return
-    p.status = 'rejected'
-    const course = draft.courses.find((c) => c.id === p.courseId)
-    notify(
-      draft,
-      'student',
-      p.studentId,
-      'payment_rejected',
-      bookingNote('Payment rejected', '支付未通过'),
-      bookingNote(
-        `Your payment for ${course ? course.name.en : 'the course'} was not confirmed. Please contact the instructor.`,
-        `您对${course ? course.name.zh : '该课程'}的支付未通过确认，请联系教练。`,
-      ),
-    )
-  })
+export async function rejectPayment(id: string): Promise<void> {
+  if (!session.token) return
+  const res = await apiAction(session.token, 'rejectPayment', { id })
+  if (res.ok && res.state) await applyServerState(res)
 }
 
 // --- Auth / session ---
 
-const AVATAR_PALETTE = ['#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#10B981']
-
-export function addStudent(name: string, phone: string): Student {
-  const student: Student = {
-    id: nextId('s', state.students),
-    name,
-    phone,
-    registeredAt: nowISO(),
-    avatarColor: AVATAR_PALETTE[state.students.length % AVATAR_PALETTE.length],
+function setSession(next: Session): void {
+  session = next
+  try {
+    if (next.role === null) localStorage.removeItem(SESSION_KEY)
+    else localStorage.setItem(SESSION_KEY, JSON.stringify({ token: next.token, user: next.user }))
+  } catch {
+    // storage unavailable — in-memory session only
   }
-  mutate((draft) => {
-    draft.students.push(student)
-  })
-  setSession({ role: 'student', studentId: student.id })
-  return student
+  notifyListeners()
 }
 
-/** Student fills their pickup address (接送地址) after logging in. */
-export function updateStudentAddress(studentId: string, address: string): void {
-  mutate((draft) => {
-    const s = draft.students.find((x) => x.id === studentId)
-    if (s) s.address = address.trim()
-  })
+function clearSession(): void {
+  state = seed()
+  stateLoaded = false
+  setSession({ token: '', role: null })
 }
 
 // --- Package lesson helpers (shared by student UI) ---
@@ -839,79 +625,78 @@ export function packageProgress(
   return { done, booked, total }
 }
 
-function readSession(): Session {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Session
-      if (parsed && (parsed.role === 'student' || parsed.role === 'instructor')) return parsed
-    }
-  } catch {
-    // fall through
+/** Student fills their pickup address (接送地址) — server-backed. */
+export async function updateStudentAddress(address: string): Promise<LoginResult> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
+  const res = await apiAction(session.token, 'updateStudentAddress', { address })
+  if (res.ok && res.state) {
+    state = res.state as AppState
+    stateLoaded = true
+    notifyListeners()
+    return { ok: true }
   }
-  return { role: null }
+  return { ok: false, error: res.error || 'Update failed' }
 }
 
-let session: Session = readSession()
+export type LoginResult = { ok: true } | { ok: false; error: string }
 
-function setSession(next: Session): void {
-  session = next
-  try {
-    if (next.role === null) localStorage.removeItem(SESSION_KEY)
-    else localStorage.setItem(SESSION_KEY, JSON.stringify(next))
-  } catch {
-    // storage unavailable — in-memory session only
+/** Real login via the backend (phone + password). */
+export async function login(phone: string, password: string): Promise<LoginResult> {
+  const res = await apiLogin(phone.trim(), password)
+  if (!res.ok || !res.token || !res.user) return { ok: false, error: res.error || 'Login failed' }
+  setSession({ token: res.token, role: res.user.role, user: res.user, studentId: res.user.studentId })
+  const loaded = await initStateFromServer()
+  if (!loaded) return { ok: false, error: 'Failed to load data' }
+  return { ok: true }
+}
+
+/** Real registration via the backend (student). */
+export async function register(body: { name: string; phone: string; password: string; address?: string }): Promise<LoginResult> {
+  const res = await apiRegister({ role: 'student', ...body })
+  if (!res.ok || !res.token || !res.user) return { ok: false, error: res.error || 'Registration failed' }
+  setSession({ token: res.token, role: res.user.role, user: res.user, studentId: res.user.studentId })
+  const loaded = await initStateFromServer()
+  if (!loaded) return { ok: false, error: 'Failed to load data' }
+  return { ok: true }
+}
+
+export async function logout(): Promise<void> {
+  if (session.token) {
+    apiLogout(session.token).catch(() => undefined)
   }
-  notifyListeners()
-}
-
-export function loginInstructor(password: string): boolean {
-  if (password !== 'demo123') return false
-  setSession({ role: 'instructor' })
-  return true
-}
-
-export function loginAsStudent(id: string): void {
-  setSession({ role: 'student', studentId: id })
-}
-
-export function logout(): void {
-  setSession({ role: null })
+  clearSession()
 }
 
 export function getSession(): Session {
   return { ...session }
 }
 
-// --- Notifications ---
+// --- Notifications (server-backed) ---
 
-export function markNotificationRead(id: string): void {
-  mutate((draft) => {
-    const n = draft.notifications.find((x) => x.id === id)
-    if (n) n.read = true
-  })
+export async function markNotificationRead(id: string): Promise<void> {
+  if (!session.token) return
+  const res = await apiAction(session.token, 'markNotificationRead', { id })
+  if (res.ok && res.state) {
+    state = res.state as AppState
+    stateLoaded = true
+    notifyListeners()
+  }
 }
 
-export function markAllRead(role: 'student' | 'instructor', recipientId: string): void {
-  mutate((draft) => {
-    for (const n of draft.notifications) {
-      if (n.role === role && n.recipientId === recipientId) n.read = true
-    }
-  })
+export async function markAllRead(_role?: string, _recipientId?: string): Promise<void> {
+  if (!session.token) return
+  const res = await apiAction(session.token, 'markAllRead', {})
+  if (res.ok && res.state) {
+    state = res.state as AppState
+    stateLoaded = true
+    notifyListeners()
+  }
 }
 
 // --- Demo utilities ---
 
 export function resetDemo(): void {
-  state = seed()
-  setSession({ role: null })
-  lastSyncISO = toLocalISO(new Date())
-  try {
-    localStorage.setItem(STATE_KEY, JSON.stringify(state))
-  } catch {
-    // storage unavailable
-  }
-  notifyListeners()
+  clearSession()
 }
 
 /** Demo "synced" stamp (local ISO), refreshed on every mutation. */

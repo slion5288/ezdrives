@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { getSession, getLastSyncISO, logout, useAppState } from '../../data/store'
+import { getLastSyncISO, getSession, initStateFromServer, isStateLoaded, logout, useAppState } from '../../data/store'
 import { setLocale, useLocale, useT } from '../../i18n'
 import { formatHM, fromLocalISO } from '../../data/timeEngine'
 import {
@@ -18,6 +18,7 @@ import {
   GraduationCap,
   Home,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Moon,
   Navigation,
@@ -71,6 +72,7 @@ export default function InstructorDashboardPage(): JSX.Element {
   const navigate = useNavigate()
   const [tab, setTab] = useState<InstructorTab>('overview')
   const [theme, setTheme] = useState<Theme>(loadTheme)
+  const [ready, setReady] = useState<boolean>(() => isStateLoaded())
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -81,8 +83,23 @@ export default function InstructorDashboardPage(): JSX.Element {
     }
   }, [theme])
 
+  // On a hard refresh the session is restored but server state needs fetching.
+  useEffect(() => {
+    if (!isStateLoaded()) {
+      initStateFromServer().then((ok) => setReady(ok))
+    }
+  }, [])
+
   const session = getSession()
   if (session.role !== 'instructor') return <Navigate to="/login?role=instructor" replace />
+  if (!ready) {
+    return (
+      <div className="ins-loading" role="status">
+        <Loader2 size={26} className="ins-loading__spin" />
+        <span>{t('nav.loading')}</span>
+      </div>
+    )
+  }
 
   const instructor = state.instructor
   const unread = state.notifications.filter((n) => n.role === 'instructor' && n.recipientId === 'instructor' && !n.read).length

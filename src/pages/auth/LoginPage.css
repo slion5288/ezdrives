@@ -236,3 +236,14 @@
     padding-top: var(--space-7);
   }
 }
+
+.login__switch {
+  margin-top: var(--space-3);
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  align-self: flex-start;
+}
+.login__switch:hover {
+  text-decoration: underline;
+}

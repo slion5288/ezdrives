@@ -101,7 +101,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
     setCardError(false)
   }
 
-  const submit = (): void => {
+  const submit = async (): Promise<void> => {
     if (!method || !studentId || !course) return
     if (method === 'card' || method === 'debit') {
       if (!cardValid) {
@@ -115,15 +115,19 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
     }
     setProcessing(true)
     // Real gateways run here when configured (Stripe PaymentIntent / PayPal Orders);
-    // the demo path completes immediately, then the instructor confirms receipt.
-    window.setTimeout(() => {
-      addPayment(studentId, (course as Course).id, method)
-      setProcessing(false)
+    // the record is created on the backend and stays pending until the
+    // instructor confirms receipt.
+    const result = await addPayment(studentId, (course as Course).id, method)
+    setProcessing(false)
+    if (result.ok) {
       showToast('success', t('payment.submitted'))
       onSubmitted?.()
       onClose()
       reset()
-    }, 600)
+    } else {
+      showToast('error', t('payment.emtInvalid')) // generic failure fallback
+      setProcessing(false)
+    }
   }
 
   if (!course) return null

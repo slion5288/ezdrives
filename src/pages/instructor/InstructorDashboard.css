@@ -2521,3 +2521,19 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
+
+/* --- Shell loading state --- */
+.ins-loading {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+.ins-loading__spin {
+  animation: spin 1s linear infinite;
+  color: var(--color-accent);
+}

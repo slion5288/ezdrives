@@ -8,9 +8,9 @@
 
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Bell, BookOpen, Calendar, Home, LogOut, Moon, Navigation, Sun, User } from 'lucide-react'
+import { Bell, BookOpen, Calendar, Home, Loader2, LogOut, Moon, Navigation, Sun, User } from 'lucide-react'
 import { Link, Navigate, NavLink, useNavigate } from 'react-router-dom'
-import { getSession, logout, useAppState } from '../../data/store'
+import { getSession, initStateFromServer, isStateLoaded, logout, useAppState } from '../../data/store'
 import { setLocale, useLocale, useT } from '../../i18n'
 import { ToastProvider } from './StudentToast'
 import './student.css'
@@ -38,6 +38,7 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
   const navigate = useNavigate()
 
   const [theme, setTheme] = useState<Theme>(() => loadTheme())
+  const [ready, setReady] = useState<boolean>(() => isStateLoaded())
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -48,8 +49,24 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
     }
   }, [theme])
 
+  // On a hard refresh the session is restored from localStorage but the server
+  // state still needs to be fetched before rendering app content.
+  useEffect(() => {
+    if (!isStateLoaded()) {
+      initStateFromServer().then((ok) => setReady(ok))
+    }
+  }, [])
+
   const session = getSession()
   if (session.role !== 'student') return <Navigate to="/login?role=student" replace />
+  if (!ready) {
+    return (
+      <div className="student-loading" role="status">
+        <Loader2 size={26} className="student-loading__spin" />
+        <span>{t('nav.loading')}</span>
+      </div>
+    )
+  }
 
   const unread = state.notifications.filter(
     (n) => n.role === 'student' && n.recipientId === session.studentId && !n.read,

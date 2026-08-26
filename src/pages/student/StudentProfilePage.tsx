@@ -64,9 +64,10 @@ function StudentProfileContent(): JSX.Element {
 
   // Editable pickup address (接送地址)
   const [addressDraft, setAddressDraft] = useState<string>(student?.address ?? '')
-  const saveAddress = (): void => {
-    updateStudentAddress(studentId, addressDraft)
-    showToast('success', t('common.toast.saved'))
+  const saveAddress = async (): Promise<void> => {
+    const result = await updateStudentAddress(addressDraft)
+    if (result.ok) showToast('success', t('common.toast.saved'))
+    else showToast('error', t('common.toast.error'))
   }
 
   const now = new Date()
@@ -118,9 +119,9 @@ function StudentProfileContent(): JSX.Element {
     }
   }
 
-  const handleCancel = (): void => {
+  const handleCancel = async (): Promise<void> => {
     if (!cancelId) return
-    cancelAppointment(cancelId)
+    await cancelAppointment(cancelId)
     setCancelId(null)
     showToast('success', t('common.toast.deleted'))
   }

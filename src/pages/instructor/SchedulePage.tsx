@@ -190,9 +190,9 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
   const detailCourse = detail ? courseById(state, detail.courseId) : undefined
   const detailStudent = detail ? studentById(state, detail.studentId) : undefined
 
-  const confirmReschedule = (startISO: string): void => {
+  const confirmReschedule = async (startISO: string): Promise<void> => {
     if (!detail) return
-    const result = rescheduleAppointment(detail.id, startISO)
+    const result = await rescheduleAppointment(detail.id, startISO)
     if (result.ok) {
       toast({ tone: 'success', title: t('common.toast.saved') })
       setShowReschedule(false)
@@ -210,16 +210,16 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
     }
   }
 
-  const confirmCancel = (): void => {
+  const confirmCancel = async (): Promise<void> => {
     if (!detail) return
-    cancelAppointment(detail.id)
+    await cancelAppointment(detail.id)
     toast({ tone: 'success', title: t('common.toast.deleted') })
     setShowCancel(false)
     setDetail(null)
   }
 
-  const confirmBatch = (startISO: string): void => {
-    const result = batchReschedule([...selected], startISO)
+  const confirmBatch = async (startISO: string): Promise<void> => {
+    const result = await batchReschedule([...selected], startISO)
     if (result.moved.length > 0) toast({ tone: 'success', title: t('instructor.schedule.moved', { count: result.moved.length }) })
     if (result.failed.length > 0) toast({ tone: 'error', title: t('instructor.schedule.failed', { count: result.failed.length }) })
     setShowBatch(false)

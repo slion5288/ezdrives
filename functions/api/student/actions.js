@@ -1,0 +1,363 @@
+// POST /api/student/actions — student & instructor mutations, validated
+// server-side: purchase gate, time conflicts, open-hours, ownership.
+import { json, fail, readJson } from '../../lib/util.js'
+import { authUser } from '../../lib/auth.js'
+import { readFullState, studentView } from '../../lib/db.js'
+
+function pad2(n) { return String(n).padStart(2, '0') }
+function toLocalISO(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
+}
+const nowISO = () => toLocalISO(new Date())
+
+function pad(n) { return String(n).padStart(2, '0') }
+function dateKeyOf(iso) { return iso.slice(0, 10) }
+function fromLocal(iso) {
+  const [date, time = '00:00:00'] = iso.split('T')
+  const [y, m, d] = date.split('-').map(Number)
+  const [hh, mm, ss] = time.split(':').map(Number)
+  return new Date(y, m - 1, d, hh, mm, ss)
+}
+
+/**
+ * Whether [start,end) collides with any live appointment, honoring the
+ * instructor's break: another student may not start until `breakMin` after a
+ * lesson ends. The SAME student may chain lessons back-to-back (start == their
+ * own previous lesson end).
+ */
+function conflicts(appointments, startISO, endISO, exceptId, breakMin, sameStudentId) {
+  const s = fromLocal(startISO).getTime()
+  const e = fromLocal(endISO).getTime()
+  const br = Math.max(0, Number(breakMin) || 0) * 60000
+  for (const a of appointments) {
+    if (a.status !== 'confirmed' && a.status !== 'pending') continue
+    if (a.id === exceptId) continue
+    const aS = fromLocal(a.start).getTime()
+    const aE = fromLocal(a.end).getTime()
+    const isSame = sameStudentId && a.studentId === sameStudentId
+    const effEnd = isSame ? aE : aE + br
+    if (s < effEnd && e > aS) return true
+  }
+  return false
+}
+
+function effectiveInterval(dateISO, rules, exceptions) {
+  const ex = exceptions.find((x) => x.date === dateKeyOf(dateISO))
+  if (ex && ex.closed) return null
+  if (ex) return { startMin: ex.startMin, endMin: ex.endMin }
+  const dow = fromLocal(dateISO).getDay()
+  const rule = rules.find((r) => r.weekday === dow)
+  if (!rule) return null
+  return { startMin: rule.startMin, endMin: rule.endMin }
+}
+
+function minuteOf(iso) {
+  const d = fromLocal(iso)
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+function isPurchased(payments, studentId, courseId) {
+  return payments.some((p) => p.studentId === studentId && p.courseId === courseId && p.status === 'confirmed')
+}
+
+async function nextSeq(env, table, prefix, count = 1) {
+  const row = await env.DB.prepare(`SELECT id FROM ${table} ORDER BY CAST(SUBSTR(id, ${prefix.length + 1}) AS INTEGER) DESC LIMIT 1`).first()
+  const max = row ? Number(row.id.slice(prefix.length)) : 0
+  return Array.from({ length: count }, (_, i) => prefix + (max + 1 + i))
+}
+
+export async function onRequestPost({ env, request }) {
+  const user = await authUser(env, request)
+  if (!user) return fail('Not authenticated', 401)
+  const isInstructor = user.role === 'instructor'
+
+  const studentRow = isInstructor ? null : await env.DB.prepare('SELECT id FROM students WHERE user_id = ?').bind(user.id).first()
+  if (!isInstructor && !studentRow) return fail('Student profile not found.', 404)
+  const studentId = isInstructor ? '' : studentRow.id
+
+  const body = await readJson(request)
+  const action = String(body.action || '')
+  const args = body.args || {}
+  const state = await readFullState(env)
+
+  const reply = async (extraState) => json({ ok: true, state: studentView(extraState || state, studentId) })
+
+  // ---- addPayment: student submits a purchase (pending until instructor confirms) ----
+  if (action === 'addPayment') {
+    const courseId = String(args.courseId || '')
+    const method = String(args.method || 'cash')
+    const course = state.courses.find((c) => c.id === courseId)
+    if (!course) return fail('Course not found.')
+    if (isPurchased(state.payments, studentId, courseId)) return fail('Course already purchased.')
+    const [paymentId] = await nextSeq(env, 'payments', 'p')
+    const now = nowISO()
+    const payment = { id: paymentId, studentId, courseId, method, amount: course.price, status: 'pending', createdAt: now }
+    const [notifId, notifId2] = await nextSeq(env, 'notifications', 'n', 2)
+
+    await env.DB.batch([
+      env.DB.prepare('INSERT INTO payments (id, student_id, status, payload) VALUES (?, ?, ?, ?)')
+        .bind(paymentId, studentId, 'pending', JSON.stringify(payment)),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(notifId, 'student', studentId, JSON.stringify({
+          id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending',
+          title: { en: 'Payment submitted', zh: '支付已提交' },
+          body: { en: `Your ${course.name.en} payment awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付等待教练确认。` },
+          read: false, at: now, paymentId,
+        })),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(notifId2, 'instructor', 'instructor', JSON.stringify({
+          id: notifId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending',
+          title: { en: 'New payment awaiting confirmation', zh: '新支付待确认' },
+          body: { en: `${user.name} requested to pay for ${course.name.en} ($${course.price}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${course.price} 加元）。点击查看并确认收款。` },
+          read: false, at: now, paymentId,
+        })),
+    ])
+    state.payments.push(payment)
+    state.notifications.unshift(
+      { id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending', title: { en: 'Payment submitted', zh: '支付已提交' }, body: { en: `Your ${course.name.en} payment awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付等待教练确认。` }, read: false, at: now, paymentId },
+      { id: notifId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending', title: { en: 'New payment awaiting confirmation', zh: '新支付待确认' }, body: { en: `${user.name} requested to pay for ${course.name.en} ($${course.price}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${course.price} 加元）。点击查看并确认收款。` }, read: false, at: now, paymentId },
+    )
+    return reply(state)
+  }
+
+  // ---- bookAppointment / bookPackageLessons ----
+  if (action === 'bookAppointment' || action === 'bookPackageLessons') {
+    const courseId = String(args.courseId || '')
+    const startISO = String(args.startISO || '')
+    const course = state.courses.find((c) => c.id === courseId)
+    if (!course) return fail('Course not found.')
+    if (!isPurchased(state.payments, studentId, courseId)) return fail('not_purchased')
+
+    const count = action === 'bookPackageLessons' ? Math.max(1, Number(args.count) || 1) : 1
+    const firstLessonIndex = action === 'bookPackageLessons' ? Number(args.lessonIndex ?? args.firstLessonIndex ?? 0) : undefined
+
+    const durationMin = course.type === 'package' ? 60 : course.durationMin
+    const lessonPrice = (idx) =>
+      course.type === 'package' && idx !== undefined ? course.lessons?.[idx]?.price ?? course.price : course.price
+
+    const start = fromLocal(startISO)
+    if (isNaN(start.getTime())) return fail('Invalid start time.')
+    if (start.getTime() < Date.now() - 60000) return fail('past')
+
+    const interval = effectiveInterval(startISO, state.weeklyRules, state.exceptions)
+    if (!interval) return fail('closed')
+    const sMin = minuteOf(startISO)
+    if (sMin < interval.startMin || sMin + durationMin > interval.endMin) return fail('closed')
+
+    const slots = []
+    let cursor = startISO
+    for (let i = 0; i < count; i++) {
+      const idx = firstLessonIndex !== undefined ? firstLessonIndex + i : undefined
+      const dur = durationMin
+      const endISO = toLocalISO(new Date(fromLocal(cursor).getTime() + dur * 60000))
+      if (conflicts(state.appointments, cursor, endISO, undefined, state.instructor.breakMin, studentId)) return fail('conflict')
+      slots.push({ start: cursor, end: endISO, lessonIndex: idx, price: lessonPrice(idx) })
+      cursor = endISO
+    }
+
+    const created = []
+    const inserts = []
+    const now = nowISO()
+    const apptIds = await nextSeq(env, 'appointments', 'a', slots.length)
+    for (let si = 0; si < slots.length; si++) {
+      const slot = slots[si]
+      const apptId = apptIds[si]
+      const appt = {
+        id: apptId, studentId, courseId, start: slot.start, end: slot.end, status: 'confirmed',
+        history: [{ at: now, note: { en: 'Booked', zh: '已预约' } }], createdAt: now,
+        lessonIndex: slot.lessonIndex, price: slot.price,
+      }
+      created.push(appt)
+      inserts.push(env.DB.prepare('INSERT INTO appointments (id, student_id, start_iso, status, payload) VALUES (?, ?, ?, ?, ?)')
+        .bind(apptId, studentId, slot.start, 'confirmed', JSON.stringify(appt)))
+    }
+    // notifications
+    const [nIdS, nIdI] = await nextSeq(env, 'notifications', 'n', 2)
+    const courseName = course.name
+    const line = (a) => {
+      const d = fromLocal(a.start)
+      return `${courseName.en} · ${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+    const lineZh = (a) => {
+      const d = fromLocal(a.start)
+      return `${courseName.zh} · ${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+    const sTitle = count > 1 ? { en: `${count} lessons booked`, zh: `已预约 ${count} 个课时` } : { en: 'Lesson confirmed', zh: '课程已确认' }
+    const first = created[0]
+    const sBody = count > 1
+      ? { en: `Your ${courseName.en} lessons start ${line(first)}.`, zh: `您的${courseName.zh}课时自 ${lineZh(first)} 开始。` }
+      : { en: `Your ${line(first)} lesson is confirmed. See you there!`, zh: `您的${lineZh(first)}课程已确认，到时见！` }
+    const iBody = { en: `${user.name} booked ${courseName.en} — ${line(first)}.`, zh: `${user.name} 预约了${courseName.zh} — ${lineZh(first)}。` }
+    inserts.push(
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nIdS, 'student', studentId, JSON.stringify({ id: nIdS, role: 'student', recipientId: studentId, type: 'booking_confirmed', title: sTitle, body: sBody, read: false, at: now })),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nIdI, 'instructor', 'instructor', JSON.stringify({ id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'new_booking', title: { en: 'New booking', zh: '新预约' }, body: iBody, read: false, at: now })),
+    )
+    await env.DB.batch(inserts)
+    state.appointments.push(...created)
+    state.notifications.unshift(
+      { id: nIdS, role: 'student', recipientId: studentId, type: 'booking_confirmed', title: sTitle, body: sBody, read: false, at: now },
+      { id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'new_booking', title: { en: 'New booking', zh: '新预约' }, body: iBody, read: false, at: now },
+    )
+    return reply(state)
+  }
+
+  // ---- cancelAppointment (student: own; instructor: any) ----
+  if (action === 'cancelAppointment') {
+    const apptId = String(args.id || '')
+    const appt = state.appointments.find((a) => (isInstructor ? a.id === apptId : a.id === apptId && a.studentId === studentId))
+    if (!appt) return fail('Appointment not found.')
+    const now = nowISO()
+    const updated = {
+      ...appt, status: 'cancelled',
+      history: [...(appt.history || []), { at: now, note: { en: 'Cancelled', zh: '已取消' } }],
+    }
+    const [nId] = await nextSeq(env, 'notifications', 'n')
+    const course = state.courses.find((c) => c.id === appt.courseId)
+    const d = fromLocal(appt.start)
+    const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    const notifs = []
+    if (isInstructor) {
+      const student = state.students.find((s) => s.id === appt.studentId)
+      notifs.push(env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nId, 'student', appt.studentId, JSON.stringify({
+          id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_cancelled',
+          title: { en: 'Lesson cancelled', zh: '课程已取消' },
+          body: { en: `Your ${course ? course.name.en : ''} lesson on ${when} was cancelled.`, zh: `您${when}的${course ? course.name.zh : ''}课程已被取消。` },
+          read: false, at: now,
+        })))
+      await env.DB.batch([
+        env.DB.prepare('UPDATE appointments SET status = ?, payload = ? WHERE id = ?').bind('cancelled', JSON.stringify(updated), apptId),
+        ...notifs,
+      ])
+      state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
+      state.notifications.unshift({ id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_cancelled', title: { en: 'Lesson cancelled', zh: '课程已取消' }, body: { en: `Your ${course ? course.name.en : ''} lesson on ${when} was cancelled.`, zh: `您${when}的${course ? course.name.zh : ''}课程已被取消。` }, read: false, at: now })
+      return reply(state)
+    }
+    notifs.push(env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+      .bind(nId, 'instructor', 'instructor', JSON.stringify({
+        id: nId, role: 'instructor', recipientId: 'instructor', type: 'booking_cancelled',
+        title: { en: 'Booking cancelled', zh: '预约已取消' },
+        body: { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${when}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${when}）。` },
+        read: false, at: now,
+      })))
+    await env.DB.batch([
+      env.DB.prepare('UPDATE appointments SET status = ?, payload = ? WHERE id = ?').bind('cancelled', JSON.stringify(updated), apptId),
+      ...notifs,
+    ])
+    state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
+    state.notifications.unshift({ id: nId, role: 'instructor', recipientId: 'instructor', type: 'booking_cancelled', title: { en: 'Booking cancelled', zh: '预约已取消' }, body: { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${when}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${when}）。` }, read: false, at: now })
+    return reply(state)
+  }
+
+  // ---- rescheduleAppointment (student: own; instructor: any) ----
+  if (action === 'rescheduleAppointment') {
+    const apptId = String(args.id || '')
+    const newStartISO = String(args.newStartISO || '')
+    const appt = state.appointments.find((a) => (isInstructor ? a.id === apptId : a.id === apptId && a.studentId === studentId))
+    if (!appt) return fail('Appointment not found.')
+    const course = state.courses.find((c) => c.id === appt.courseId)
+    const durMin = course ? (course.type === 'package' ? 60 : course.durationMin) : 60
+    const start = fromLocal(newStartISO)
+    if (isNaN(start.getTime())) return fail('Invalid start time.')
+    if (start.getTime() < Date.now() - 60000) return fail('past')
+    const interval = effectiveInterval(newStartISO, state.weeklyRules, state.exceptions)
+    if (!interval) return fail('closed')
+    if (minuteOf(newStartISO) < interval.startMin || minuteOf(newStartISO) + durMin > interval.endMin) return fail('closed')
+    const endISO = toLocalISO(new Date(start.getTime() + durMin * 60000))
+    if (conflicts(state.appointments, newStartISO, endISO, apptId, state.instructor.breakMin, appt.studentId)) return fail('conflict')
+
+    const now = nowISO()
+    const updated = {
+      ...appt, start: newStartISO, end: endISO,
+      history: [...(appt.history || []), { at: now, note: { en: 'Rescheduled', zh: '已改期' } }],
+    }
+    const [nId] = await nextSeq(env, 'notifications', 'n')
+    const d = fromLocal(newStartISO)
+    const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    const recipient = isInstructor ? appt.studentId : studentId
+    await env.DB.batch([
+      env.DB.prepare('UPDATE appointments SET start_iso = ?, status = ?, payload = ? WHERE id = ?').bind(newStartISO, 'confirmed', JSON.stringify(updated), apptId),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nId, 'student', recipient, JSON.stringify({
+          id: nId, role: 'student', recipientId: recipient, type: 'booking_rescheduled',
+          title: { en: 'Lesson rescheduled', zh: '课程已改期' },
+          body: { en: `Your ${course ? course.name.en : ''} lesson is now ${when}.`, zh: `您的${course ? course.name.zh : ''}课程已改期至 ${when}。` },
+          read: false, at: now,
+        })),
+    ])
+    state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
+    return reply(state)
+  }
+
+  // ---- confirmPayment / rejectPayment (instructor only) ----
+  if (action === 'confirmPayment' || action === 'rejectPayment') {
+    if (!isInstructor) return fail('Instructor only.', 403)
+    const paymentId = String(args.id || '')
+    const payment = state.payments.find((p) => p.id === paymentId)
+    if (!payment) return fail('Payment not found.')
+    const status = action === 'confirmPayment' ? 'confirmed' : 'rejected'
+    const now = nowISO()
+    const updated = { ...payment, status, confirmedAt: now }
+    const [nId] = await nextSeq(env, 'notifications', 'n')
+    const course = state.courses.find((c) => c.id === payment.courseId)
+    const student = state.students.find((s) => s.id === payment.studentId)
+    const nType = status === 'confirmed' ? 'payment_confirmed' : 'payment_rejected'
+    const nTitle = status === 'confirmed' ? { en: 'Payment confirmed', zh: '支付已确认' } : { en: 'Payment rejected', zh: '支付已拒绝' }
+    const nBody = status === 'confirmed'
+      ? { en: `Your purchase of ${course ? course.name.en : ''} is confirmed. You can now book a time.`, zh: `您购买的${course ? course.name.zh : ''}已确认，现在可以预约时间了。` }
+      : { en: `Your payment for ${course ? course.name.en : ''} was rejected. Please contact the instructor.`, zh: `您对${course ? course.name.zh : ''}的支付被拒绝，请联系教练。` }
+    await env.DB.batch([
+      env.DB.prepare('UPDATE payments SET status = ?, payload = ? WHERE id = ?').bind(status, JSON.stringify(updated), paymentId),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nId, 'student', payment.studentId, JSON.stringify({
+          id: nId, role: 'student', recipientId: payment.studentId, type: nType, title: nTitle, body: nBody, read: false, at: now, paymentId,
+        })),
+    ])
+    state.payments = state.payments.map((p) => (p.id === paymentId ? updated : p))
+    state.notifications.unshift({ id: nId, role: 'student', recipientId: payment.studentId, type: nType, title: nTitle, body: nBody, read: false, at: now, paymentId })
+    return reply(state)
+  }
+
+  // ---- updateStudentAddress ----
+  if (action === 'updateStudentAddress') {
+    const address = String(args.address || '').trim()
+    const now = nowISO()
+    const student = state.students.find((s) => s.id === studentId)
+    const updatedStudent = { ...student, address }
+    await env.DB.batch([
+      env.DB.prepare('UPDATE users SET address = ? WHERE id = ?').bind(address || null, user.id),
+      env.DB.prepare('UPDATE students SET payload = ? WHERE id = ?').bind(JSON.stringify(updatedStudent), studentId),
+    ])
+    state.students = state.students.map((s) => (s.id === studentId ? updatedStudent : s))
+    return reply(state)
+  }
+
+  // ---- markNotificationRead / markAllRead ----
+  if (action === 'markNotificationRead') {
+    const nId = String(args.id || '')
+    const notif = state.notifications.find((n) => n.id === nId && n.role === 'student' && n.recipientId === studentId)
+    if (!notif) return fail('Notification not found.')
+    const updated = { ...notif, read: true }
+    await env.DB.prepare('UPDATE notifications SET payload = ? WHERE id = ?').bind(JSON.stringify(updated), nId).run()
+    state.notifications = state.notifications.map((n) => (n.id === nId ? updated : n))
+    return reply(state)
+  }
+  if (action === 'markAllRead') {
+    const updatedList = state.notifications
+      .filter((n) => n.role === 'student' && n.recipientId === studentId && !n.read)
+      .map((n) => ({ ...n, read: true }))
+    if (updatedList.length > 0) {
+      await env.DB.batch(
+        updatedList.map((n) =>
+          env.DB.prepare('UPDATE notifications SET payload = ? WHERE id = ?').bind(JSON.stringify(n), n.id)),
+      )
+    }
+    const ids = new Set(updatedList.map((n) => n.id))
+    state.notifications = state.notifications.map((n) => (ids.has(n.id) ? { ...n, read: true } : n))
+    return reply(state)
+  }
+
+  return fail(`Unknown action: ${action}`, 400)
+}
