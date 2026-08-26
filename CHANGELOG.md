@@ -16,7 +16,7 @@
   - Google 地址：新增 `src/config.ts`（`GOOGLE_MAPS_API_KEY`，默认空 = 关闭自动补全，行为不变）；`StudentProfilePage.tsx` 地址输入框接入 Places Autocomplete（配置 key 后启用）。
 - **是否影响旧功能**：是——个人中心去掉日历订阅链接（按需求）；其余不变。
 - **测试结果**：编译通过；时间解析器单元测试通过（新旧格式均显示正确日期）；bundle 确认无订阅残留、含「添加到日历」；已部署，ezdrives.net 已为新版本。
-- **待办（需要你提供）**：Google Maps 自动补全需 **Google Cloud API Key**（启用 Places API + 限制来源域名）后填入 `src/config.ts` 并重新部署，否则地址框保持普通输入。
+- **Google 地址自动补全（最终实现）**：改用 **Places API (New) REST**（`places.googleapis.com/v1/places:autocomplete`，`regionCode:'CA'`），用户的 API Key 已配置进 `src/config.ts`；交互为「输入 ≥3 字符 → 300ms 防抖 → 下拉联想 → 点选填入 → 点外部关闭」（不依赖聚焦状态，更稳健）；本地浏览器端到端验证通过（输入 "toronto" 弹出 "Toronto, 安大略省" 等建议）。⚠️ 需用户在 Google Cloud 已启用 **Places API (New)** 且项目开通结算；建议给 key 加 referrer 限制（ezdrives.net）。
 
 ---
 

@@ -162,7 +162,6 @@ function StudentProfileContent(): JSX.Element {
   // Editable pickup address (接送地址) with Google Places autocomplete.
   const [addressDraft, setAddressDraft] = useState<string>(student?.address ?? '')
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
-  const [addressFocused, setAddressFocused] = useState(false)
   const addressSearchTimer = useRef<number | null>(null)
   const addressWrapRef = useRef<HTMLDivElement | null>(null)
 
@@ -175,7 +174,7 @@ function StudentProfileContent(): JSX.Element {
     fetch('https://places.googleapis.com/v1/places:autocomplete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY },
-      body: JSON.stringify({ input, region: 'ca' }),
+      body: JSON.stringify({ input, regionCode: 'CA' }),
     })
       .then((r) => r.json().catch(() => ({})))
       .then((data: { suggestions?: { placePrediction?: { text?: { text?: string } } }[] }) => {
@@ -194,7 +193,6 @@ function StudentProfileContent(): JSX.Element {
   const pickAddress = (value: string): void => {
     setAddressDraft(value)
     setAddressSuggestions([])
-    setAddressFocused(false)
   }
 
   // Close the suggestion dropdown on outside clicks; clean up the debounce.
@@ -202,7 +200,6 @@ function StudentProfileContent(): JSX.Element {
     const onClick = (e: MouseEvent): void => {
       if (addressWrapRef.current && !addressWrapRef.current.contains(e.target as Node)) {
         setAddressSuggestions([])
-        setAddressFocused(false)
       }
     }
     document.addEventListener('mousedown', onClick)
@@ -315,11 +312,10 @@ function StudentProfileContent(): JSX.Element {
                       className="student-address-input"
                       value={addressDraft}
                       onChange={(e) => onAddressChange(e.target.value)}
-                      onFocus={() => setAddressFocused(true)}
                       placeholder={t('student.profile.addressPlaceholder')}
                       autoComplete="street-address"
                     />
-                    {GOOGLE_MAPS_API_KEY && addressFocused && addressSuggestions.length > 0 ? (
+                    {GOOGLE_MAPS_API_KEY && addressSuggestions.length > 0 ? (
                       <ul className="student-address-suggest">
                         {addressSuggestions.map((s) => (
                           <li key={s}>
