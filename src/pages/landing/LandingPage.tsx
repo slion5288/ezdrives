@@ -50,21 +50,24 @@ import './LandingPage.css'
 
 // Prefers real photos placed in /hero/ (hero-1.jpg … hero-4.jpg — see
 // public/hero/README.txt); falls back to the bundled base64 images.
-const HERO_FILES = ['hero-1.jpg', 'hero-2.jpg', 'hero-3.jpg', 'hero-4.jpg']
+const HERO_FILES = ['hero-1.jpg', 'hero-2.jpg', 'hero-3.jpg', 'hero-4.jpg', 'hero-5.jpg', 'hero-6.jpg']
 
 function HeroCarousel(): JSX.Element {
   const locale = useLocale()
   const [idx, setIdx] = useState(0)
+  const slideCount = HERO_FILES.length
   useEffect(() => {
-    const id = window.setInterval(() => setIdx((i) => (i + 1) % HERO_IMAGES.length), 5000)
+    const id = window.setInterval(() => setIdx((i) => (i + 1) % slideCount), 5000)
     return () => window.clearInterval(id)
-  }, [])
+  }, [slideCount])
   return (
     <div className="landing-hero__media" aria-hidden="true">
-      {HERO_IMAGES.map((slide, i) => (
+      {HERO_FILES.map((file, i) => {
+        const slide = HERO_IMAGES[i % HERO_IMAGES.length]
+        return (
         <div key={i} className={`landing-hero__slide${i === idx ? ' is-active' : ''}`}>
           <img
-            src={HERO_FILES[i]}
+            src={file}
             onError={(e) => {
               const target = e.currentTarget
               if (target.src !== slide.src) target.src = slide.src
@@ -72,9 +75,10 @@ function HeroCarousel(): JSX.Element {
             alt={locale === 'zh' ? slide.alt.zh : slide.alt.en}
           />
         </div>
-      ))}
+        )
+      })}
       <div className="landing-hero__dots">
-        {HERO_IMAGES.map((_, i) => (
+        {Array.from({ length: slideCount }, (_, i) => (
           <button
             key={i}
             type="button"
