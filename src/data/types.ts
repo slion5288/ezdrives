@@ -26,6 +26,8 @@ export interface Course {
   active: boolean
   /** Exam car rental service (考试用车) — shown with a special badge. */
   examCar?: boolean
+  /** Course cover image (data URL uploaded by the instructor). */
+  imageUrl?: string
   /** Package only: the 10 lessons with editable content. */
   lessons?: CourseLesson[]
 }

@@ -191,13 +191,13 @@ function CatalogSection({
               className="student-course-card"
               onClick={() => (owned ? onPick(course.id) : onBuy(course.id))}
             >
-              <div className="student-course-card__icon">
-                {course.examCar ? (
-                  <CheckCircle2 size={20} />
-                ) : course.type === 'package' ? (
-                  <Package size={20} />
+              <div className="student-course-card__thumb">
+                {course.imageUrl ? (
+                  <img src={course.imageUrl} alt="" loading="lazy" />
                 ) : (
-                  <GraduationCap size={20} />
+                  <span className="student-course-card__thumb-ph" aria-hidden="true">
+                    {course.examCar ? <CheckCircle2 size={20} /> : course.type === 'package' ? <Package size={20} /> : <GraduationCap size={20} />}
+                  </span>
                 )}
               </div>
               <div className="student-course-card__body">

@@ -106,7 +106,7 @@ function CourseCard({
   t,
   pick,
 }: {
-  course: { id: string; name: { en: string; zh: string }; description: { en: string; zh: string }; price: number; durationMin: number; examCar?: boolean }
+  course: { id: string; name: { en: string; zh: string }; description: { en: string; zh: string }; price: number; durationMin: number; examCar?: boolean; imageUrl?: string }
   popular: boolean
   to: string
   t: (key: string, vars?: Record<string, string | number>) => string
@@ -123,6 +123,15 @@ function CourseCard({
         <LandingBadge tone="warning" className="landing-courses__badge">
           {t('landing.courses.popular')}
         </LandingBadge>
+      )}
+      {course.imageUrl ? (
+        <div className="landing-courses__media">
+          <img src={course.imageUrl} alt={pick(course.name)} loading="lazy" />
+        </div>
+      ) : (
+        <div className="landing-courses__media landing-courses__media--placeholder" aria-hidden="true">
+          <Car size={26} />
+        </div>
       )}
       <h3 className="landing-courses__name">{pick(course.name)}</h3>
       <p className="landing-courses__desc">{pick(course.description)}</p>
@@ -331,40 +340,26 @@ export default function LandingPage(): JSX.Element {
             {shownCourses.length === 0 ? (
               <p className="landing-section__empty">{t('courses.unavailable')}</p>
             ) : (
-              <>
-                <div className="landing-courses landing-courses--rail">
-                  {shownCourses.map((course, index) => (
-                    <CourseCard
-                      key={course.id}
-                      course={course}
-                      popular={index === popularIndex}
-                      to={`/student/book?course=${course.id}`}
-                      t={t}
-                      pick={pick}
-                    />
-                  ))}
-                  {/* Mobile only: link to the full /courses page */}
-                  {isMobile && shownCourses.length < allCourses.length ? (
-                    <Link to="/courses" className="landing-courses__more">
-                      <span className="landing-courses__more-icon">
-                        <GraduationCap size={22} />
-                      </span>
-                      <span className="landing-courses__more-title">{t('landing.courses.viewAll')}</span>
-                      <span className="landing-courses__more-count">
-                        {t('courses.lessons', { count: allCourses.length })}
-                      </span>
-                      <ArrowRight size={16} className="landing-courses__more-arrow" />
-                    </Link>
-                  ) : null}
-                </div>
-                {/* Desktop: hint that the rail scrolls */}
-                {!isMobile && allCourses.length > 3 ? (
-                  <Link to="/courses" className="landing-courses__see-all">
-                    {t('landing.courses.viewAll')} <ArrowRight size={15} />
-                  </Link>
-                ) : null}
-              </>
+              <div className="landing-courses landing-courses--rail">
+                {shownCourses.map((course, index) => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    popular={index === popularIndex}
+                    to={`/student/book?course=${course.id}`}
+                    t={t}
+                    pick={pick}
+                  />
+                ))}
+              </div>
             )}
+            {/* View-all button pinned to the bottom-right of the section */}
+            <div className="landing-courses__viewall-row">
+              <LandingButton variant="primary" to="/courses">
+                {t('landing.courses.viewAll')}
+                <ArrowRight size={16} className="landing-btn__icon" />
+              </LandingButton>
+            </div>
           </div>
         </section>
 
@@ -372,6 +367,7 @@ export default function LandingPage(): JSX.Element {
         <section id="videos" className="landing-section landing-section--alt">
           <div className="container">
             <SectionHeading title={t('landing.videos.title')} subtitle={t('landing.videos.subtitle')} />
+            <div className="landing-panel">
             {homeVideos.length === 0 ? (
               <p className="landing-section__empty">{t('landing.videos.empty')}</p>
             ) : (
@@ -418,6 +414,7 @@ export default function LandingPage(): JSX.Element {
                 ))}
               </div>
             )}
+            </div>
           </div>
         </section>
 
@@ -427,6 +424,7 @@ export default function LandingPage(): JSX.Element {
         <section id="g1" className="landing-section landing-section--alt">
           <div className="container">
             <SectionHeading title={t('landing.g1.title')} subtitle={t('landing.g1.body')} />
+            <div className="landing-panel landing-panel--g1">
             <div className="landing-g1">
               <div className="landing-g1__copy">
                 <div className="landing-g1__chips">
@@ -455,6 +453,7 @@ export default function LandingPage(): JSX.Element {
                   <CheckCircle2 size={22} />
                 </span>
               </div>
+            </div>
             </div>
           </div>
         </section>
@@ -562,9 +561,6 @@ export default function LandingPage(): JSX.Element {
                   {t('landing.cta.book')}
                   <ArrowRight size={18} className="landing-btn__icon" />
                 </LandingButton>
-                <LandingButton size="lg" variant="ghost" to="/login?role=instructor">
-                  {t('landing.cta.instructor')}
-                </LandingButton>
               </div>
             </div>
           </div>
@@ -612,6 +608,7 @@ export default function LandingPage(): JSX.Element {
               >
                 {t('landing.faq.title')}
               </a>
+              <Link to="/login?role=instructor">{t('nav.instructor')}</Link>
             </div>
             <div className="landing-footer__col">
               <h4>{t('landing.footer.contact')}</h4>

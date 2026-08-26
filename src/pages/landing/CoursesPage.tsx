@@ -129,9 +129,6 @@ export default function CoursesPage(): JSX.Element {
                   {t('landing.cta.book')}
                   <ArrowRight size={18} className="landing-btn__icon" />
                 </LandingButton>
-                <LandingButton size="lg" variant="ghost" to="/login?role=instructor">
-                  {t('landing.cta.instructor')}
-                </LandingButton>
               </div>
             </div>
           </div>

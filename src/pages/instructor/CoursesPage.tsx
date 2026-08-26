@@ -6,11 +6,12 @@
 // package price is the sum of its lessons.
 // ============================================================================
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import type { AppState, Course, CourseLesson } from '../../data/store'
 import { deleteCourse, saveCourse, toggleCourse } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
-import { GraduationCap, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Camera, GraduationCap, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Badge, ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
 import { useToast } from './toast'
 import { formatMoney } from './helpers'
@@ -34,6 +35,7 @@ interface CourseForm {
   durationMin: 60 | 120
   active: boolean
   examCar: boolean
+  imageUrl: string
   lessons: LessonForm[]
 }
 
@@ -50,6 +52,7 @@ const emptyForm = (): CourseForm => ({
   durationMin: 60,
   active: true,
   examCar: false,
+  imageUrl: '',
   lessons: Array.from({ length: 10 }, emptyLesson),
 })
 
@@ -72,6 +75,7 @@ const formFromCourse = (c: Course): CourseForm => ({
   durationMin: c.durationMin,
   active: c.active,
   examCar: c.examCar ?? false,
+  imageUrl: c.imageUrl ?? '',
   lessons:
     c.lessons && c.lessons.length > 0
       ? c.lessons.map(lessonFrom)
@@ -86,6 +90,18 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
   const [form, setForm] = useState<CourseForm | null>(null)
   const [formError, setFormError] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null)
+  const imageRef = useRef<HTMLInputElement>(null)
+
+  const handleImage = (e: ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0]
+    if (!file || !form) return
+    const reader = new FileReader()
+    reader.onload = (): void => {
+      const result = reader.result
+      if (typeof result === 'string') setForm((f) => (f ? { ...f, imageUrl: result } : f))
+    }
+    reader.readAsDataURL(file)
+  }
 
   const openAdd = (): void => {
     setFormError(false)
@@ -133,6 +149,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
       durationMin: isPackage ? 60 : form.durationMin,
       active: form.active,
       examCar: form.examCar,
+      imageUrl: form.imageUrl || undefined,
       lessons,
     })
     toast({ tone: 'success', title: t('instructor.courses.saved') })
@@ -340,6 +357,33 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                 </p>
               </div>
             )}
+
+            <div className="ins-field ins-field--wide">
+              <span className="ins-field-label">{t('instructor.courses.image')}</span>
+              <div className="ins-course-image-row">
+                <label className="ins-photo-upload">
+                  {form.imageUrl ? (
+                    <img src={form.imageUrl} alt="" className="ins-photo-preview ins-photo-preview--course" />
+                  ) : (
+                    <span className="ins-photo-placeholder">
+                      <Camera size={20} />
+                      {t('instructor.courses.image')}
+                    </span>
+                  )}
+                  <input ref={imageRef} type="file" accept="image/*" className="visually-hidden" onChange={handleImage} />
+                </label>
+                {form.imageUrl ? (
+                  <button
+                    type="button"
+                    className="ins-icon-btn is-danger"
+                    aria-label={t('common.delete')}
+                    onClick={() => setForm({ ...form, imageUrl: '' })}
+                  >
+                    <X size={16} />
+                  </button>
+                ) : null}
+              </div>
+            </div>
 
             <div className="ins-field ins-toggle-row">
               <span className="ins-field-label">{t('instructor.courses.examCar')}</span>

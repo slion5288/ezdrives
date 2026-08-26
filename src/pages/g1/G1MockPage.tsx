@@ -30,14 +30,24 @@ export default function G1MockPage(): JSX.Element {
   const [picked, setPicked] = useState<number | null>(null)
   const [answers, setAnswers] = useState<number[]>([])
   const [correctCount, setCorrectCount] = useState(0)
+  // Randomized question order per run (shuffled once when the bank starts).
+  const [order, setOrder] = useState<number[]>([])
 
   const questions = useMemo(() => (bank === 'zh' ? G1_BANK_ZH : G1_BANK_EN), [bank])
   const total = questions.length
-  const q: G1Question | undefined = questions[idx]
+  /** Current question after applying the shuffled order. */
+  const q: G1Question | undefined = order.length > 0 ? questions[order[idx]] : questions[idx]
   const answered = picked !== null
 
   const start = (b: BankId): void => {
     setBank(b)
+    // Fisher–Yates shuffle so every practice run is a fresh order.
+    const arr = Array.from({ length: (b === 'zh' ? G1_BANK_ZH : G1_BANK_EN).length }, (_, i) => i)
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    setOrder(arr)
     setIdx(0)
     setPicked(null)
     setAnswers([])

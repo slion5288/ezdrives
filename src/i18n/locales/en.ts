@@ -481,6 +481,7 @@ export const messages = {
   'instructor.workinghours.breakNone': 'No break',
   'instructor.workinghours.breakHint': 'Only the same student can book back-to-back without a break; other students can book from after the break.',
   'instructor.courses.duration120': '2 hours',
+  'instructor.courses.image': 'Course image (upload)',
   'instructor.courses.examCar': 'Exam car',
   'instructor.courses.type': 'Course type',
   'instructor.courses.typeSingle': 'Single hour',

@@ -292,8 +292,8 @@
   border-radius: 6px;
   padding: 2px 4px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--ev-color, #3B82F6) 22%, transparent);
-  border-left: 3px solid var(--ev-color, #3B82F6);
+  background: color-mix(in srgb, var(--ev-color, #A21CAF) 22%, transparent);
+  border-left: 3px solid var(--ev-color, #A21CAF);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
   cursor: default;
   transition: box-shadow var(--transition-fast), filter var(--transition-fast);
@@ -305,7 +305,7 @@
 .ios-week__event--clickable:hover {
   box-shadow:
     0 2px 8px rgba(16, 24, 40, 0.16),
-    0 0 0 1px var(--ev-color, #3B82F6);
+    0 0 0 1px var(--ev-color, #A21CAF);
 }
 .ios-week__event--pending {
   border-left-style: dashed;
@@ -369,8 +369,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--ev-color, #3B82F6) 30%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--ev-color, #3B82F6) 60%, transparent);
+  background: color-mix(in srgb, var(--ev-color, #A21CAF) 30%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--ev-color, #A21CAF) 60%, transparent);
   color: var(--color-surface);
   cursor: pointer;
 }
@@ -767,4 +767,22 @@
 .ios-week__event--done .ios-week__event-sub,
 .ios-week__event--done .ios-week__event-sub2 {
   color: var(--color-text-muted);
+}
+
+/* --- Mobile: fit all 7 days on screen by tightening columns --- */
+@media (max-width: 768px) {
+  .ios-week__corner {
+    flex-basis: 38px;
+  }
+  .ios-week__dayhead {
+    min-width: 0;
+    flex: 1 1 0;
+    padding: var(--space-2) 1px var(--space-2);
+  }
+  .ios-week__dow {
+    font-size: 10px;
+  }
+  .ios-week__num {
+    font-size: var(--font-size-sm);
+  }
 }

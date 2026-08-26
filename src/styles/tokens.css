@@ -14,21 +14,21 @@
   --color-text: #101828;               /* primary text, headings */
   --color-text-muted: #475467;         /* secondary body text */
   --color-text-soft: #98A2B3;          /* placeholders, disabled, captions (≥14px only) */
-  --color-accent: #2563EB;             /* brand blue — primary actions, links, selected states */
-  --color-accent-hover: #1D4ED8;       /* accent hover/pressed */
-  --color-accent-soft: rgba(37, 99, 235, 0.10); /* accent tint: selected nav, chips */
+  --color-accent: #A21CAF;             /* brand magenta-violet (logo #D300E6) — primary actions */
+  --color-accent-hover: #86158F;       /* accent hover/pressed */
+  --color-accent-soft: rgba(162, 28, 175, 0.10); /* accent tint: selected nav, chips */
   /* EZDRIVES brand gradient: blue → purple */
-  --gradient-brand: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  --gradient-brand-hover: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+  --gradient-brand: linear-gradient(135deg, #8B5CF6 0%, #D300E6 100%);
+  --gradient-brand-hover: linear-gradient(135deg, #7C3AED 0%, #BA00E8 100%);
   --color-on-brand: #FFFFFF;           /* text/glyphs on the brand gradient or accent */
   --color-success: #22A06B;            /* availability green — bookable slots, confirmed */
   --color-danger: #E5484D;             /* errors, cancel, destructive actions, iOS today */
   --color-danger-soft: #FDECEE;        /* danger tint backgrounds */
   --color-warning: #F5A524;            /* warnings, pending */
-  --color-info: #3B82F6;               /* informational accents, body links */
+  --color-info: #A21CAF;               /* informational accents, body links */
   --color-border: #E3E8EC;             /* default hairlines */
   --color-border-strong: #CBD3DA;      /* inputs, hover borders */
-  --color-focus-ring: rgba(99, 102, 241, 0.38);   /* 2px focus outline + 2px offset */
+  --color-focus-ring: rgba(162, 28, 175, 0.38);   /* 2px focus outline + 2px offset */
   --color-overlay: rgba(16, 24, 40, 0.45);       /* modal scrim */
 
   /* --- Elevation --- */
@@ -100,20 +100,20 @@ html[data-theme='dark'] {
   --color-text: #F2F6F8;
   --color-text-muted: #C2CBD4;
   --color-text-soft: #7C8894;
-  --color-accent: #6C9BFF;             /* brand blue (brighter on dark) */
-  --color-accent-hover: #8CB8FF;
-  --color-accent-soft: rgba(108, 155, 255, 0.16);
-  --gradient-brand: linear-gradient(135deg, #4F8DFF 0%, #9D6BFF 100%);
-  --gradient-brand-hover: linear-gradient(135deg, #3D7BFF 0%, #8C5BFF 100%);
+  --color-accent: #DD4DE8;             /* brand magenta-violet (brighter on dark) */
+  --color-accent-hover: #E879F9;
+  --color-accent-soft: rgba(221, 77, 232, 0.18);
+  --gradient-brand: linear-gradient(135deg, #9D5CF7 0%, #E14CF0 100%);
+  --gradient-brand-hover: linear-gradient(135deg, #8C4DF6 0%, #D43FE8 100%);
   --color-on-brand: #FFFFFF;
   --color-success: #34D399;
   --color-danger: #F97066;
   --color-danger-soft: rgba(249, 112, 102, 0.14);
   --color-warning: #FDB022;
-  --color-info: #53B1FD;
+  --color-info: #DD4DE8;
   --color-border: #263039;
   --color-border-strong: #3A4651;
-  --color-focus-ring: rgba(130, 160, 255, 0.45);
+  --color-focus-ring: rgba(221, 77, 232, 0.45);
   --color-overlay: rgba(3, 7, 10, 0.65);
 
   /* --- Elevation: same token names, black-tinted layering for dark bg --- */

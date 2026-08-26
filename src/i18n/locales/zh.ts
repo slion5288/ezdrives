@@ -483,6 +483,7 @@ export const messages: Record<MessageKey, string> = {
   'instructor.workinghours.breakNone': '无休息',
   'instructor.workinghours.breakHint': '仅同一学员可连续预约第二节课（无需休息）；其他学员预约将从休息时间之后开始。',
   'instructor.courses.duration120': '2 小时',
+  'instructor.courses.image': '课程图片（上传）',
   'instructor.courses.examCar': '考试用车',
   'instructor.courses.type': '课程类型',
   'instructor.courses.typeSingle': '单小时',

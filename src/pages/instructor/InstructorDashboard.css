@@ -1485,6 +1485,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
+  width: 100%;
   padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -2544,4 +2545,21 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   width: auto;
   display: block;
   filter: drop-shadow(0 2px 6px rgba(16, 24, 40, 0.18));
+}
+
+/* Course image upload */
+.ins-course-image-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.ins-photo-preview--course {
+  width: 200px;
+  height: 130px;
+  object-fit: cover;
+}
+
+.ins-notif-title,
+.ins-notif-body {
+  overflow-wrap: anywhere;
 }

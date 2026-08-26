@@ -5,7 +5,7 @@
 // password), demo accounts for quick testing. All strings through useT().
 // ============================================================================
 
-import { ArrowLeft, ArrowRight, GraduationCap, KeyRound, Send, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, ArrowRight, KeyRound, Send } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
@@ -275,10 +275,6 @@ export default function LoginPage(): JSX.Element {
   if (session.role === 'instructor' && role === 'instructor') return <Navigate to="/instructor" replace />
   if (session.role === 'student' && role === 'student') return <Navigate to="/student/book" replace />
 
-  const switchRole = (next: Role): void => {
-    setRole(next)
-    navigate(`/login?role=${next}`, { replace: true })
-  }
   const onLoggedIn = (): void => {
     if (role !== 'student') {
       navigate('/instructor')
@@ -310,29 +306,6 @@ export default function LoginPage(): JSX.Element {
         <Card className="login__card">
           <h2 className="login__heading">{t('auth.login.title')}</h2>
           <p className="login__sub">{t('auth.login.subtitle')}</p>
-
-          <div className="login__roles" role="tablist" aria-label={t('auth.login.title')}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={role === 'student'}
-              className={`login__role${role === 'student' ? ' login__role--active' : ''}`}
-              onClick={() => switchRole('student')}
-            >
-              <GraduationCap size={20} className="login__role-icon" aria-hidden="true" />
-              <span className="login__role-label">{t('auth.role.student')}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={role === 'instructor'}
-              className={`login__role${role === 'instructor' ? ' login__role--active' : ''}`}
-              onClick={() => switchRole('instructor')}
-            >
-              <ShieldCheck size={20} className="login__role-icon" aria-hidden="true" />
-              <span className="login__role-label">{t('auth.role.instructor')}</span>
-            </button>
-          </div>
 
           {role === 'student' ? (
             <>
