@@ -7,7 +7,7 @@
 
 import { Bell, BellOff, CalendarClock, CalendarX, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { markAllRead, markNotificationRead, getSession, useAppState } from '../../data/store'
-import { fromLocalISO } from '../../data/timeEngine'
+import { fromServerISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
 import { EmptyState } from './StudentShared'
 import { StudentShell } from './StudentShell'
@@ -90,7 +90,7 @@ function StudentNotificationsContent(): JSX.Element {
                   <span className="student-notif-card-main">
                     <span className="student-notif-card-title">
                       <strong>{n.title[locale]}</strong>
-                      <span className="student-notif-time">{relativeTime(locale, fromLocalISO(n.at))}</span>
+                      <span className="student-notif-time">{relativeTime(locale, fromServerISO(n.at))}</span>
                     </span>
                     <span className="student-notif-card-body">{n.body[locale]}</span>
                   </span>

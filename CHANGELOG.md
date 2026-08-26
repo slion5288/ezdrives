@@ -5,6 +5,37 @@
 
 ---
 
+## Change 2 — 按 P0→P1→P2→P3 顺序修复审计问题（用户确认「按以上顺序修改，冲突项按推荐方案」）
+
+- **我的要求**：修复审计报告全部问题；冲突项按推荐方案处理（学员改期做 UI、在线支付保持记录+人工核对并清理误导文案、实现 2 小时提醒、ICS 加订阅 token、设置页可编辑教练资料、删除后端验证码兜底并关闭教练注册通道）。
+- **涉及页面**：全部（落地页导航、学员端、教练端、登录注册、后端 API、数据库迁移）。
+- **涉及功能**：数据持久化、认证、预约、支付、通知、ICS、导航、提醒、限流。
+- **修改文件**：
+  - 后端：`functions/lib/db.js`（writeFullState 合并策略 + user_id 保留 + icsToken 回填）、`functions/api/student/actions.js`（按角色返回视图、教练已读、改期通知+状态保持、SQL 冲突防护、套餐上限、支付校验、时区、幂等）、`functions/api/state.js`（惰性 2h 提醒）、`functions/api/auth/login.js`（邮箱登录+限流+统一错误）、`functions/api/auth/register.js`（仅学员+限流+icsToken）、`functions/api/auth/send-code.js`（删除本地兜底+限流）、`functions/api/ics/[studentId].js`（token 鉴权+时区参数+RFC5545 折叠）、`functions/lib/rate.js`（新增）、`migrations/0003_conflict_and_ratelimit.sql`（新增 end_iso + rate_limits）
+  - 前端：`LoginPage.tsx`（占位符、定时器清理）、`LandingPage.tsx`（锚点导航）、`CoursesPage.tsx`（移动菜单）、`G1MockPage.tsx`（页头锚点）、`StudentShell.tsx` / `InstructorDashboardPage.tsx`（加载失败重试）、`StudentProfilePage.tsx`（学员改期 UI、历史过滤、状态标签、订阅 URL）、`CourseBookingPanel.tsx`（错误映射、已完成套餐禁约）、`PaymentModal.tsx`（通用错误、测试卡占位符）、`StudentBookingPage.tsx`（待确认卡禁点）、`SchedulePage.tsx`（批量移动同日期保留原时刻、取消 await）、`PaymentsPage.tsx` / `NotificationsPage.tsx`（await 确认/拒绝、时间戳时区）、`helpers.ts`（状态标签）、`SettingsPage.tsx` + `ProfileSettings.tsx`（新增教练资料编辑）、`store.ts`（clientNow、confirm/reject 返回值、updateInstructorProfile、删 resetDemo）、`api.ts`（state tz 参数）、`timeEngine.ts`（fromServerISO）、`types.ts`（icsToken）、`assets.ts`（删未用导出）、i18n 双语文案（新增/调整键）、`manifest.webmanifest` / `_headers`（id/缓存）、删除死代码 `StudentBookingModal.tsx`、`SlotTimeList.tsx`、`functions/lib/seed.js`
+- **是否影响旧功能**：是——按审计报告预期修正（writeFullState 不再全删重建；教练 actions 返回全量视图；ICS 需 token；注册不再允许教练角色；send-code 无 Twilio 时报错而非发演示码）。均为修复，无功能回退。
+- **测试结果**：
+  - 本地 `wrangler pages dev` 端到端 **26/26 通过**（含 P0 user_id 保留、P1 教练视图不空、教练已读生效、时区 past 判断、重复预约冲突、ICS 403/200、限流、支付校验、改期通知双方、无账号枚举）。
+  - 追加测试：教练保存不含某预约的快照后，学员预约**不被删除**（upsert-only 合并）✓。
+  - 线上 https://ezdrives.net 验证：手机号/邮箱登录 ✓、错误密码统一文案 ✓、新 bundle ✓、首页锚点滚动 ✓、/courses 移动菜单 ✓、教练后台导航/logo ✓。
+  - 编译：`tsc --noEmit && vite build` 通过；Preview.html 已重新生成；已部署。
+
+### 本轮修复对照
+
+| 级别 | 原问题 | 结果 |
+| --- | --- | --- |
+| P0 | writeFullState 清空学员 user_id / 先删后建丢并发数据 | ✅ 改为按 id 合并（upsert-only），保留 user_id；实测通过 |
+| P1 | 教练 actions 返回学员空视图 | ✅ 按角色返回；实测通过 |
+| P1 | 教练通知已读无效 | ✅ 后端增加教练分支；实测通过 |
+| P1 | 首页/菜单/页脚锚点被 HashRouter 劫持 | ✅ 全部 preventDefault+滚动；实测通过 |
+| P1 | 时区导致当天下午预约被拒 | ✅ clientNow 同空间比较；实测 past 拒绝正确 |
+| P1 | 批量移动 >1 条必失败 | ✅ 同日期保留每节原时刻 |
+| P1 | 并发双预约 | ✅ SQL NOT EXISTS 守护插入 + 失败补偿 |
+| P2 | 学员改期缺失 / 通知 / 状态强制 confirmed 等 | ✅ 学员改期 UI、教练通知、状态保持、套餐上限、支付校验、错误文案、studentView 脱敏、ICS token、加载重试、状态标签、日程布局、移动导航、2h 提醒、限流 |
+| P3 | 死代码/占位符/兜底/缺键/缓存/教练资料 | ✅ 清理 + 教练资料编辑 + manifest/_headers |
+
+---
+
 ## Change 1 — 全面审计 + 建立项目规范（当前）
 
 - **我的要求**（2025-08-26）：停止直接改代码；先全面审计项目，建立 PROJECT_SPEC.md / ROUTE_MAP.md / USER_FLOW.md / CHANGELOG.md，输出「项目现状报告」（完成度、已完成、未完成、问题、需求冲突、跳转问题、建议修改顺序）。

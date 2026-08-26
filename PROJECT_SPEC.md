@@ -105,30 +105,20 @@ booking_confirmed / booking_cancelled / booking_rescheduled / reminder_2h（**�
 - 手动部署：`WRANGLER_LOG_PATH=/tmp/wrangler.log HOME=/tmp/wrangler-home node_modules/.bin/wrangler pages deploy dist --project-name=ezdrives --commit-dirty=true`。
 - CI：`.github/workflows/deploy.yml`（cloudflare/pages-action@v1）；已知 GitHub runner 偶发排队失败，不影响手动部署。
 
-## 12. 明确未完成 / 待办（详见现状报告）
+## 12. 待办与已知问题（2025-08-26 Change 2 修复后状态）
 
-**P0（数据损坏，必须先修）**
-1. `writeFullState` 全量保存把学员 `user_id` 写成 NULL（前端 Student 无 userId 字段）→ 教练每次保存后，所有学员登录即失去数据。`functions/lib/db.js:77`
-2. `PUT /api/state` 先删后建（删除全部业务行再按教练快照重建）→ 保存期间学员新产生的预约/支付/通知会被静默丢弃。
+**已修复（Change 2；本地 E2E 26/26 + 追加合并测试 + 线上验证通过）**：
+- P0：writeFullState 改为按 id 合并（upsert-only）并保留学员 user_id；不再丢弃并发学员数据。
+- P1：教练端 actions 按角色返回全量视图；教练通知已读生效；首页/移动菜单/页脚锚点滚动正常；时区 past 判断正确；批量移动同日期保留原时刻；SQL NOT EXISTS 并发冲突防护。
+- P2：学员改期 UI（FAQ 承诺兑现）；改期双通知（学员+教练）；reschedule 保持原状态；套餐课时上限校验；addPayment 校验方式+防重复 pending；错误文案修正；studentView 对学生脱敏 payConfig；ICS 订阅 token 鉴权+时区参数；加载失败重试；状态标签修正；日程桌面布局；/courses 移动菜单；2 小时惰性提醒；登录/注册/短信限流（D1 rate_limits）。
+- P3：删除死代码（StudentBookingModal、SlotTimeList、functions/lib/seed.js、resetDemo、FAVICON_DATA_URL、COURSE_IMAGE_FALLBACK）；登录占位符中性化；删除 send-code 本地验证码兜底（未配置 Twilio 时明确报错）；关闭注册为教练的开放通道；补 i18n 键（payment.wechat、pending、cancelled、moveHint 等）；通知/支付时间戳按 UTC 正确换算本地显示；manifest 加 id、/hero、/course 短缓存；设置页新增「教练资料」编辑。
 
-**P1（核心功能错误）**
-3. 教练端任何 actions 操作（确认支付/取消/改期/标记已读）后，后端返回「学员视角空状态」，教练后台本地学员/支付/通知列表被清空、预约被匿名化，30 秒轮询后才恢复。`functions/api/student/actions.js:83`
-4. 教练通知「已读/全部已读」后端只匹配学员角色 → 未读徽标永不消失。`actions.js:340,349`
-5. 首页/移动菜单/页脚锚点被 HashRouter 劫持：`#courses`→跳到课程页、`#g1`→跳到题库页、`#how-it-works`/`#instructor`/`#contact`/`#faq`→弹回首页顶部（仅 `#videos` 有 preventDefault）。`LandingPage.tsx`
-6. 时区 bug：服务器把客户端本地时间当 UTC 解析，同一天下午/晚上的预约被误判「过去」而拒绝（多伦多约 4–5 小时窗口）。`actions.js:140,264`
-7. 批量移动预约 >1 条必然冲突（同一开始时间），只有第一条能移动。`store.ts:298` + `actions.js`
-8. 并发双预约：冲突检查在内存快照上，两请求可同时通过（双预约）。
-
-**P2（普通功能问题）**：学员改期不通知教练、改期通知未写入返回 state；取消/确认支付 fire-and-forget（失败也显示成功）；reschedule 会把 pending/cancelled 强制改回 confirmed；bookPackageLessons 无数量上限；addPayment 不校验方式且允许重复 pending；学员端无改期 UI 但 FAQ 承诺了（需求冲突）；已完成套餐可再次预约；支付失败/预约错误文案张冠李戴；ICS 订阅无鉴权可枚举（隐私）；学员端加载失败无限转圈；日程桌面端被 280px 单列挤压；G1 页头锚点弹回首页；/courses 无移动导航；reminder_2h 无生成逻辑；登录/注册/send-code 无限流、登录错误可枚举、session 无清理。
-
-**P3（清理/优化）**：死代码（StudentBookingModal、SlotTimeList、seed.js、paymentGateway 未用函数、resetDemo、FAVICON_DATA_URL、COURSE_IMAGE_FALLBACK、死 CSS）；登录页占位符仍是演示手机号；send-code 本地验证码兜底仍在（去演示化冲突）；缺 i18n 键 payment.wechat；通知时间戳 UTC 偏差；manifest id/lang、/hero、/course 未缓存；landing primitives 与 shared 重复组件；教练姓名占位「Michael Reeves」待改；生产业务数据为空（需教练后台录入）。
-
-**需求冲突（需用户决定）**
-- FAQ 承诺学员可改期，但学员端只有取消 → 二选一：加学员改期 UI 或改 FAQ 文案。
-- 真实在线支付（Stripe/PayPal）未接入（当前为「支付记录 + 教练人工核对」）。
-- 2 小时上课提醒（reminder_2h）未实现。
-- ICS 公开订阅链接的隐私风险处理方式。
-- 后端仍保留「首个注册用户可成为教练」开放通道 + 本地验证码兜底（建议按去演示化收紧）。
+**仍需用户决定 / 后续事项**：
+1. **真实在线支付（Stripe/PayPal）**：当前为「支付记录 + 教练人工核对」（按推荐方案保持），需商户账号才能接入。
+2. **教练密码 `123456`**：正式开放前由用户修改（可在设置页资料区或由管理员改库）。
+3. **教练姓名**：当前「Michael Reeves」为占位，用户可在「设置 → 教练资料」自行修改。
+4. **生产业务数据为空**：需教练在后台录入课程/车辆/视频/工作时间后网站才有内容。
+5. 残留小项（P3，暂缓）：landing primitives 与 shared 组件去重；死 CSS 清理；`batchReschedule` store 函数现已无调用方（保留备用）。
 
 ## 13. 变更流程（必须遵守）
 

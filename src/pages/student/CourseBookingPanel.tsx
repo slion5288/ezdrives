@@ -68,12 +68,27 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
     selectedStart && isPackage && course.lessons
       ? course.lessons.slice(autoLesson, autoLesson + selCount).reduce((sum, l) => sum + l.price, 0)
       : course.price
-  const canBook = selectedStart !== null && (!isPackage || selCount >= 1)
+  const canBook = selectedStart !== null && (!isPackage || lessonStatuses.some((s) => s === 'free'))
 
   const handleTapLesson = (offset: number): void => {
     // offset 0 = first undone lesson, offset 1 = second undone lesson.
     if (selCount === offset + 1) setSelCount(offset) // tapping the selected tail deselects it
     else setSelCount(offset + 1) // tapping further selects through it
+  }
+
+  const bookingErrorMessage = (error: string): string => {
+    switch (error) {
+      case 'conflict':
+        return t('student.booking.slotTaken')
+      case 'closed':
+        return t('calendar.dayClosed')
+      case 'past':
+        return t('student.booking.past')
+      case 'not_purchased':
+        return t('payment.notPurchased')
+      default:
+        return t('common.toast.error')
+    }
   }
 
   const handleBook = async (): Promise<void> => {
@@ -88,7 +103,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
         )
         setSelectedStart(null)
       } else {
-        showToast('error', result.error === 'conflict' ? t('student.booking.slotTaken') : t('student.booking.closedDay'))
+        showToast('error', bookingErrorMessage(String(result.error)))
       }
       return
     }
@@ -97,7 +112,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
       showToast('success', t('student.booking.bookedOk'))
       setSelectedStart(null)
     } else {
-      showToast('error', result.error === 'conflict' ? t('student.booking.slotTaken') : t('student.booking.closedDay'))
+      showToast('error', bookingErrorMessage(String(result.error)))
     }
   }
 

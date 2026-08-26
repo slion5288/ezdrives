@@ -192,8 +192,8 @@ function CatalogSection({
             <button
               key={course.id}
               type="button"
-              className="student-course-card"
-              onClick={() => (owned ? onPick(course.id) : onBuy(course.id))}
+              className={`student-course-card${pending ? ' is-pending' : ''}`}
+              onClick={() => (owned ? onPick(course.id) : pending ? undefined : onBuy(course.id))}
             >
               <div className="student-course-card__thumb">
                 {(course.imageUrl || COURSE_IMAGES[course.id]) ? (

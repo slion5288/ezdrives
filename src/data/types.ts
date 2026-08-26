@@ -83,6 +83,8 @@ export interface Student {
   registeredAt: string // ISO local datetime
   avatarColor: string // CSS color token name or hex for avatar badge
   email?: string // optional — used as ICS "to" contact
+  /** Opaque token authorizing the private ICS subscription feed. */
+  icsToken?: string
 }
 
 export interface Notification {

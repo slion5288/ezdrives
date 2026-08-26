@@ -1,11 +1,13 @@
-// POST /api/auth/register — create a STUDENT account (instructor is
-// provisioned by /api/setup). Real validation: unique phone, password rules.
+// POST /api/auth/register — create a STUDENT account (the instructor account
+// is a pre-provisioned single row; instructor registration via this endpoint
+// is closed). Real validation: unique phone, SMS verification, password rules.
 import { json, fail, readJson } from '../../lib/util.js'
 import { hashPassword, createSession, uuid } from '../../lib/auth.js'
+import { icsToken } from '../../lib/db.js'
+import { checkRate } from '../../lib/rate.js'
 
 export async function onRequestPost({ env, request }) {
   const body = await readJson(request)
-  const role = body.role === 'instructor' ? 'instructor' : 'student'
   const name = String(body.name || '').trim()
   const phone = String(body.phone || '').trim()
   const password = String(body.password || '')
@@ -15,7 +17,15 @@ export async function onRequestPost({ env, request }) {
   if (phone.replace(/\D/g, '').length < 10) return fail('Please enter a valid phone number.')
   if (password.length < 6) return fail('Password must be at least 6 characters.')
 
-  // SMS verification (Twilio): verify the 6-digit code.
+  // Instructor accounts are provisioned by the system only — no open signup
+  // channel (single-instructor deployment).
+  if (body.role === 'instructor') return fail('Instructor account already exists.', 403)
+
+  // Limit: max 5 registration attempts per phone per 10 minutes.
+  const allowed = await checkRate(env, `register:${phone}`, 5, 10 * 60 * 1000)
+  if (!allowed) return fail('Too many requests. Please wait a few minutes and try again.', 429)
+
+  // SMS verification (Twilio Verify): check the 6-digit code.
   const smsCode = String(body.code || '').trim()
   if (!/^\d{6}$/.test(smsCode)) return fail('Enter the 6-digit SMS code.')
 
@@ -24,7 +34,6 @@ export async function onRequestPost({ env, request }) {
   const verifySid = env.TWILIO_VERIFY_SERVICE_SID
 
   if (sid && auth && verifySid && verifySid !== '__PENDING__') {
-    // Twilio Verify: check the code the user typed.
     const res = await fetch(`https://verify.twilio.com/v2/Services/${verifySid}/VerificationCheck`, {
       method: 'POST',
       headers: { Authorization: 'Basic ' + btoa(`${sid}:${auth}`), 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -33,22 +42,7 @@ export async function onRequestPost({ env, request }) {
     const data = await res.json().catch(() => ({}))
     if (!res.ok || data.status !== 'approved') return fail('That code does not match. Try again.')
   } else {
-    // Demo fallback: local code table.
-    const vc = await env.DB.prepare(
-      'SELECT * FROM verification_codes WHERE phone = ? AND used = 0 ORDER BY created_at DESC LIMIT 1',
-    ).bind(phone).first()
-    if (!vc) return fail('Send a verification code first.')
-    const age = Date.now() - new Date(vc.created_at).getTime()
-    if (age > 5 * 60 * 1000) return fail('The code has expired. Send a new one.')
-    if (vc.code !== smsCode) return fail('That code does not match. Try again.')
-    await env.DB.prepare('UPDATE verification_codes SET used = 1 WHERE phone = ? AND code = ?').bind(phone, smsCode).run()
-  }
-
-  // Only one instructor account (the admin). The FIRST registered user may be
-  // the instructor; afterwards instructor signup is closed.
-  if (role === 'instructor') {
-    const inst = await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'instructor'").first()
-    if (inst && inst.n > 0) return fail('Instructor account already exists.', 403)
+    return fail('SMS service is not configured yet. Please try again later.', 503)
   }
 
   const dup = await env.DB.prepare('SELECT id FROM users WHERE phone = ?').bind(phone).first()
@@ -58,45 +52,26 @@ export async function onRequestPost({ env, request }) {
   const userId = uuid()
   const now = new Date().toISOString()
 
-  const stmts = [
+  const maxRow = await env.DB.prepare('SELECT id FROM students ORDER BY CAST(SUBSTR(id, 2) AS INTEGER) DESC LIMIT 1').first()
+  const maxNum = maxRow ? Number(maxRow.id.slice(1)) : 0
+  const studentId = 's' + (maxNum + 1)
+  const student = {
+    id: studentId,
+    name,
+    phone,
+    address: address || undefined,
+    registeredAt: now,
+    avatarColor: '#3B82F6',
+    icsToken: icsToken(),
+  }
+
+  await env.DB.batch([
     env.DB.prepare(
       'INSERT INTO users (id, role, name, phone, email, password_hash, avatar_color, address, registered_at) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)',
-    ).bind(userId, role, name, phone, hash, '#3B82F6', address, now),
-  ]
-
-  if (role === 'student') {
-    const maxRow = await env.DB.prepare('SELECT id FROM students ORDER BY CAST(SUBSTR(id, 2) AS INTEGER) DESC LIMIT 1').first()
-    const maxNum = maxRow ? Number(maxRow.id.slice(1)) : 0
-    const studentId = 's' + (maxNum + 1)
-    const student = {
-      id: studentId,
-      name,
-      phone,
-      address: address || undefined,
-      registeredAt: now,
-      avatarColor: '#3B82F6',
-    }
-    stmts.push(env.DB.prepare('INSERT INTO students (id, user_id, payload) VALUES (?, ?, ?)').bind(studentId, userId, JSON.stringify(student)))
-  } else {
-    // Instructor registration: fill the profile row with their details.
-    const row = await env.DB.prepare('SELECT payload FROM instructor WHERE id = 1').first()
-    const prof = row ? JSON.parse(row.payload) : { breakMin: 10 }
-    const updated = {
-      ...prof,
-      name,
-      phone,
-      email: String(body.email || '').trim() || prof.email,
-      avatarColor: prof.avatarColor || '#A21CAF',
-    }
-    stmts.push(env.DB.prepare('INSERT OR REPLACE INTO instructor (id, payload) VALUES (1, ?)').bind(JSON.stringify(updated)))
-  }
-  await env.DB.batch(stmts)
+    ).bind(userId, 'student', name, phone, hash, '#3B82F6', address, now),
+    env.DB.prepare('INSERT INTO students (id, user_id, payload) VALUES (?, ?, ?)').bind(studentId, userId, JSON.stringify(student)),
+  ])
 
   const token = await createSession(env, userId)
-  let studentId
-  if (role === 'student') {
-    const s = await env.DB.prepare('SELECT id FROM students WHERE user_id = ?').bind(userId).first()
-    studentId = s ? s.id : undefined
-  }
-  return json({ ok: true, token, user: { id: userId, role, name, phone, studentId } })
+  return json({ ok: true, token, user: { id: userId, role: 'student', name, phone, studentId } })
 }

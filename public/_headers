@@ -2,6 +2,12 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Photos change rarely — short cache so the browser revalidates soon
+/hero/*
+  Cache-Control: public, max-age=3600
+/course/*
+  Cache-Control: public, max-age=3600
+
 # Never cache the shell
 /
   Cache-Control: no-cache

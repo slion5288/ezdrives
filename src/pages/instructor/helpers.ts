@@ -87,17 +87,16 @@ export function isLiveAppointment(a: Appointment): boolean {
 type TranslateFn = (key: string, vars?: Record<string, string | number>) => string
 
 /**
- * Status badge label. The (core-owned, locked) dictionaries only ship a
- * "confirmed" label (`stats.legend.confirmed`); nearest existing keys are
- * mapped for the other statuses so a raw key is never rendered.
+ * Status badge label. Uses dedicated appointment-status keys (a cancelled
+ * lesson must never render as "Deleted").
  */
 export function statusLabel(status: Appointment['status'], t: TranslateFn): string {
   switch (status) {
     case 'confirmed':
       return t('stats.legend.confirmed')
     case 'pending':
-      return t('student.booking.booked')
+      return t('student.booking.pending')
     case 'cancelled':
-      return t('common.toast.deleted')
+      return t('student.booking.cancelled')
   }
 }

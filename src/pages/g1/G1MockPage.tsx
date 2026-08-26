@@ -89,7 +89,15 @@ export default function G1MockPage(): JSX.Element {
             <Logo size="sm" />
           </Link>
           <nav className="g1-header__nav">
-            <a href="#g1-title">{t('g1.title')}</a>
+            <a
+              href="#g1-title"
+              onClick={(e) => {
+                e.preventDefault()
+                document.getElementById('g1-title')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            >
+              {t('g1.title')}
+            </a>
           </nav>
           <div className="g1-header__actions">
             <LanguageSwitcher />

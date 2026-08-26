@@ -218,9 +218,33 @@ export default function LandingPage(): JSX.Element {
         <div className="landing-header__inner container">
           <Logo />
           <nav className="landing-nav">
-            <a href="#how-it-works">{t('landing.steps.title')}</a>
-            <a href="#courses">{t('landing.courses.title')}</a>
-            <a href="#g1">{t('nav.g1')}</a>
+            <a
+              href="#how-it-works"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('how-it-works')
+              }}
+            >
+              {t('landing.steps.title')}
+            </a>
+            <a
+              href="#courses"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('courses')
+              }}
+            >
+              {t('landing.courses.title')}
+            </a>
+            <a
+              href="#g1"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('g1')
+              }}
+            >
+              {t('nav.g1')}
+            </a>
             <a
               href="#videos"
               onClick={(e) => {
@@ -230,8 +254,24 @@ export default function LandingPage(): JSX.Element {
             >
               {t('landing.videos.title')}
             </a>
-            <a href="#instructor">{t('landing.instructors.title')}</a>
-            <a href="#contact">{t('landing.footer.contact')}</a>
+            <a
+              href="#instructor"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('instructor')
+              }}
+            >
+              {t('landing.instructors.title')}
+            </a>
+            <a
+              href="#contact"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('contact')
+              }}
+            >
+              {t('landing.footer.contact')}
+            </a>
           </nav>
           <div className="landing-header__actions">
             <LanguageSwitcher />
@@ -256,13 +296,31 @@ export default function LandingPage(): JSX.Element {
         {/* Mobile menu — right-aligned dropdown under the menu button */}
         {menuOpen ? (
           <nav className="landing-mobile-menu" aria-label={t('nav.menu')}>
-            <a href="#how-it-works" onClick={closeMenu}>
+            <a
+              href="#how-it-works"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('how-it-works')
+              }}
+            >
               {t('landing.steps.title')}
             </a>
-            <a href="#courses" onClick={closeMenu}>
+            <a
+              href="#courses"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('courses')
+              }}
+            >
               {t('landing.courses.title')}
             </a>
-            <a href="#g1" onClick={closeMenu}>
+            <a
+              href="#g1"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('g1')
+              }}
+            >
               {t('nav.g1')}
             </a>
             <a
@@ -274,10 +332,22 @@ export default function LandingPage(): JSX.Element {
             >
               {t('landing.videos.title')}
             </a>
-            <a href="#instructor" onClick={closeMenu}>
+            <a
+              href="#instructor"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('instructor')
+              }}
+            >
               {t('landing.instructors.title')}
             </a>
-            <a href="#contact" onClick={closeMenu}>
+            <a
+              href="#contact"
+              onClick={(e) => {
+                e.preventDefault()
+                goToSection('contact')
+              }}
+            >
               {t('landing.footer.contact')}
             </a>
           </nav>
@@ -603,8 +673,24 @@ export default function LandingPage(): JSX.Element {
               >
                 {t('landing.steps.title')}
               </a>
-              <a href="#courses">{t('landing.courses.title')}</a>
-              <a href="#g1">{t('nav.g1')}</a>
+              <a
+                href="#courses"
+                onClick={(e) => {
+                  e.preventDefault()
+                  goToSection('courses')
+                }}
+              >
+                {t('landing.courses.title')}
+              </a>
+              <a
+                href="#g1"
+                onClick={(e) => {
+                  e.preventDefault()
+                  goToSection('g1')
+                }}
+              >
+                {t('nav.g1')}
+              </a>
               <a
                 href="#videos"
                 onClick={(e) => {
@@ -615,7 +701,15 @@ export default function LandingPage(): JSX.Element {
                 {t('landing.videos.title')}
               </a>
               <Link to="/courses">{t('nav.courses')}</Link>
-              <a href="#faq">{t('landing.faq.title')}</a>
+              <a
+                href="#faq"
+                onClick={(e) => {
+                  e.preventDefault()
+                  goToSection('faq')
+                }}
+              >
+                {t('landing.faq.title')}
+              </a>
               <Link to="/login?role=instructor">{t('nav.instructor')}</Link>
             </div>
             <div className="landing-footer__col">

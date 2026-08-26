@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import type { AppState, Notification } from '../../data/store'
 import { confirmPayment, markAllRead, markNotificationRead, paymentMethodLabel, rejectPayment } from '../../data/store'
-import { formatDateEn, formatDateZh, formatHM, fromLocalISO } from '../../data/timeEngine'
+import { formatDateEn, formatDateZh, formatHM, fromServerISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
 import {
   BadgeCheck,
@@ -61,16 +61,20 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
 
   const handleConfirm = (): void => {
     if (!linkedPayment) return
-    confirmPayment(linkedPayment.id)
-    toast({ tone: 'success', title: t('instructor.payments.confirm') })
-    setDetail(null)
+    void (async () => {
+      const result = await confirmPayment(linkedPayment.id)
+      toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.confirm') : t('common.toast.error') })
+      if (result.ok) setDetail(null)
+    })()
   }
 
   const handleReject = (): void => {
     if (!linkedPayment) return
-    rejectPayment(linkedPayment.id)
-    toast({ tone: 'success', title: t('instructor.payments.reject') })
-    setDetail(null)
+    void (async () => {
+      const result = await rejectPayment(linkedPayment.id)
+      toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
+      if (result.ok) setDetail(null)
+    })()
   }
 
   return (
@@ -94,7 +98,7 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
         <ul className="ins-notif-list">
           {notifications.map((n) => {
             const Icon = TYPE_ICONS[n.type] ?? BellRing
-            const at = fromLocalISO(n.at)
+            const at = fromServerISO(n.at)
             const timeLabel = `${locale === 'zh' ? formatDateZh(at) : formatDateEn(at)} · ${formatHM(at)}`
             const payable = n.type === 'payment_pending'
             return (
@@ -162,8 +166,8 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
               <div>
                 <p className="ins-notif-detail-title">{locale === 'zh' ? detail.title.zh : detail.title.en}</p>
                 <p className="ins-notif-detail-meta tabular-nums">
-                  {locale === 'zh' ? formatDateZh(fromLocalISO(detail.at)) : formatDateEn(fromLocalISO(detail.at))} ·{' '}
-                  {formatHM(fromLocalISO(detail.at))}
+                  {locale === 'zh' ? formatDateZh(fromServerISO(detail.at)) : formatDateEn(fromServerISO(detail.at))} ·{' '}
+                  {formatHM(fromServerISO(detail.at))}
                 </p>
               </div>
             </div>

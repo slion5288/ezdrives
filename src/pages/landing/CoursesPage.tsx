@@ -5,7 +5,8 @@
 // each card books straight into the student flow.
 // ============================================================================
 
-import { ArrowLeft, ArrowRight, Check, Clock, GraduationCap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Clock, GraduationCap, Menu, X } from 'lucide-react'
+import { useState } from 'react'
 import { useLocale, useT } from '../../i18n'
 import { useAppState } from '../../data/store'
 import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
@@ -16,10 +17,17 @@ export default function CoursesPage(): JSX.Element {
   const t = useT()
   const locale = useLocale()
   const state = useAppState()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
   const courses = state.courses.filter((c) => c.active)
   const popularIndex = courses.length > 1 ? 1 : 0
+
+  const navLinks = [
+    { href: '#/', label: t('nav.home') },
+    { href: '#/g1', label: t('nav.g1') },
+    { href: '#/login', label: t('nav.login') },
+  ]
 
   return (
     <div className="landing-page landing-page--sub">
@@ -27,15 +35,38 @@ export default function CoursesPage(): JSX.Element {
         <div className="landing-header__inner container">
           <Logo />
           <nav className="landing-nav">
-            <a href="#/">{t('nav.home')}</a>
-            <a href="#/g1">{t('nav.g1')}</a>
-            <a href="#/login">{t('nav.login')}</a>
+            {navLinks.map((link) => (
+              <a key={link.href} href={link.href}>
+                {link.label}
+              </a>
+            ))}
           </nav>
           <div className="landing-header__actions">
             <LanguageSwitcher />
             <ThemeToggle />
+            <button
+              type="button"
+              className="landing-menu-btn"
+              aria-label={t('nav.menu')}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
+
+        {menuOpen ? <div className="landing-menu-scrim" onClick={() => setMenuOpen(false)} aria-hidden="true" /> : null}
+
+        {menuOpen ? (
+          <nav className="landing-mobile-menu" aria-label={t('nav.menu')}>
+            {navLinks.map((link) => (
+              <a key={link.href} href={link.href} onClick={() => setMenuOpen(false)}>
+                {link.label}
+              </a>
+            ))}
+          </nav>
+        ) : null}
       </header>
 
       <main>

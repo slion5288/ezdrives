@@ -235,7 +235,7 @@ export async function bookAppointment(
   lessonIndex?: number,
 ): Promise<{ ok: true; appointment: Appointment } | { ok: false; error: BookingError | string }> {
   if (!session.token) return { ok: false, error: 'not_authenticated' }
-  const res = await apiAction(session.token, 'bookAppointment', { studentId, courseId, startISO, lessonIndex })
+  const res = await apiAction(session.token, 'bookAppointment', { studentId, courseId, startISO, lessonIndex, clientNow: toLocalISO(new Date()) })
   if (res.ok && res.state) {
     await applyServerState(res)
     const appts = (res.state as AppState).appointments.filter((a) => a.studentId === studentId && a.courseId === courseId)
@@ -258,7 +258,7 @@ export async function bookPackageLessons(
   count: number,
 ): Promise<{ ok: true; appointments: Appointment[] } | { ok: false; error: BookingError | string }> {
   if (!session.token) return { ok: false, error: 'not_authenticated' }
-  const res = await apiAction(session.token, 'bookPackageLessons', { studentId, courseId, startISO, firstLessonIndex, count })
+  const res = await apiAction(session.token, 'bookPackageLessons', { studentId, courseId, startISO, firstLessonIndex, count, clientNow: toLocalISO(new Date()) })
   if (res.ok && res.state) {
     await applyServerState(res)
     const appts = (res.state as AppState).appointments.filter(
@@ -287,7 +287,7 @@ export async function cancelAppointment(id: string): Promise<{ ok: true } | { ok
 
 export async function rescheduleAppointment(id: string, newStartISO: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!session.token) return { ok: false, error: 'not_authenticated' }
-  const res = await apiAction(session.token, 'rescheduleAppointment', { id, newStartISO })
+  const res = await apiAction(session.token, 'rescheduleAppointment', { id, newStartISO, clientNow: toLocalISO(new Date()) })
   if (res.ok && res.state) {
     await applyServerState(res)
     return { ok: true }
@@ -412,6 +412,13 @@ export function addException(exp: DayException): void {
 export function removeException(date: string): void {
   mutate((draft) => {
     draft.exceptions = draft.exceptions.filter((e) => e.date !== date)
+  })
+}
+
+/** Instructor saves their own public profile (name / phone / email / bio). */
+export function updateInstructorProfile(profile: Partial<AppState['instructor']>): void {
+  mutate((draft) => {
+    draft.instructor = { ...draft.instructor, ...profile }
   })
 }
 
@@ -568,17 +575,25 @@ export async function addPayment(
 }
 
 /** Instructor confirms the payment → the course becomes purchased. */
-export async function confirmPayment(id: string): Promise<void> {
-  if (!session.token) return
+export async function confirmPayment(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
   const res = await apiAction(session.token, 'confirmPayment', { id })
-  if (res.ok && res.state) await applyServerState(res)
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error }
 }
 
 /** Instructor rejects the payment. */
-export async function rejectPayment(id: string): Promise<void> {
-  if (!session.token) return
+export async function rejectPayment(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
   const res = await apiAction(session.token, 'rejectPayment', { id })
-  if (res.ok && res.state) await applyServerState(res)
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error }
 }
 
 // --- Auth / session ---
@@ -699,13 +714,9 @@ export async function markAllRead(_role?: string, _recipientId?: string): Promis
   }
 }
 
-// --- Demo utilities ---
+// --- Sync stamp ---
 
-export function resetDemo(): void {
-  clearSession()
-}
-
-/** Demo "synced" stamp (local ISO), refreshed on every mutation. */
+/** "Synced" stamp (local ISO), refreshed on every mutation. */
 export function getLastSyncISO(): string {
   return lastSyncISO
 }

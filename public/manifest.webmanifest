@@ -2,6 +2,7 @@
   "name": "EZDRIVES Driving School",
   "short_name": "EZDRIVES",
   "description": "Book driving lessons online with a licensed instructor. 在线预约驾校课程。",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

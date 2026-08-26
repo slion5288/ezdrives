@@ -19,7 +19,7 @@ import { PaymentMethodBrand } from '../../components/payment/PaymentBrandIcons'
 import { Avatar, Badge, EmptyState } from './ui'
 import { useToast } from './toast'
 import { formatMoney } from './helpers'
-import { formatDateEn, formatDateZh, fromLocalISO } from '../../data/timeEngine'
+import { formatDateEn, formatDateZh, fromServerISO } from '../../data/timeEngine'
 import type { InstructorTab } from './helpers'
 
 interface PaymentsPageProps {
@@ -79,7 +79,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
               const student = state.students.find((s) => s.id === p.studentId)
               const course = state.courses.find((c) => c.id === p.courseId)
               const courseName = course ? (locale === 'zh' ? course.name.zh : course.name.en) : p.courseId
-              const date = fromLocalISO(p.createdAt)
+              const date = fromServerISO(p.createdAt)
               const methodLabel = paymentMethodLabel(p.method, locale)
               return (
                 <tr key={p.id}>
@@ -114,8 +114,10 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           type="button"
                           className="ins-btn ins-btn--primary ins-btn--sm"
                           onClick={() => {
-                            confirmPayment(p.id)
-                            toast({ tone: 'success', title: t('instructor.payments.confirm') })
+                            void (async () => {
+                              const result = await confirmPayment(p.id)
+                              toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.confirm') : t('common.toast.error') })
+                            })()
                           }}
                         >
                           {t('instructor.payments.confirm')}
@@ -124,8 +126,10 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           type="button"
                           className="ins-btn ins-btn--danger-ghost ins-btn--sm"
                           onClick={() => {
-                            rejectPayment(p.id)
-                            toast({ tone: 'success', title: t('instructor.payments.reject') })
+                            void (async () => {
+                              const result = await rejectPayment(p.id)
+                              toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
+                            })()
                           }}
                         >
                           {t('instructor.payments.reject')}

@@ -10,13 +10,13 @@
 import { useState } from 'react'
 import { CalendarPlus, Download, History, Link2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { cancelAppointment, getSession, lessonLabel, maskPhone, updateStudentAddress, useAppState } from '../../data/store'
+import { cancelAppointment, getSession, lessonLabel, maskPhone, rescheduleAppointment, updateStudentAddress, useAppState } from '../../data/store'
 import type { Appointment, Course } from '../../data/store'
-import { fromLocalISO } from '../../data/timeEngine'
+import { dateKey, formatHM, fromLocalISO, fromServerISO, getLessonStarts, parseDateKey, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
 import { downloadICS } from '../../utils/ics'
 import type { IcsEvent } from '../../utils/ics'
-import { Avatar, ConfirmModal, EmptyState, StatusBadge } from './StudentShared'
+import { Avatar, ConfirmModal, EmptyState, ModalFrame, StatusBadge } from './StudentShared'
 import type { BadgeTone } from './StudentShared'
 import { StudentShell } from './StudentShell'
 import { formatDateLabel, formatDateTimeLabel, relativeTime } from './studentFormat'
@@ -34,6 +34,102 @@ function historyTone(note: { en: string; zh: string }): HistoryTone {
   return 'success'
 }
 
+/** Student-side reschedule dialog: pick a date, then a free start time. */
+function RescheduleModal({
+  appointment,
+  state,
+  onClose,
+  onDone,
+}: {
+  appointment: Appointment
+  state: ReturnType<typeof useAppState>
+  onClose: () => void
+  onDone: () => void
+}): JSX.Element {
+  const t = useT()
+  const { showToast } = useToast()
+  const [date, setDate] = useState<string>(() => dateKey(fromLocalISO(appointment.start)))
+  const [startISO, setStartISO] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const course = state.courses.find((c) => c.id === appointment.courseId)
+  const duration = course ? (course.type === 'package' ? 60 : course.durationMin) : 60
+  const starts = getLessonStarts(parseDateKey(date), state, duration, appointment.studentId, appointment.id)
+
+  const confirm = async (): Promise<void> => {
+    if (!startISO) return
+    setBusy(true)
+    const result = await rescheduleAppointment(appointment.id, startISO)
+    setBusy(false)
+    if (result.ok) {
+      showToast('success', t('common.toast.saved'))
+      onDone()
+    } else {
+      const message =
+        result.error === 'conflict'
+          ? t('student.booking.slotTaken')
+          : result.error === 'closed'
+            ? t('calendar.dayClosed')
+            : result.error === 'past'
+              ? t('student.booking.past')
+              : t('common.toast.error')
+      showToast('error', message)
+    }
+  }
+
+  return (
+    <ModalFrame open title={t('student.dashboard.rescheduleTitle')} onClose={onClose}>
+      <p className="student-confirm-body">{t('student.dashboard.rescheduleBody')}</p>
+      <div className="student-field">
+        <label className="student-field-label" htmlFor="stu-resched-date">
+          {t('instructor.workinghours.date')}
+        </label>
+        <input
+          id="stu-resched-date"
+          type="date"
+          className="student-card-input"
+          value={date}
+          min={dateKey(new Date())}
+          onChange={(e) => {
+            setDate(e.target.value)
+            setStartISO(null)
+          }}
+        />
+      </div>
+      <div className="student-field">
+        <label className="student-field-label">{t('instructor.schedule.pickNewTime')}</label>
+        {starts.length === 0 ? (
+          <p className="student-muted-note">{t('calendar.dayClosed')}</p>
+        ) : (
+          <div className="student-slot-grid">
+            {starts.map((d) => {
+              const iso = toLocalISO(d)
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  className={`student-slot${startISO === iso ? ' is-selected' : ''}`}
+                  onClick={() => setStartISO(iso)}
+                >
+                  {formatHM(d)}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      <div className="student-modal-actions">
+        <button type="button" className="student-btn student-btn-secondary" onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button type="button" className="student-btn student-btn-primary" disabled={!startISO || busy} onClick={() => void confirm()}>
+          {busy ? t('auth.login.loading') : t('common.confirm')}
+        </button>
+      </div>
+    </ModalFrame>
+  )
+}
+
 export default function StudentProfilePage(): JSX.Element {
   return (
     <StudentShell>
@@ -48,6 +144,7 @@ function StudentProfileContent(): JSX.Element {
   const state = useAppState()
   const { showToast } = useToast()
   const [cancelId, setCancelId] = useState<string | null>(null)
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null)
   const [settings, setSettings] = useState({ email: true, sms: false, inApp: true })
 
   const session = getSession()
@@ -75,7 +172,11 @@ function StudentProfileContent(): JSX.Element {
     .filter((a) => (a.status === 'confirmed' || a.status === 'pending') && fromLocalISO(a.start).getTime() > now.getTime())
     .sort((a, b) => a.start.localeCompare(b.start))
   const history = myAppointments
-    .filter((a) => a.status === 'cancelled' || (a.status === 'confirmed' && fromLocalISO(a.end).getTime() < now.getTime()))
+    .filter(
+      (a) =>
+        a.status === 'cancelled' ||
+        ((a.status === 'confirmed' || a.status === 'pending') && fromLocalISO(a.end).getTime() < now.getTime()),
+    )
     .sort((a, b) => b.start.localeCompare(a.start))
 
   const statusTone = (appt: Appointment): BadgeTone => {
@@ -85,7 +186,7 @@ function StudentProfileContent(): JSX.Element {
   }
   const statusLabel = (appt: Appointment): string => {
     // Completed lessons show 已完成 — consistent with the calendar display.
-    if (appt.status === 'cancelled') return appt.history.length > 0 ? appt.history[appt.history.length - 1].note[locale] : ''
+    if (appt.status === 'cancelled') return appt.history.length > 0 ? appt.history[appt.history.length - 1].note[locale] : t('student.booking.cancelled')
     if (fromLocalISO(appt.end).getTime() < now.getTime()) return t('student.booking.completed')
     return appt.history.length > 0 ? appt.history[appt.history.length - 1].note[locale] : ''
   }
@@ -105,7 +206,8 @@ function StudentProfileContent(): JSX.Element {
     showToast('success', t('ics.exported'))
   }
 
-  const subscriptionUrl = `${window.location.origin}/api/ics/${studentId}`
+  // Private subscription feed: per-student token + client timezone offset.
+  const subscriptionUrl = `${window.location.origin}/api/ics/${studentId}?t=${encodeURIComponent(student?.icsToken ?? '')}&tz=${-new Date().getTimezoneOffset()}`
 
   const handleCopySubscription = async (): Promise<void> => {
     try {
@@ -244,6 +346,15 @@ function StudentProfileContent(): JSX.Element {
                         </p>
                       </div>
                       <StatusBadge tone={statusTone(appt)} label={statusLabel(appt)} />
+                      {appt.status === 'confirmed' || appt.status === 'pending' ? (
+                        <button
+                          type="button"
+                          className="student-btn student-btn-secondary student-btn-sm"
+                          onClick={() => setRescheduleId(appt.id)}
+                        >
+                          {t('student.dashboard.reschedule')}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         className="student-btn student-btn-ghost-danger student-btn-sm"
@@ -292,7 +403,7 @@ function StudentProfileContent(): JSX.Element {
                         {appt.history.map((entry, index) => (
                           <li key={index} className="student-history-entry">
                             <span className="student-history-note">{entry.note[locale]}</span>
-                            <span className="student-history-time">{relativeTime(locale, fromLocalISO(entry.at))}</span>
+                            <span className="student-history-time">{relativeTime(locale, fromServerISO(entry.at))}</span>
                           </li>
                         ))}
                       </ol>
@@ -350,6 +461,15 @@ function StudentProfileContent(): JSX.Element {
         onConfirm={handleCancel}
         onClose={() => setCancelId(null)}
       />
+
+      {rescheduleId !== null ? (
+        <RescheduleModal
+          appointment={myAppointments.find((a) => a.id === rescheduleId) as Appointment}
+          state={state}
+          onClose={() => setRescheduleId(null)}
+          onDone={() => setRescheduleId(null)}
+        />
+      ) : null}
     </div>
   )
 }

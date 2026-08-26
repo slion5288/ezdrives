@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import type { AppState, Appointment } from '../../data/store'
-import { batchReschedule, cancelAppointment, lessonLabel, rescheduleAppointment } from '../../data/store'
+import { cancelAppointment, lessonLabel, rescheduleAppointment } from '../../data/store'
 import {
   addDays,
   addMinutes,
@@ -39,6 +39,7 @@ function TimePickerModal({
   windowMin,
   exceptIds,
   initialDate,
+  dateOnly,
   onClose,
   onConfirm,
 }: {
@@ -48,6 +49,8 @@ function TimePickerModal({
   windowMin: number
   exceptIds: string[]
   initialDate?: string
+  /** Batch mode: pick a DATE only — every selected lesson keeps its own time. */
+  dateOnly?: boolean
   onClose: () => void
   onConfirm: (startISO: string) => void
 }): JSX.Element {
@@ -111,7 +114,7 @@ function TimePickerModal({
   const endISO = toLocalISO(addMinutes(fromLocalISO(startISO), windowMin))
   const conflictIds = overlappingIds(state, startISO, endISO, exceptIds)
   const hasConflict = conflictIds.length > 0
-  const canConfirm = !hasConflict && futureMinutes.length > 0
+  const canConfirm = dateOnly ? date !== '' : !hasConflict && futureMinutes.length > 0
 
   return (
     <Modal
@@ -122,7 +125,7 @@ function TimePickerModal({
           <button type="button" className="ins-btn ins-btn--secondary" onClick={onClose}>
             {t('common.cancel')}
           </button>
-          <button type="button" className="ins-btn ins-btn--primary" disabled={!canConfirm} onClick={() => onConfirm(startISO)}>
+          <button type="button" className="ins-btn ins-btn--primary" disabled={!canConfirm} onClick={() => onConfirm(dateOnly ? `${date}T00:00:00` : startISO)}>
             {t('common.confirm')}
           </button>
         </>
@@ -142,20 +145,22 @@ function TimePickerModal({
           onChange={(e) => setDate(e.target.value)}
         />
       </div>
-      <div className="ins-field">
-        <label className="ins-field-label" htmlFor="ins-picker-time">
-          {t('instructor.schedule.pickNewTime')}
-        </label>
-        <select id="ins-picker-time" className="ins-input" value={time} disabled={futureMinutes.length === 0} onChange={(e) => setTime(e.target.value)}>
-          {futureMinutes.map((m) => (
-            <option key={m} value={fmtMin(m)}>
-              {fmtMin(m)}
-            </option>
-          ))}
-        </select>
-        {futureMinutes.length === 0 ? <p className="ins-field-hint">{t('calendar.dayClosed')}</p> : null}
-        {hasConflict ? <p className="ins-field-error">{t('student.booking.slotTaken')}</p> : null}
-      </div>
+      {!dateOnly ? (
+        <div className="ins-field">
+          <label className="ins-field-label" htmlFor="ins-picker-time">
+            {t('instructor.schedule.pickNewTime')}
+          </label>
+          <select id="ins-picker-time" className="ins-input" value={time} disabled={futureMinutes.length === 0} onChange={(e) => setTime(e.target.value)}>
+            {futureMinutes.map((m) => (
+              <option key={m} value={fmtMin(m)}>
+                {fmtMin(m)}
+              </option>
+            ))}
+          </select>
+          {futureMinutes.length === 0 ? <p className="ins-field-hint">{t('calendar.dayClosed')}</p> : null}
+          {hasConflict ? <p className="ins-field-error">{t('student.booking.slotTaken')}</p> : null}
+        </div>
+      ) : null}
     </Modal>
   )
 }
@@ -248,16 +253,37 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
 
   const confirmCancel = async (): Promise<void> => {
     if (!detail) return
-    await cancelAppointment(detail.id)
-    toast({ tone: 'success', title: t('common.toast.deleted') })
-    setShowCancel(false)
-    setDetail(null)
+    const result = await cancelAppointment(detail.id)
+    if (result.ok) {
+      toast({ tone: 'success', title: t('common.toast.deleted') })
+      setShowCancel(false)
+      setDetail(null)
+    } else {
+      toast({ tone: 'error', title: result.error === 'past' ? t('student.booking.past') : t('common.toast.error') })
+    }
   }
 
-  const confirmBatch = async (startISO: string): Promise<void> => {
-    const result = await batchReschedule([...selected], startISO)
-    if (result.moved.length > 0) toast({ tone: 'success', title: t('instructor.schedule.moved', { count: result.moved.length }) })
-    if (result.failed.length > 0) toast({ tone: 'error', title: t('instructor.schedule.failed', { count: result.failed.length }) })
+  /** Batch move: all selected lessons go to the same DATE, each keeping its own start time. */
+  const confirmBatch = async (targetISO: string): Promise<void> => {
+    const targetDate = dateKey(fromLocalISO(targetISO))
+    const moved: string[] = []
+    const failed: { id: string; error: string }[] = []
+    for (const id of [...selected]) {
+      const appt = state.appointments.find((a) => a.id === id)
+      if (!appt) {
+        failed.push({ id, error: 'not found' })
+        continue
+      }
+      const orig = fromLocalISO(appt.start)
+      const hh = String(orig.getHours()).padStart(2, '0')
+      const mm = String(orig.getMinutes()).padStart(2, '0')
+      const newStart = `${targetDate}T${hh}:${mm}:00`
+      const result = await rescheduleAppointment(id, newStart)
+      if (result.ok) moved.push(id)
+      else failed.push({ id, error: result.error })
+    }
+    if (moved.length > 0) toast({ tone: 'success', title: t('instructor.schedule.moved', { count: moved.length }) })
+    if (failed.length > 0) toast({ tone: 'error', title: t('instructor.schedule.failed', { count: failed.length }) })
     setShowBatch(false)
     setSelected(new Set())
     setBatchMode(false)
@@ -516,10 +542,11 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
       {showBatch ? (
         <TimePickerModal
           title={t('instructor.schedule.batchMove')}
-          body={t('instructor.schedule.moveConfirm', { count: selected.size })}
+          body={t('instructor.schedule.moveHint', { count: selected.size })}
           state={state}
           windowMin={60}
           exceptIds={[...selected]}
+          dateOnly
           onClose={() => setShowBatch(false)}
           onConfirm={confirmBatch}
         />

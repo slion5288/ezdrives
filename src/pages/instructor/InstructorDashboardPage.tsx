@@ -69,6 +69,7 @@ export default function InstructorDashboardPage(): JSX.Element {
   const [tab, setTab] = useState<InstructorTab>('overview')
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [ready, setReady] = useState<boolean>(() => isStateLoaded())
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -82,9 +83,21 @@ export default function InstructorDashboardPage(): JSX.Element {
   // On a hard refresh the session is restored but server state needs fetching.
   useEffect(() => {
     if (!isStateLoaded()) {
-      initStateFromServer().then((ok) => setReady(ok))
+      initStateFromServer().then((ok) => {
+        setReady(ok)
+        setLoadError(!ok)
+      })
     }
   }, [])
+
+  const retryLoad = (): void => {
+    setLoadError(false)
+    setReady(false)
+    initStateFromServer().then((ok) => {
+      setReady(ok)
+      setLoadError(!ok)
+    })
+  }
 
   // Live sync: poll the server every 30s so student purchases/bookings appear.
   useEffect(() => {
@@ -101,6 +114,14 @@ export default function InstructorDashboardPage(): JSX.Element {
       <div className="ins-loading" role="status">
         <Loader2 size={26} className="ins-loading__spin" />
         <span>{t('nav.loading')}</span>
+        {loadError ? (
+          <div className="ins-loading__error">
+            <p>{t('common.toast.error')}</p>
+            <button type="button" className="ins-btn ins-btn--primary ins-btn--sm" onClick={retryLoad}>
+              {t('common.retry')}
+            </button>
+          </div>
+        ) : null}
       </div>
     )
   }

@@ -205,6 +205,13 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* Settings profile editor */
+.ins-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
 .ins-content {
   max-width: 1200px;
   padding: var(--space-5) 40px var(--space-7);
@@ -639,7 +646,7 @@
 
 .ins-schedule-layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 1fr;
   gap: var(--space-4);
   align-items: start;
 }
@@ -2473,6 +2480,18 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
 }
 
 /* --- Shell loading state --- */
+
+.ins-loading__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.ins-loading__error p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
 .ins-loading {
   min-height: 70vh;
   display: flex;

@@ -5,6 +5,12 @@
 
 const mapRows = (res) => (res.results || []).map((r) => JSON.parse(r.payload))
 
+/** Random opaque token (64 hex chars) for calendar-subscription access. */
+export function icsToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32))
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 /** Full business state assembled from D1 (all tables). */
 export async function readFullState(env) {
   const [instructor, rules, exceptions, courses, vehicles, videos, students, appointments, payments, notifications] =
@@ -21,13 +27,31 @@ export async function readFullState(env) {
       env.DB.prepare('SELECT payload FROM notifications ORDER BY rowid').all(),
     ])
 
+  // Backfill calendar-subscription tokens for students created before the
+  // token feature existed (runs at most once per student).
+  const studentRows = students.results || []
+  const toToken = studentRows
+    .map((r) => JSON.parse(r.payload))
+    .filter((s) => !s.icsToken)
+  if (toToken.length > 0) {
+    const updates = toToken.map((s) => {
+      const token = icsToken()
+      s.icsToken = token
+      return { id: s.id, token, payload: JSON.stringify(s) }
+    })
+    await env.DB.batch(
+      updates.map((u) =>
+        env.DB.prepare('UPDATE students SET payload = ? WHERE id = ?').bind(u.payload, u.id)),
+    )
+  }
+
   const state = {
     instructor: instructor ? JSON.parse(instructor.payload) : null,
     weeklyRules: mapRows(rules),
     exceptions: mapRows(exceptions),
     courses: mapRows(courses),
     vehicles: mapRows(vehicles),
-    students: mapRows(students),
+    students: studentRows.map((r) => JSON.parse(r.payload)),
     appointments: mapRows(appointments),
     notifications: mapRows(notifications),
     payments: mapRows(payments),
@@ -38,10 +62,24 @@ export async function readFullState(env) {
 }
 
 /**
- * Replace ALL business rows with the given AppState (instructor write).
- * Runs in one atomic batch so a partial failure never leaves mixed state.
+ * Persist the instructor's AppState snapshot (PUT /api/state).
+ *
+ * Merge strategy (in one atomic batch):
+ *  - Instructor-owned tables (weekly_rules, day_exceptions, courses, vehicles,
+ *    videos): replace — rows absent from the snapshot are deleted, so
+ *    instructor deletions propagate.
+ *  - Student-influenced tables (students, appointments, payments,
+ *    notifications): UPSERT ONLY — rows present in the snapshot are replaced,
+ *    rows the instructor's (possibly stale) snapshot lacks are PRESERVED, so
+ *    concurrent student-created bookings/payments/notifications are never
+ *    discarded by a save. Students additionally keep their existing user_id
+ *    (the frontend payload has no userId field) so auth links survive saves.
  */
 export async function writeFullState(env, state) {
+  // Existing student auth links, keyed by student id.
+  const existing = await env.DB.prepare('SELECT id, user_id FROM students').all()
+  const userIdByStudentId = new Map((existing.results || []).map((r) => [r.id, r.user_id]))
+
   const stmts = []
   stmts.push(
     env.DB.prepare('DELETE FROM weekly_rules'),
@@ -49,10 +87,6 @@ export async function writeFullState(env, state) {
     env.DB.prepare('DELETE FROM courses'),
     env.DB.prepare('DELETE FROM vehicles'),
     env.DB.prepare('DELETE FROM videos'),
-    env.DB.prepare('DELETE FROM students'),
-    env.DB.prepare('DELETE FROM appointments'),
-    env.DB.prepare('DELETE FROM payments'),
-    env.DB.prepare('DELETE FROM notifications'),
   )
 
   if (state.instructor) {
@@ -73,11 +107,14 @@ export async function writeFullState(env, state) {
   for (const v of state.videos || []) {
     stmts.push(env.DB.prepare('INSERT OR REPLACE INTO videos (id, order_no, active, payload) VALUES (?, ?, ?, ?)').bind(v.id, v.order || 0, v.active ? 1 : 0, JSON.stringify(v)))
   }
+  // Upsert-only (never delete) so concurrent student data survives a save.
   for (const s of state.students || []) {
-    stmts.push(env.DB.prepare('INSERT OR REPLACE INTO students (id, user_id, payload) VALUES (?, ?, ?)').bind(s.id, s.userId || null, JSON.stringify(s)))
+    const uid = s.userId || userIdByStudentId.get(s.id) || null
+    stmts.push(env.DB.prepare('INSERT OR REPLACE INTO students (id, user_id, payload) VALUES (?, ?, ?)').bind(s.id, uid, JSON.stringify(s)))
   }
   for (const a of state.appointments || []) {
-    stmts.push(env.DB.prepare('INSERT OR REPLACE INTO appointments (id, student_id, start_iso, status, payload) VALUES (?, ?, ?, ?, ?)').bind(a.id, a.studentId, a.start, a.status, JSON.stringify(a)))
+    stmts.push(env.DB.prepare('INSERT OR REPLACE INTO appointments (id, student_id, start_iso, end_iso, status, payload) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(a.id, a.studentId, a.start, a.end || '', a.status, JSON.stringify(a)))
   }
   for (const p of state.payments || []) {
     stmts.push(env.DB.prepare('INSERT OR REPLACE INTO payments (id, student_id, status, payload) VALUES (?, ?, ?, ?)').bind(p.id, p.studentId, p.status, JSON.stringify(p)))
@@ -93,8 +130,13 @@ export async function writeFullState(env, state) {
 /** Public/student view: everything the student needs, filtered by role. */
 export function studentView(state, studentId) {
   const students = state.students.filter((s) => s.id === studentId)
+  // Students receive the payment info they need to pay (QR / e-Transfer /
+  // bank), but never the online-payment API credentials.
+  const instructor = state.instructor
+    ? { ...state.instructor, payConfig: undefined }
+    : null
   return {
-    instructor: state.instructor,
+    instructor,
     weeklyRules: state.weeklyRules,
     exceptions: state.exceptions,
     courses: (state.courses || []).filter((c) => c.active),

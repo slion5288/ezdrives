@@ -34,6 +34,18 @@ export function fromLocalISO(s: string): Date {
   return new Date(NaN)
 }
 
+/**
+ * Parse a SERVER-written UTC wall-clock string ('YYYY-MM-DDTHH:mm:ss', no Z —
+ * Workers run on UTC) into a LOCAL Date. The server stamps notifications /
+ * payment records with its own clock; without this conversion they would
+ * display 4–5h off for Toronto users.
+ */
+export function fromServerISO(s: string): Date {
+  const dt = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(s)
+  if (!dt) return fromLocalISO(s)
+  return new Date(Date.UTC(+dt[1], +dt[2] - 1, +dt[3], +dt[4], +dt[5], +dt[6]))
+}
+
 /** 'YYYY-MM-DD' local */
 export function dateKey(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`

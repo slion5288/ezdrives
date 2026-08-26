@@ -7,7 +7,7 @@
 // ============================================================================
 
 import { ArrowLeft, ArrowRight, KeyRound, Send } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Field, Input, LanguageSwitcher, Logo, ThemeToggle, useToast } from '../../components/shared'
@@ -96,6 +96,14 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
   const [errors, setErrors] = useState<{ phone?: string; password?: string; name?: string; code?: string }>({})
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
+  const timerRef = useRef<number | null>(null)
+
+  // Clear the resend-countdown timer on unmount (no setState-after-unmount).
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearInterval(timerRef.current)
+    }
+  }, [])
 
   const doLogin = async (phone: string, password: string): Promise<void> => {
     setBusy(true)
@@ -135,10 +143,12 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
     if (res.ok) {
       setCodeSent(true)
       setCodeCountdown(60)
-      const timer = window.setInterval(() => {
+      if (timerRef.current) window.clearInterval(timerRef.current)
+      timerRef.current = window.setInterval(() => {
         setCodeCountdown((s) => {
           if (s <= 1) {
-            window.clearInterval(timer)
+            if (timerRef.current) window.clearInterval(timerRef.current)
+            timerRef.current = null
             return 0
           }
           return s - 1
@@ -180,7 +190,7 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
               onChange={setLoginPhone}
               country={loginCountry}
               onCountry={setLoginCountry}
-              placeholder="416-555-0131"
+              placeholder="416 555 0100"
             />
           </Field>
           <Field label={t('auth.login.password')} error={errors.password} htmlFor="login-password">
@@ -218,7 +228,7 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
               onChange={setRegPhone}
               country={regCountry}
               onCountry={setRegCountry}
-              placeholder="416-555-0100"
+              placeholder="416 555 0100"
             />
           </Field>
           <Field label={t('auth.register.code')} error={errors.code} htmlFor="reg-code">
@@ -315,7 +325,7 @@ function InstructorLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Elemen
             setIdentifier(e.target.value)
             setError(null)
           }}
-          placeholder="+1 416-555-0142 / name@email.com"
+          placeholder="416 555 0100 or name@email.com"
           autoComplete="username"
         />
       </Field>

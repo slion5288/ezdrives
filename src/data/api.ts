@@ -54,9 +54,11 @@ export async function apiLogout(token: string): Promise<void> {
   await request('/auth/logout', { method: 'POST', token })
 }
 
-/** GET /api/state */
+/** GET /api/state — tz carries the client's UTC offset (minutes) so the server
+ * can evaluate "reminder due now" against the client's local clock. */
 export async function apiFetchState(token: string): Promise<ApiState> {
-  return request('/state', { token })
+  const tz = -new Date().getTimezoneOffset()
+  return request(`/state?tz=${tz}`, { token })
 }
 
 /** PUT /api/state — instructor full save */

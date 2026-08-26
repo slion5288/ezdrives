@@ -13,13 +13,17 @@ import VehiclesPage from './VehiclesPage'
 import VideoManager from './VideoManager'
 import PaymentMethodsManager from './PaymentMethodsManager'
 import ReceiveSettings from './ReceiveSettings'
+import ProfileSettings from './ProfileSettings'
 
 export default function SettingsPage({ state }: { state: AppState }): JSX.Element {
   const t = useT()
 
   return (
     <div className="ins-settings-page">
-      {/* 0. Working hours — weekly rules + exceptions + break */}
+      {/* 0. Public profile — name / phone / email / bio */}
+      <ProfileSettings state={state} />
+
+      {/* 1. Working hours — weekly rules + exceptions + break */}
       <WorkingHoursPage state={state} />
 
       {/* 1. Vehicles */}

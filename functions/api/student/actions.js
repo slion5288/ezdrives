@@ -41,6 +41,20 @@ function conflicts(appointments, startISO, endISO, exceptId, breakMin, sameStude
   return false
 }
 
+/**
+ * "Is this start time in the past?" — the client sends its own local clock
+ * (`clientNow`, local ISO) so wall-clock comparisons happen in the SAME space
+ * as the stored local times (the server itself is UTC and must not compare
+ * parsed-local-as-UTC against Date.now()).
+ */
+function isPast(startISO, clientNow) {
+  const ref =
+    clientNow && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(clientNow)
+      ? fromLocal(clientNow).getTime()
+      : Date.now()
+  return fromLocal(startISO).getTime() < ref - 60000
+}
+
 function effectiveInterval(dateISO, rules, exceptions) {
   const ex = exceptions.find((x) => x.date === dateKeyOf(dateISO))
   if (ex && ex.closed) return null
@@ -60,10 +74,44 @@ function isPurchased(payments, studentId, courseId) {
   return payments.some((p) => p.studentId === studentId && p.courseId === courseId && p.status === 'confirmed')
 }
 
+function hasPending(payments, studentId, courseId) {
+  return payments.some((p) => p.studentId === studentId && p.courseId === courseId && p.status === 'pending')
+}
+
+/** All payment methods a student may choose (instructor's enabled list). */
+function allowedMethods(instructor) {
+  const list = instructor && instructor.paymentMethods
+  if (!list || list.length === 0) return ['cash', 'wechat', 'emt', 'applepay', 'googlepay', 'card', 'debit', 'paypal']
+  return ['cash', 'wechat', 'emt', 'applepay', 'googlepay', 'card', 'debit', 'paypal'].filter((m) => list.includes(m))
+}
+
 async function nextSeq(env, table, prefix, count = 1) {
   const row = await env.DB.prepare(`SELECT id FROM ${table} ORDER BY CAST(SUBSTR(id, ${prefix.length + 1}) AS INTEGER) DESC LIMIT 1`).first()
   const max = row ? Number(row.id.slice(prefix.length)) : 0
   return Array.from({ length: count }, (_, i) => prefix + (max + 1 + i))
+}
+
+/**
+ * Atomic per-slot conflict guard. The INSERT only succeeds when no live
+ * appointment overlaps [start,end) (break-aware; same student exempt from the
+ * break). Used as the final backstop against concurrent double-booking — the
+ * JS `conflicts()` check above gives the friendly error in the normal case.
+ */
+function guardedAppointmentInsert(env, appt, breakMin) {
+  const br = Math.max(0, Number(breakMin) || 0)
+  return env.DB.prepare(
+    `INSERT INTO appointments (id, student_id, start_iso, end_iso, status, payload)
+     SELECT ?1, ?2, ?3, ?4, ?5, ?6
+     WHERE NOT EXISTS (
+       SELECT 1 FROM appointments a
+       WHERE a.status IN ('confirmed','pending')
+         AND a.id <> ?7
+         AND (
+           (a.student_id = ?8 AND ?3 < a.end_iso AND ?4 > a.start_iso)
+           OR (a.student_id <> ?8 AND ?3 < strftime('%Y-%m-%dT%H:%M:%S', a.end_iso, printf('+%d minutes', ?9)) AND ?4 > a.start_iso)
+         )
+     )`,
+  ).bind(appt.id, appt.studentId, appt.start, appt.end, appt.status, JSON.stringify(appt), appt.id, appt.studentId, br)
 }
 
 export async function onRequestPost({ env, request }) {
@@ -80,15 +128,20 @@ export async function onRequestPost({ env, request }) {
   const args = body.args || {}
   const state = await readFullState(env)
 
-  const reply = async (extraState) => json({ ok: true, state: studentView(extraState || state, studentId) })
+  // Role-aware reply: instructors get the full state, students get their view.
+  const reply = async (extraState) =>
+    json({ ok: true, state: isInstructor ? extraState || state : studentView(extraState || state, studentId) })
 
   // ---- addPayment: student submits a purchase (pending until instructor confirms) ----
   if (action === 'addPayment') {
+    if (isInstructor) return fail('Students only.', 403)
     const courseId = String(args.courseId || '')
     const method = String(args.method || 'cash')
     const course = state.courses.find((c) => c.id === courseId)
     if (!course) return fail('Course not found.')
     if (isPurchased(state.payments, studentId, courseId)) return fail('Course already purchased.')
+    if (hasPending(state.payments, studentId, courseId)) return fail('Payment already pending.')
+    if (!allowedMethods(state.instructor).includes(method)) return fail('Payment method not available.')
     const [paymentId] = await nextSeq(env, 'payments', 'p')
     const now = nowISO()
     const payment = { id: paymentId, studentId, courseId, method, amount: course.price, status: 'pending', createdAt: now }
@@ -122,22 +175,32 @@ export async function onRequestPost({ env, request }) {
 
   // ---- bookAppointment / bookPackageLessons ----
   if (action === 'bookAppointment' || action === 'bookPackageLessons') {
+    if (isInstructor) return fail('Students only.', 403)
     const courseId = String(args.courseId || '')
     const startISO = String(args.startISO || '')
+    const clientNow = String(args.clientNow || '')
     const course = state.courses.find((c) => c.id === courseId)
     if (!course) return fail('Course not found.')
     if (!isPurchased(state.payments, studentId, courseId)) return fail('not_purchased')
 
+    const isPackage = course.type === 'package'
+    const lessonCount = course.lessons ? course.lessons.length : 0
     const count = action === 'bookPackageLessons' ? Math.max(1, Number(args.count) || 1) : 1
     const firstLessonIndex = action === 'bookPackageLessons' ? Number(args.lessonIndex ?? args.firstLessonIndex ?? 0) : undefined
+    if (isPackage) {
+      if (!Number.isInteger(firstLessonIndex) || firstLessonIndex < 0 || firstLessonIndex >= lessonCount) {
+        return fail('Invalid lesson selection.')
+      }
+      if (firstLessonIndex + count > lessonCount) return fail('Not enough lessons in this package.')
+    }
 
-    const durationMin = course.type === 'package' ? 60 : course.durationMin
+    const durationMin = isPackage ? 60 : course.durationMin
     const lessonPrice = (idx) =>
-      course.type === 'package' && idx !== undefined ? course.lessons?.[idx]?.price ?? course.price : course.price
+      isPackage && idx !== undefined ? course.lessons?.[idx]?.price ?? course.price : course.price
 
     const start = fromLocal(startISO)
     if (isNaN(start.getTime())) return fail('Invalid start time.')
-    if (start.getTime() < Date.now() - 60000) return fail('past')
+    if (isPast(startISO, clientNow)) return fail('past')
 
     const interval = effectiveInterval(startISO, state.weeklyRules, state.exceptions)
     if (!interval) return fail('closed')
@@ -168,8 +231,7 @@ export async function onRequestPost({ env, request }) {
         lessonIndex: slot.lessonIndex, price: slot.price,
       }
       created.push(appt)
-      inserts.push(env.DB.prepare('INSERT INTO appointments (id, student_id, start_iso, status, payload) VALUES (?, ?, ?, ?, ?)')
-        .bind(apptId, studentId, slot.start, 'confirmed', JSON.stringify(appt)))
+      inserts.push(guardedAppointmentInsert(env, appt, state.instructor.breakMin))
     }
     // notifications
     const [nIdS, nIdI] = await nextSeq(env, 'notifications', 'n', 2)
@@ -188,18 +250,30 @@ export async function onRequestPost({ env, request }) {
       ? { en: `Your ${courseName.en} lessons start ${line(first)}.`, zh: `您的${courseName.zh}课时自 ${lineZh(first)} 开始。` }
       : { en: `Your ${line(first)} lesson is confirmed. See you there!`, zh: `您的${lineZh(first)}课程已确认，到时见！` }
     const iBody = { en: `${user.name} booked ${courseName.en} — ${line(first)}.`, zh: `${user.name} 预约了${courseName.zh} — ${lineZh(first)}。` }
+    const nS = { id: nIdS, role: 'student', recipientId: studentId, type: 'booking_confirmed', title: sTitle, body: sBody, read: false, at: now }
+    const nI = { id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'new_booking', title: { en: 'New booking', zh: '新预约' }, body: iBody, read: false, at: now }
     inserts.push(
-      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
-        .bind(nIdS, 'student', studentId, JSON.stringify({ id: nIdS, role: 'student', recipientId: studentId, type: 'booking_confirmed', title: sTitle, body: sBody, read: false, at: now })),
-      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
-        .bind(nIdI, 'instructor', 'instructor', JSON.stringify({ id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'new_booking', title: { en: 'New booking', zh: '新预约' }, body: iBody, read: false, at: now })),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)').bind(nS.id, nS.role, nS.recipientId, JSON.stringify(nS)),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)').bind(nI.id, nI.role, nI.recipientId, JSON.stringify(nI)),
     )
-    await env.DB.batch(inserts)
+    const results = await env.DB.batch(inserts)
+
+    // Atomic guard verification: if any slot lost a race, undo the whole
+    // request (appointments + notifications) and report a conflict.
+    let insertedAll = true
+    for (let i = 0; i < slots.length; i++) {
+      if (!results[i] || (results[i].meta && results[i].meta.changes === 0)) insertedAll = false
+    }
+    if (!insertedAll) {
+      await env.DB.batch([
+        ...apptIds.map((id) => env.DB.prepare('DELETE FROM appointments WHERE id = ?').bind(id)),
+        env.DB.prepare('DELETE FROM notifications WHERE id IN (?, ?)').bind(nIdS, nIdI),
+      ])
+      return fail('conflict')
+    }
+
     state.appointments.push(...created)
-    state.notifications.unshift(
-      { id: nIdS, role: 'student', recipientId: studentId, type: 'booking_confirmed', title: sTitle, body: sBody, read: false, at: now },
-      { id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'new_booking', title: { en: 'New booking', zh: '新预约' }, body: iBody, read: false, at: now },
-    )
+    state.notifications.unshift(nS, nI)
     return reply(state)
   }
 
@@ -255,13 +329,15 @@ export async function onRequestPost({ env, request }) {
   if (action === 'rescheduleAppointment') {
     const apptId = String(args.id || '')
     const newStartISO = String(args.newStartISO || '')
+    const clientNow = String(args.clientNow || '')
     const appt = state.appointments.find((a) => (isInstructor ? a.id === apptId : a.id === apptId && a.studentId === studentId))
     if (!appt) return fail('Appointment not found.')
+    if (appt.status !== 'confirmed' && appt.status !== 'pending') return fail('Only live appointments can be rescheduled.')
     const course = state.courses.find((c) => c.id === appt.courseId)
     const durMin = course ? (course.type === 'package' ? 60 : course.durationMin) : 60
     const start = fromLocal(newStartISO)
     if (isNaN(start.getTime())) return fail('Invalid start time.')
-    if (start.getTime() < Date.now() - 60000) return fail('past')
+    if (isPast(newStartISO, clientNow)) return fail('past')
     const interval = effectiveInterval(newStartISO, state.weeklyRules, state.exceptions)
     if (!interval) return fail('closed')
     if (minuteOf(newStartISO) < interval.startMin || minuteOf(newStartISO) + durMin > interval.endMin) return fail('closed')
@@ -270,34 +346,63 @@ export async function onRequestPost({ env, request }) {
 
     const now = nowISO()
     const updated = {
-      ...appt, start: newStartISO, end: endISO,
+      ...appt, start: newStartISO, end: endISO, status: appt.status,
       history: [...(appt.history || []), { at: now, note: { en: 'Rescheduled', zh: '已改期' } }],
     }
-    const [nId] = await nextSeq(env, 'notifications', 'n')
+    const [nIdS, nIdI] = await nextSeq(env, 'notifications', 'n', 2)
     const d = fromLocal(newStartISO)
     const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-    const recipient = isInstructor ? appt.studentId : studentId
-    await env.DB.batch([
-      env.DB.prepare('UPDATE appointments SET start_iso = ?, status = ?, payload = ? WHERE id = ?').bind(newStartISO, 'confirmed', JSON.stringify(updated), apptId),
+    const courseNameEn = course ? course.name.en : ''
+    const courseNameZh = course ? course.name.zh : ''
+    const nS = {
+      id: nIdS, role: 'student', recipientId: appt.studentId, type: 'booking_rescheduled',
+      title: { en: 'Lesson rescheduled', zh: '课程已改期' },
+      body: { en: `Your ${courseNameEn} lesson is now ${when}.`, zh: `您的${courseNameZh}课程已改期至 ${when}。` },
+      read: false, at: now,
+    }
+    const stmts = [
+      env.DB.prepare('UPDATE appointments SET start_iso = ?, end_iso = ?, status = ?, payload = ? WHERE id = ?')
+        .bind(newStartISO, endISO, appt.status, JSON.stringify(updated), apptId),
       env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
-        .bind(nId, 'student', recipient, JSON.stringify({
-          id: nId, role: 'student', recipientId: recipient, type: 'booking_rescheduled',
-          title: { en: 'Lesson rescheduled', zh: '课程已改期' },
-          body: { en: `Your ${course ? course.name.en : ''} lesson is now ${when}.`, zh: `您的${course ? course.name.zh : ''}课程已改期至 ${when}。` },
-          read: false, at: now,
-        })),
-    ])
+        .bind(nS.id, nS.role, nS.recipientId, JSON.stringify(nS)),
+    ]
+    state.notifications.unshift(nS)
+    if (isInstructor) {
+      // The student is notified above; the instructor initiated it.
+      const nISelf = {
+        id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'booking_rescheduled',
+        title: { en: 'Lesson rescheduled', zh: '课程已改期' },
+        body: { en: `${appt.studentId || 'Student'}'s lesson is now ${when}.`, zh: `${appt.studentId || '学员'}的课程已改期至 ${when}。` },
+        read: false, at: now,
+      }
+      stmts.push(env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nISelf.id, nISelf.role, nISelf.recipientId, JSON.stringify(nISelf)))
+      state.notifications.unshift(nISelf)
+    } else {
+      // Student-initiated reschedule → inform the instructor too.
+      const nI = {
+        id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'booking_rescheduled',
+        title: { en: 'Lesson rescheduled', zh: '课程已改期' },
+        body: { en: `${user.name} rescheduled their ${courseNameEn} lesson to ${when}.`, zh: `${user.name} 将${courseNameZh}课程改期至 ${when}。` },
+        read: false, at: now,
+      }
+      stmts.push(env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nI.id, nI.role, nI.recipientId, JSON.stringify(nI)))
+      state.notifications.unshift(nI)
+    }
+    await env.DB.batch(stmts)
     state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
     return reply(state)
   }
 
-  // ---- confirmPayment / rejectPayment (instructor only) ----
+  // ---- confirmPayment / rejectPayment (instructor only, idempotent) ----
   if (action === 'confirmPayment' || action === 'rejectPayment') {
     if (!isInstructor) return fail('Instructor only.', 403)
     const paymentId = String(args.id || '')
     const payment = state.payments.find((p) => p.id === paymentId)
     if (!payment) return fail('Payment not found.')
     const status = action === 'confirmPayment' ? 'confirmed' : 'rejected'
+    if (payment.status === status) return reply(state) // idempotent no-op
     const now = nowISO()
     const updated = { ...payment, status, confirmedAt: now }
     const [nId] = await nextSeq(env, 'notifications', 'n')
@@ -322,9 +427,11 @@ export async function onRequestPost({ env, request }) {
 
   // ---- updateStudentAddress ----
   if (action === 'updateStudentAddress') {
+    if (isInstructor) return fail('Students only.', 403)
     const address = String(args.address || '').trim()
     const now = nowISO()
     const student = state.students.find((s) => s.id === studentId)
+    if (!student) return fail('Student not found.')
     const updatedStudent = { ...student, address }
     await env.DB.batch([
       env.DB.prepare('UPDATE users SET address = ? WHERE id = ?').bind(address || null, user.id),
@@ -334,10 +441,14 @@ export async function onRequestPost({ env, request }) {
     return reply(state)
   }
 
-  // ---- markNotificationRead / markAllRead ----
+  // ---- markNotificationRead / markAllRead (student or instructor scope) ----
+  const notifMatches = (n) =>
+    isInstructor
+      ? n.role === 'instructor' && n.recipientId === 'instructor'
+      : n.role === 'student' && n.recipientId === studentId
   if (action === 'markNotificationRead') {
     const nId = String(args.id || '')
-    const notif = state.notifications.find((n) => n.id === nId && n.role === 'student' && n.recipientId === studentId)
+    const notif = state.notifications.find((n) => n.id === nId && notifMatches(n))
     if (!notif) return fail('Notification not found.')
     const updated = { ...notif, read: true }
     await env.DB.prepare('UPDATE notifications SET payload = ? WHERE id = ?').bind(JSON.stringify(updated), nId).run()
@@ -345,9 +456,7 @@ export async function onRequestPost({ env, request }) {
     return reply(state)
   }
   if (action === 'markAllRead') {
-    const updatedList = state.notifications
-      .filter((n) => n.role === 'student' && n.recipientId === studentId && !n.read)
-      .map((n) => ({ ...n, read: true }))
+    const updatedList = state.notifications.filter((n) => notifMatches(n) && !n.read).map((n) => ({ ...n, read: true }))
     if (updatedList.length > 0) {
       await env.DB.batch(
         updatedList.map((n) =>

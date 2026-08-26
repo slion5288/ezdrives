@@ -40,6 +40,7 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
 
   const [theme, setTheme] = useState<Theme>(() => loadTheme())
   const [ready, setReady] = useState<boolean>(() => isStateLoaded())
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -54,9 +55,21 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
   // state still needs to be fetched before rendering app content.
   useEffect(() => {
     if (!isStateLoaded()) {
-      initStateFromServer().then((ok) => setReady(ok))
+      initStateFromServer().then((ok) => {
+        setReady(ok)
+        setLoadError(!ok)
+      })
     }
   }, [])
+
+  const retryLoad = (): void => {
+    setLoadError(false)
+    setReady(false)
+    initStateFromServer().then((ok) => {
+      setReady(ok)
+      setLoadError(!ok)
+    })
+  }
 
   // Live sync: poll the server so instructor confirmations appear automatically.
   useEffect(() => {
@@ -73,6 +86,14 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
       <div className="student-loading" role="status">
         <Loader2 size={26} className="student-loading__spin" />
         <span>{t('nav.loading')}</span>
+        {loadError ? (
+          <div className="student-loading__error">
+            <p>{t('common.toast.error')}</p>
+            <button type="button" className="student-btn student-btn-primary student-btn-sm" onClick={retryLoad}>
+              {t('common.retry')}
+            </button>
+          </div>
+        ) : null}
       </div>
     )
   }

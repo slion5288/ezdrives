@@ -114,19 +114,23 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
       return
     }
     setProcessing(true)
-    // Real gateways run here when configured (Stripe PaymentIntent / PayPal Orders);
-    // the record is created on the backend and stays pending until the
-    // instructor confirms receipt.
+    // The payment record is created on the backend and stays pending until the
+    // instructor confirms receipt (cash / transfer / wallet / card alike).
     const result = await addPayment(studentId, (course as Course).id, method)
-    setProcessing(false)
     if (result.ok) {
       showToast('success', t('payment.submitted'))
       onSubmitted?.()
       onClose()
       reset()
     } else {
-      showToast('error', t('payment.emtInvalid')) // generic failure fallback
       setProcessing(false)
+      const message =
+        result.error === 'not_purchased' || result.error === 'Course already purchased.'
+          ? t('payment.notPurchased')
+          : result.error === 'Payment already pending.'
+            ? t('payment.pending')
+            : t('common.toast.error')
+      showToast('error', message)
     }
   }
 
@@ -225,7 +229,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
                     className="student-card-input"
                     inputMode="numeric"
                     autoComplete="cc-number"
-                    placeholder={brand === 'amex' ? '3782 822463 10005' : '4242 4242 4242 4242'}
+                    placeholder="1234 5678 9012 3456"
                     value={card.number}
                     onChange={(e) => setCard({ ...card, number: formatCardNumber(e.target.value) })}
                   />
