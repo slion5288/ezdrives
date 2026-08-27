@@ -17,6 +17,7 @@ import InstructorDashboardPage from './pages/instructor/InstructorDashboardPage'
 import G1MockPage from './pages/g1/G1MockPage'
 import LandingPage from './pages/landing/LandingPage'
 import CoursesPage from './pages/landing/CoursesPage'
+import VideosPage from './pages/landing/VideosPage'
 import LoginPage from './pages/auth/LoginPage'
 import StudentBookingPage from './pages/student/StudentBookingPage'
 import StudentDashboardPage from './pages/student/StudentDashboardPage'
@@ -41,6 +42,7 @@ export default function App(): JSX.Element {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/videos" element={<VideosPage />} />
           <Route path="/g1" element={<G1MockPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/student" element={<StudentDashboardPage />} />

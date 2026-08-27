@@ -32,6 +32,7 @@ export const messages: Record<MessageKey, string> = {
   'landing.videos.subtitle': '预约前先观看课程介绍、停车技巧与路考讲解视频。',
   'landing.videos.empty': '新教学视频即将上线，敬请期待。',
   'landing.videos.play': '播放 {title}',
+  'landing.videos.viewAll': '查看全部视频',
   'video.loading': '正在加载播放器…',
   'video.embedBlocked': '该视频不允许嵌入播放。',
   'video.embedBlockedBody': '视频作者关闭了嵌入播放权限，请在 YouTube 中观看。',

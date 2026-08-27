@@ -12,9 +12,7 @@ import { BookOpen, Check, ChevronLeft, ChevronRight, GraduationCap, RotateCcw, X
 import { G1_BANK_EN, G1_BANK_ZH, G1_IMAGES } from '../../data/g1'
 import type { G1Question } from '../../data/g1'
 import { useT } from '../../i18n'
-import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher'
-import { ThemeToggle } from '../../components/shared/ThemeToggle'
-import { Logo } from '../../components/shared/Logo'
+import LandingSubHeader from '../landing/LandingSubHeader'
 import './g1.css'
 
 type BankId = 'zh' | 'en'
@@ -82,18 +80,8 @@ export default function G1MockPage(): JSX.Element {
 
   return (
     <div className="g1-page">
-      {/* ---- Sticky top bar ---- */}
-      <header className="g1-header">
-        <div className="g1-header__inner">
-          <Link to="/" className="g1-header__home" aria-label={t('g1.back')}>
-            <Logo size="sm" />
-          </Link>
-          <div className="g1-header__actions">
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      {/* ---- Unified sub-page header (logo + nav + top-right menu button) ---- */}
+      <LandingSubHeader />
 
       <main className="g1-main container" id="g1-title">
         {screen === 'intro' ? (

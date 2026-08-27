@@ -269,15 +269,7 @@ export default function LandingPage(): JSX.Element {
               {t('landing.courses.title')}
             </a>
             <Link to="/g1">{t('nav.g1')}</Link>
-            <a
-              href="#videos"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('videos')
-              }}
-            >
-              {t('landing.videos.title')}
-            </a>
+            <Link to="/videos">{t('landing.videos.title')}</Link>
             <a
               href="#instructor"
               onClick={(e) => {
@@ -344,15 +336,7 @@ export default function LandingPage(): JSX.Element {
             <Link to="/g1" onClick={closeMenu}>
               {t('nav.g1')}
             </Link>
-            <a
-              href="#videos"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('videos')
-              }}
-            >
-              {t('landing.videos.title')}
-            </a>
+            <Link to="/videos">{t('landing.videos.title')}</Link>
             <a
               href="#instructor"
               onClick={(e) => {
@@ -525,6 +509,12 @@ export default function LandingPage(): JSX.Element {
                 ))}
               </div>
             )}
+            </div>
+            <div className="landing-courses__viewall-row">
+              <LandingButton variant="secondary" to="/videos">
+                {t('landing.videos.viewAll')}
+                <ArrowRight size={16} className="landing-btn__icon" />
+              </LandingButton>
             </div>
           </div>
         </section>
@@ -740,15 +730,7 @@ export default function LandingPage(): JSX.Element {
                 {t('landing.courses.title')}
               </a>
               <Link to="/g1">{t('nav.g1')}</Link>
-              <a
-                href="#videos"
-                onClick={(e) => {
-                  e.preventDefault()
-                  goToSection('videos')
-                }}
-              >
-                {t('landing.videos.title')}
-              </a>
+              <Link to="/videos">{t('landing.videos.title')}</Link>
               <Link to="/courses">{t('nav.courses')}</Link>
               <a
                 href="#faq"

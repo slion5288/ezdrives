@@ -30,6 +30,7 @@ export const messages = {
   'landing.videos.subtitle': 'Watch course intros, parking tips and road-test walkthroughs before you book.',
   'landing.videos.empty': 'New teaching videos are on the way — check back soon.',
   'landing.videos.play': 'Play {title}',
+  'landing.videos.viewAll': 'View all videos',
   'video.loading': 'Loading player…',
   'video.embedBlocked': "This video doesn't allow embedding.",
   'video.embedBlockedBody': "The uploader disabled embedded playback. Open it on YouTube to watch.",
