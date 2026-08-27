@@ -10,14 +10,16 @@
 // hash-based routing needs no server. It works identically under `npm run dev`.
 // ============================================================================
 
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ToastProvider } from './components/shared'
 import InstructorDashboardPage from './pages/instructor/InstructorDashboardPage'
-import G1MockPage from './pages/g1/G1MockPage'
 import LandingPage from './pages/landing/LandingPage'
 import CoursesPage from './pages/landing/CoursesPage'
 import VideosPage from './pages/landing/VideosPage'
+// G1 carries a ~3.7 MB embedded question bank (base64 images) — lazy-load it
+// so the main bundle stays small and the first paint stays fast.
+const G1MockPage = lazy(() => import('./pages/g1/G1MockPage'))
 import LoginPage from './pages/auth/LoginPage'
 import StudentBookingPage from './pages/student/StudentBookingPage'
 import StudentDashboardPage from './pages/student/StudentDashboardPage'
@@ -34,6 +36,15 @@ function ScrollToTop(): null {
   return null
 }
 
+/** Minimal loading placeholder while the G1 bundle (question bank) loads. */
+function G1Fallback(): JSX.Element {
+  return (
+    <div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>
+      Loading…
+    </div>
+  )
+}
+
 export default function App(): JSX.Element {
   return (
     <HashRouter>
@@ -43,7 +54,7 @@ export default function App(): JSX.Element {
           <Route path="/" element={<LandingPage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/videos" element={<VideosPage />} />
-          <Route path="/g1" element={<G1MockPage />} />
+          <Route path="/g1" element={<Suspense fallback={<G1Fallback />}><G1MockPage /></Suspense>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/student" element={<StudentDashboardPage />} />
           <Route path="/student/book" element={<StudentBookingPage />} />

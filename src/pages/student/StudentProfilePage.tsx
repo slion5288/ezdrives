@@ -250,7 +250,7 @@ function StudentProfileContent(): JSX.Element {
 
   const upcomingConfirmed = upcoming.filter((a) => a.status === 'confirmed')
   const icsEvents: IcsEvent[] = upcomingConfirmed.map((appt) => ({
-    uid: `lesson-${appt.id}@ezdrives.example`,
+    uid: `lesson-${appt.id}@ezdrives.net`,
     summary: t('ics.summary', { course: courseLabel(appt) }),
     description: t('ics.description'),
     location: t('ics.location'),

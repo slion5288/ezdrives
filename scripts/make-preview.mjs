@@ -11,12 +11,24 @@
 // Usage: npm run make:preview   (runs `npm run build` first, then this script)
 // ============================================================================
 
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const distDir = join(root, 'dist')
+
+// Build a single-chunk (no code-splitting) variant so the lazy-loaded G1
+// question bank is inlined too — the offline file must not depend on
+// dynamically-imported chunk files (Chrome blocks module loads on file://).
+const previewDist = join(root, '.preview-dist')
+rmSync(previewDist, { recursive: true, force: true })
+execSync('npx vite build --outDir .preview-dist', {
+  cwd: root,
+  env: { ...process.env, PREVIEW_INLINE: '1' },
+  stdio: 'inherit',
+})
+const distDir = previewDist
 
 let html = readFileSync(join(distDir, 'index.html'), 'utf8')
 

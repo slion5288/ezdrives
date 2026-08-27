@@ -33,7 +33,7 @@ import {
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, maskPhone, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
-import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
+import { G1_COUNTS } from '../../data/g1'
 import { COURSE_IMAGES, G1_IMAGE, HERO_IMAGES } from '../../data/assets'
 import { VideoPlayerModal } from '../../components/video/VideoPlayerModal'
 import {
@@ -561,10 +561,10 @@ export default function LandingPage(): JSX.Element {
               <div className="landing-g1__copy">
                 <div className="landing-g1__chips">
                   <span className="landing-g1__chip">
-                    {t('g1.zhBody', { count: G1_BANK_ZH.length })}
+                    {t('g1.zhBody', { count: G1_COUNTS.zh })}
                   </span>
                   <span className="landing-g1__chip">
-                    {t('g1.enBody', { count: G1_BANK_EN.length })}
+                    {t('g1.enBody', { count: G1_COUNTS.en })}
                   </span>
                 </div>
                 <p className="landing-g1__desc">{t('g1.subtitle')}</p>

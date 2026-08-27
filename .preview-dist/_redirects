@@ -1,0 +1,3 @@
+# SPA fallback — any unknown path serves index.html (HashRouter also works without this,
+# but direct visits to /courses etc. then render the app instead of a 404).
+/* /index.html 200

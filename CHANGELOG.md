@@ -5,6 +5,21 @@
 
 ---
 
+## Change 14 — 上线前 FINAL AUDIT：P2 修复（死代码/安全/统计/性能/离线交付）
+
+- **背景**：FINAL_AUDIT_REPORT.md 的 P2 项按优先级执行。
+- **修复清单**：
+  1. **死代码清理**（均已确认零引用）：删除 `src/components/charts/` 整目录；`store.ts batchReschedule`、`timeEngine.ts isConflict`、`studentFormat.ts minuteOfDay`、`paymentGateway.ts` 4 个死导出（paypalConfigured/createStripePaymentIntent/createPayPalOrder/capturePayPalOrder）；`components/shared/` 6 个零消费者组件（Modal/Select/StatCard/Toggle/EmptyState/Avatar，barrel 同步）；后端 `deleteAdminSession`、`onRequestOptions`；前端 `apiSendCode`/`sendVerificationCode` 的 demo code 死契约。
+  2. **删除 `/api/setup` 无鉴权写端点**（生产已有数据，空库场景由 migrations 覆盖）。
+  3. **月度统计口径 bug**：`OverviewPage.countsForMonth` 用课程价（套餐会算成总价，收入虚高）→ 改用预约时锁定的 `a.price ?? course.price`（与 `stats.monthStats` 一致）。
+  4. **性能：G1 题库动态加载**：`g1.ts`（3.7MB，236 张 base64 图+题库）拆为轻量 `g1.ts`（仅题目数量常量 G1_COUNTS，首页/课程页用）+ `g1-bank.ts`（题库本体）；App.tsx 用 React.lazy 加载 G1MockPage → **首屏 JS 7.1MB → 3.3MB**（gzip 2.2MB）；G1 页进入时才加载 3.9MB 题库 chunk。
+  5. **离线交付修复（P1 级）**：Preview.html 在 file:// 下被深链改写脚本错误改写成 `file:///#/路径` 导致打开目录索引 → 脚本对 file: 协议跳过；make-preview 改为先构建**单 chunk 变体**（`PREVIEW_INLINE=1` → `inlineDynamicImports`，输出到 `.preview-dist`）再内嵌，保证 G1 题库也内嵌进单文件（Preview.html 7.2MB，离线 /g1 可答题）；dist 保持多 chunk 性能版。
+  6. 杂项：`--color-border-soft`（不存在的 token）→ `--color-border`；ICS UID `@ezdrives.example` → `@ezdrives.net`；landing 空态改为卡片式（边框/底色）。
+- **是否影响旧功能**：是——① 删除 `/api/setup`（无人使用）；② G1 题库改为懒加载（进入 /g1 首次加载有短暂 "Loading…"，随后正常）；③ Preview.html 重新生成（必须重新双击使用新版）；其余为内部清理/修复，无功能变化。
+- **测试结果**：`npm run build` 通过；本地回归 6 项全过——首页渲染+G1 题目数（205/188）、首页不加载 G1 题库（懒加载生效）、/g1 懒加载后题库正常答题、教练总览（统计修复后）正常、`/api/setup` 返回 405（已删）、**Preview.html 离线（file://）打开首页 + /g1 答题全部通过**。已部署线上。
+
+---
+
 ## Change 13 — 上线前 FINAL AUDIT：P1 修复（14 项全部完成）
 
 - **背景**：按上线前最终验收流程完成全站审计（FINAL_AUDIT_REPORT.md：无 P0；P1 共 14 项；P2/P3 若干）。本轮按 P1→P2→P3 顺序完成全部 **P1**。

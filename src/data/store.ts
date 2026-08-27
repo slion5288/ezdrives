@@ -351,17 +351,6 @@ export async function rescheduleAppointment(id: string, newStartISO: string): Pr
   return { ok: false, error: res.error || 'error' }
 }
 
-export async function batchReschedule(ids: string[], newStartISO: string): Promise<{ moved: string[]; failed: { id: string; error: string }[] }> {
-  const moved: string[] = []
-  const failed: { id: string; error: string }[] = []
-  for (const id of ids) {
-    const result = await rescheduleAppointment(id, newStartISO)
-    if (result.ok) moved.push(id)
-    else failed.push({ id, error: result.error })
-  }
-  return { moved, failed }
-}
-
 // --- Working hours ---
 
 /**
@@ -721,10 +710,9 @@ export async function login(phone: string, password: string): Promise<LoginResul
   return { ok: true }
 }
 
-/** Request an SMS verification code (Twilio). Returns the demo code when unconfigured. */
-export async function sendVerificationCode(phone: string): Promise<{ ok: boolean; error?: string; demoCode?: string }> {
-  const res = await apiSendCode(phone)
-  return { ok: res.ok, error: res.error, demoCode: res.demo ? res.code : undefined }
+/** Request an SMS verification code (Twilio). */
+export async function sendVerificationCode(phone: string): Promise<{ ok: boolean; error?: string }> {
+  return apiSendCode(phone)
 }
 
 /** Real registration via the backend (student, SMS-verified). */

@@ -40,7 +40,7 @@ export async function apiLogin(phone: string, password: string): Promise<ApiStat
 }
 
 /** POST /api/auth/send-code — SMS verification (Twilio) */
-export async function apiSendCode(phone: string): Promise<{ ok: boolean; error?: string; demo?: boolean; code?: string }> {
+export async function apiSendCode(phone: string): Promise<{ ok: boolean; error?: string }> {
   return request('/auth/send-code', { method: 'POST', body: { phone } })
 }
 

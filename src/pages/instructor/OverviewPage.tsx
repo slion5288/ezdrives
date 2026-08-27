@@ -26,7 +26,8 @@ function countsForMonth(state: AppState, year: number, month: number): MonthCoun
     return d.getFullYear() === year && d.getMonth() === month
   }
   const lessons = state.appointments.filter((a) => a.status === 'confirmed' && inMonth(a.start))
-  const revenue = lessons.reduce((sum, a) => sum + (courseById(state, a.courseId)?.price ?? 0), 0)
+  // Use the price captured at booking time (per lesson for packages) — matches stats.monthStats.
+  const revenue = lessons.reduce((sum, a) => sum + (a.price ?? (courseById(state, a.courseId)?.price ?? 0)), 0)
   const newStudents = state.students.filter((s) => inMonth(s.registeredAt)).length
   return { lessons: lessons.length, revenue, newStudents }
 }

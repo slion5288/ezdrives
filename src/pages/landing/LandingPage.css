@@ -50,7 +50,13 @@ html {
 .landing-section__empty {
   text-align: center;
   color: var(--color-text-muted);
-  padding: var(--space-5) 0;
+  padding: var(--space-6) var(--space-4);
+  margin: var(--space-4) auto;
+  max-width: 480px;
+  background: color-mix(in srgb, var(--color-surface-2) 50%, transparent);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
 }
 
 /* --- Header --- */

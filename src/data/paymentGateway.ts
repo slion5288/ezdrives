@@ -51,52 +51,6 @@ export function stripeConfigured(cfg?: PayApiCredentials): boolean {
   return resolve(cfg, 'stripeKey') !== '' && resolve(cfg, 'stripeUrl') !== ''
 }
 
-export function paypalConfigured(cfg?: PayApiCredentials): boolean {
-  return resolve(cfg, 'paypalClientId') !== '' && resolve(cfg, 'paypalUrl') !== ''
-}
-
-// --- Stripe: create a PaymentIntent through YOUR backend (secret key stays server-side) ---
-
-export async function createStripePaymentIntent(
-  amountCents: number,
-  currency = 'cad',
-  cfg?: PayApiCredentials,
-): Promise<{ clientSecret: string }> {
-  const res = await fetch(resolve(cfg, 'stripeUrl'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount: amountCents, currency }),
-  })
-  if (!res.ok) throw new Error(`Stripe intent failed: ${res.status}`)
-  return (await res.json()) as { clientSecret: string }
-}
-
-// --- PayPal: create an order through YOUR backend, then capture it ---
-
-export interface PayPalOrderResult {
-  id: string
-  status: string
-}
-
-export async function createPayPalOrder(amount: number, currency = 'CAD', cfg?: PayApiCredentials): Promise<PayPalOrderResult> {
-  const res = await fetch(resolve(cfg, 'paypalUrl'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, currency }),
-  })
-  if (!res.ok) throw new Error(`PayPal order failed: ${res.status}`)
-  return (await res.json()) as PayPalOrderResult
-}
-
-export async function capturePayPalOrder(orderId: string, cfg?: PayApiCredentials): Promise<void> {
-  const res = await fetch(resolve(cfg, 'paypalUrl'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orderId, capture: true }),
-  })
-  if (!res.ok) throw new Error(`PayPal capture failed: ${res.status}`)
-}
-
 // --- Card helpers (used by the card form; real 3-DS/auth comes from Stripe) ---
 
 export function luhnValid(cardNumber: string): boolean {

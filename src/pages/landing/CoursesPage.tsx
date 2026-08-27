@@ -9,7 +9,7 @@ import { ArrowLeft, ArrowRight, Check, Clock, GraduationCap } from 'lucide-react
 import { useEffect } from 'react'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
-import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
+import { G1_COUNTS } from '../../data/g1'
 import { LandingBadge, LandingButton } from './primitives'
 import LandingSubHeader from './LandingSubHeader'
 import './LandingPage.css'
@@ -103,7 +103,7 @@ export default function CoursesPage(): JSX.Element {
             <div className="landing-courses__g1">
               <LandingBadge tone="info" dot>
                 <GraduationCap size={13} />
-                G1 · {t('g1.zhBody', { count: G1_BANK_ZH.length })} / {t('g1.enBody', { count: G1_BANK_EN.length })}
+                G1 · {t('g1.zhBody', { count: G1_COUNTS.zh })} / {t('g1.enBody', { count: G1_COUNTS.en })}
               </LandingBadge>
               <p>{t('g1.subtitle')}</p>
               <LandingButton variant="secondary" to="/g1">

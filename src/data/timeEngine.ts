@@ -113,23 +113,6 @@ export function getEffectiveInterval(
   return rule ? { startMin: rule.startMin, endMin: rule.endMin } : null
 }
 
-/**
- * true iff a confirmed/pending appointment (other than exceptAppointmentId)
- * overlaps [startISO, endISO). Overlap-only check — closed/past validation
- * lives in the store.
- */
-export function isConflict(startISO: string, endISO: string, state: AppState, exceptAppointmentId?: string): boolean {
-  const start = fromLocalISO(startISO).getTime()
-  const end = fromLocalISO(endISO).getTime()
-  return state.appointments.some((a) => {
-    if (a.id === exceptAppointmentId) return false
-    if (a.status !== 'confirmed' && a.status !== 'pending') return false
-    const aStart = fromLocalISO(a.start).getTime()
-    const aEnd = fromLocalISO(a.end).getTime()
-    return start < aEnd && end > aStart
-  })
-}
-
 /** The confirmed/pending appointment covering the given unit start, if any. */
 function coveringAppointment(state: AppState, unitStart: Date): Appointment | undefined {
   const t = unitStart.getTime()

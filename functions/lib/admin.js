@@ -30,9 +30,3 @@ export async function authAdmin(env, request) {
     .first()
   return !!row
 }
-
-export async function deleteAdminSession(env, request) {
-  const header = request.headers.get('Authorization') || ''
-  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
-  if (token) await env.DB.prepare('DELETE FROM admin_sessions WHERE token = ?').bind(token).run()
-}

@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "make:preview": "npm run build && node scripts/make-preview.mjs",
+    "make:preview": "node scripts/make-preview.mjs",
     "deploy": "npm run build && wrangler pages deploy dist --project-name=ezdrives",
     "deploy:preview": "npm run build && wrangler pages deploy dist --project-name=ezdrives --branch=preview"
   },

@@ -75,7 +75,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
     const name = locale === 'zh' ? course.name.zh : course.name.en
     const label = `${name}${course.type === 'package' && appt.lessonIndex !== undefined ? lessonLabel(course, appt.lessonIndex, locale) : ''}`
     return {
-      uid: `lesson-${appt.id}@ezdrives.example`,
+      uid: `lesson-${appt.id}@ezdrives.net`,
       summary: t('ics.summary', { course: label }),
       description: t('ics.description'),
       location: t('ics.location'),

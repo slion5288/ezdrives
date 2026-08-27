@@ -29,11 +29,6 @@ export function mondayOf(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() + offset)
 }
 
-/** Minutes from midnight, e.g. 09:30 → 570. */
-export function minuteOfDay(d: Date): number {
-  return d.getHours() * 60 + d.getMinutes()
-}
-
 const MS_MIN = 60000
 const MS_HOUR = 3600000
 const MS_DAY = 86400000
