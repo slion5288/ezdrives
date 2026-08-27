@@ -53,16 +53,20 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
   const toast = useToast()
 
   const [form, setForm] = useState<VehicleForm | null>(null)
-  const [formError, setFormError] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ make?: boolean; model?: boolean; plate?: boolean; colorEn?: boolean; colorZh?: boolean }>({})
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null)
 
+  const clearError = (key: 'make' | 'model' | 'plate' | 'colorEn' | 'colorZh'): void => {
+    setFieldErrors((prev) => ({ ...prev, [key]: false }))
+  }
+
   const openAdd = (): void => {
-    setFormError(false)
+    setFieldErrors({})
     setForm(emptyForm())
   }
 
   const openEdit = (v: Vehicle): void => {
-    setFormError(false)
+    setFieldErrors({})
     setForm(formFromVehicle(v))
   }
 
@@ -81,8 +85,15 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
 
   const submitForm = (): void => {
     if (!form) return
-    if (!form.make.trim() || !form.model.trim() || !form.plate.trim() || !form.colorEn.trim() || !form.colorZh.trim()) {
-      setFormError(true)
+    const errors: { make?: boolean; model?: boolean; plate?: boolean; colorEn?: boolean; colorZh?: boolean } = {}
+    if (!form.make.trim()) errors.make = true
+    if (!form.model.trim()) errors.model = true
+    if (!form.plate.trim()) errors.plate = true
+    if (!form.colorEn.trim()) errors.colorEn = true
+    if (!form.colorZh.trim()) errors.colorZh = true
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      document.querySelector<HTMLInputElement>('#vehicle-make')?.focus()
       return
     }
     saveVehicle({
@@ -189,24 +200,29 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
         >
           <div className="ins-form-grid">
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.vehicles.make')}</span>
-              <input className="ins-input" value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} />
+              <label className="ins-field-label" htmlFor="vehicle-make">{t('instructor.vehicles.make')}</label>
+              <input id="vehicle-make" className="ins-input" aria-invalid={!!fieldErrors.make} value={form.make} onChange={(e) => { setForm({ ...form, make: e.target.value }); clearError('make') }} />
+              {fieldErrors.make ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.vehicles.model')}</span>
-              <input className="ins-input" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+              <label className="ins-field-label" htmlFor="vehicle-model">{t('instructor.vehicles.model')}</label>
+              <input id="vehicle-model" className="ins-input" aria-invalid={!!fieldErrors.model} value={form.model} onChange={(e) => { setForm({ ...form, model: e.target.value }); clearError('model') }} />
+              {fieldErrors.model ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.vehicles.plate')}</span>
-              <input className="ins-input tabular-nums" value={form.plate} onChange={(e) => setForm({ ...form, plate: e.target.value })} />
+              <label className="ins-field-label" htmlFor="vehicle-plate">{t('instructor.vehicles.plate')}</label>
+              <input id="vehicle-plate" className="ins-input tabular-nums" aria-invalid={!!fieldErrors.plate} value={form.plate} onChange={(e) => { setForm({ ...form, plate: e.target.value }); clearError('plate') }} />
+              {fieldErrors.plate ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.vehicles.color')} (EN)</span>
-              <input className="ins-input" value={form.colorEn} onChange={(e) => setForm({ ...form, colorEn: e.target.value })} />
+              <label className="ins-field-label" htmlFor="vehicle-color-en">{t('instructor.vehicles.color')} (EN)</label>
+              <input id="vehicle-color-en" className="ins-input" aria-invalid={!!fieldErrors.colorEn} value={form.colorEn} onChange={(e) => { setForm({ ...form, colorEn: e.target.value }); clearError('colorEn') }} />
+              {fieldErrors.colorEn ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.vehicles.color')} (中文)</span>
-              <input className="ins-input" value={form.colorZh} onChange={(e) => setForm({ ...form, colorZh: e.target.value })} />
+              <label className="ins-field-label" htmlFor="vehicle-color-zh">{t('instructor.vehicles.color')} (中文)</label>
+              <input id="vehicle-color-zh" className="ins-input" aria-invalid={!!fieldErrors.colorZh} value={form.colorZh} onChange={(e) => { setForm({ ...form, colorZh: e.target.value }); clearError('colorZh') }} />
+              {fieldErrors.colorZh ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
             <div className="ins-field ins-field--wide ins-photo-field">
               <span className="ins-field-label">{t('instructor.vehicles.photo')}</span>
@@ -227,7 +243,7 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
               <Toggle checked={form.active} onChange={() => setForm({ ...form, active: !form.active })} label={t('instructor.vehicles.active')} />
             </div>
           </div>
-          {formError ? <p className="ins-field-error">{t('common.required')}</p> : null}
+          {Object.values(fieldErrors).some(Boolean) ? <p className="ins-field-error">{t('common.required')}</p> : null}
         </Modal>
       ) : null}
 

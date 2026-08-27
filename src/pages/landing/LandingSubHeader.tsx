@@ -71,13 +71,24 @@ export default function LandingSubHeader(): JSX.Element {
     else if (item.sectionId) goHomeSection(item.sectionId)
   }
 
-  // Close the dropdown on outside clicks.
+  // Close the dropdown on outside clicks or Esc; open moves focus into the panel.
   useEffect(() => {
     const onClick = (e: MouseEvent): void => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
     }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false)
+        const btn = menuRef.current?.querySelector('.landing-sub-menu__btn') as HTMLButtonElement | null
+        btn?.focus()
+      }
+    }
     document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [])
 
   return (

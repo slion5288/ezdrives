@@ -5,7 +5,7 @@
 // CTA band · footer. Every string via useT(); all visual values from tokens.
 // ============================================================================
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -21,6 +21,7 @@ import {
   MapPin,
   Menu,
   Phone,
+  Pause,
   Play,
   Quote,
   ShieldCheck,
@@ -53,13 +54,25 @@ import './LandingPage.css'
 const HERO_FILES = ['/hero/hero-1.jpg', '/hero/hero-2.jpg', '/hero/hero-3.jpg', '/hero/hero-4.jpg', '/hero/hero-5.jpg', '/hero/hero-6.jpg']
 
 function HeroCarousel({ slides }: { slides?: string[] }): JSX.Element {
+  const t = useT()
   const locale = useLocale()
   const [idx, setIdx] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const reduceMotion = useMemo(() => {
+    try {
+      return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    } catch {
+      return false
+    }
+  }, [])
   const slideCount = slides?.length ?? HERO_FILES.length
   useEffect(() => {
+    // Respect reduced-motion: never auto-advance.
+    if (reduceMotion) return
+    if (paused) return
     const id = window.setInterval(() => setIdx((i) => (i + 1) % slideCount), 5000)
     return () => window.clearInterval(id)
-  }, [slideCount])
+  }, [slideCount, paused, reduceMotion])
   return (
     <div className="landing-hero__media" aria-hidden="true">
       {(slides ?? HERO_FILES).map((file, i) => {
@@ -84,9 +97,18 @@ function HeroCarousel({ slides }: { slides?: string[] }): JSX.Element {
             type="button"
             className={`landing-hero__dot${i === idx ? ' is-active' : ''}`}
             onClick={() => setIdx(i)}
-            aria-label={`slide ${i + 1}`}
+            aria-label={t('landing.hero.slide', { n: i + 1 })}
           />
         ))}
+        <button
+          type="button"
+          className="landing-hero__pause"
+          onClick={() => setPaused((v) => !v)}
+          aria-label={paused ? t('landing.hero.resume') : t('landing.hero.pause')}
+          title={paused ? t('landing.hero.resume') : t('landing.hero.pause')}
+        >
+          {paused ? <Play size={13} fill="currentColor" /> : <Pause size={13} fill="currentColor" />}
+        </button>
       </div>
     </div>
   )
@@ -197,6 +219,15 @@ export default function LandingPage(): JSX.Element {
     if (!getSession().token) {
       initPublicHome().catch(() => undefined)
     }
+  }, [])
+
+  // Close the mobile menu on Esc.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
   }, [])
 
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)

@@ -367,7 +367,7 @@
   display: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .student-nav {
     display: none;
   }
@@ -1947,7 +1947,7 @@
 }
 .student-catalog__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: var(--space-3);
 }
 .student-course-card {
@@ -1971,7 +1971,8 @@
 .student-course-card:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-
+  box-shadow: var(--shadow-pop);
+}
 .student-course-card.is-pending {
   cursor: default;
   opacity: 0.72;
@@ -1979,8 +1980,6 @@
 .student-course-card.is-pending:hover {
   transform: none;
   border-color: var(--color-border);
-}
-  box-shadow: var(--shadow-pop);
 }
 .student-course-card__icon {
   flex-shrink: 0;

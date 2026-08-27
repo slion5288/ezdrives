@@ -142,8 +142,10 @@ export default function ReceiveSettings(): JSX.Element {
         </div>
         {editingEmt ? (
           <>
+            <label className="ins-field-label" htmlFor="recv-emt">{t('instructor.settings.emtEmail')}</label>
             <div className="ins-settings-row">
               <input
+                id="recv-emt"
                 className="ins-input"
                 type="email"
                 placeholder="you@bank.ca"
@@ -182,24 +184,24 @@ export default function ReceiveSettings(): JSX.Element {
           <>
             <div className="ins-settings-grid">
               <div className="ins-field">
-                <span className="ins-field-label">{t('instructor.settings.bankName')}</span>
-                <input className="ins-input" value={bank.bankName ?? ''} onChange={(e) => setBankForm({ ...bank, bankName: e.target.value })} />
+                <label className="ins-field-label" htmlFor="recv-bank-name">{t('instructor.settings.bankName')}</label>
+                <input id="recv-bank-name" className="ins-input" value={bank.bankName ?? ''} onChange={(e) => setBankForm({ ...bank, bankName: e.target.value })} />
               </div>
               <div className="ins-field">
-                <span className="ins-field-label">{t('instructor.settings.holderName')}</span>
-                <input className="ins-input" value={bank.holderName ?? ''} onChange={(e) => setBankForm({ ...bank, holderName: e.target.value })} />
+                <label className="ins-field-label" htmlFor="recv-holder">{t('instructor.settings.holderName')}</label>
+                <input id="recv-holder" className="ins-input" value={bank.holderName ?? ''} onChange={(e) => setBankForm({ ...bank, holderName: e.target.value })} />
               </div>
               <div className="ins-field">
-                <span className="ins-field-label">{t('instructor.settings.transit')}</span>
-                <input className="ins-input tabular-nums" value={bank.transit ?? ''} onChange={(e) => setBankForm({ ...bank, transit: e.target.value })} />
+                <label className="ins-field-label" htmlFor="recv-transit">{t('instructor.settings.transit')}</label>
+                <input id="recv-transit" className="ins-input tabular-nums" value={bank.transit ?? ''} onChange={(e) => setBankForm({ ...bank, transit: e.target.value })} />
               </div>
               <div className="ins-field">
-                <span className="ins-field-label">{t('instructor.settings.institution')}</span>
-                <input className="ins-input tabular-nums" value={bank.institution ?? ''} onChange={(e) => setBankForm({ ...bank, institution: e.target.value })} />
+                <label className="ins-field-label" htmlFor="recv-institution">{t('instructor.settings.institution')}</label>
+                <input id="recv-institution" className="ins-input tabular-nums" value={bank.institution ?? ''} onChange={(e) => setBankForm({ ...bank, institution: e.target.value })} />
               </div>
               <div className="ins-field">
-                <span className="ins-field-label">{t('instructor.settings.account')}</span>
-                <input className="ins-input tabular-nums" value={bank.account ?? ''} onChange={(e) => setBankForm({ ...bank, account: e.target.value })} />
+                <label className="ins-field-label" htmlFor="recv-account">{t('instructor.settings.account')}</label>
+                <input id="recv-account" className="ins-input tabular-nums" value={bank.account ?? ''} onChange={(e) => setBankForm({ ...bank, account: e.target.value })} />
               </div>
             </div>
             <div className="ins-settings-row">
@@ -239,8 +241,9 @@ export default function ReceiveSettings(): JSX.Element {
           <>
             <div className="ins-settings-grid">
               <div className="ins-field">
-                <span className="ins-field-label">Stripe · {t('instructor.settings.stripeKey')}</span>
+                <label className="ins-field-label" htmlFor="recv-stripe-key">Stripe · {t('instructor.settings.stripeKey')}</label>
                 <input
+                  id="recv-stripe-key"
                   className="ins-input tabular-nums"
                   placeholder="pk_test_… / pk_live_…"
                   value={api.stripeKey ?? ''}
@@ -248,8 +251,9 @@ export default function ReceiveSettings(): JSX.Element {
                 />
               </div>
               <div className="ins-field">
-                <span className="ins-field-label">Stripe · {t('instructor.settings.stripeUrl')}</span>
+                <label className="ins-field-label" htmlFor="recv-stripe-url">Stripe · {t('instructor.settings.stripeUrl')}</label>
                 <input
+                  id="recv-stripe-url"
                   className="ins-input tabular-nums"
                   placeholder="https://your-backend.com/api/stripe-intent"
                   value={api.stripeUrl ?? ''}
@@ -257,8 +261,9 @@ export default function ReceiveSettings(): JSX.Element {
                 />
               </div>
               <div className="ins-field">
-                <span className="ins-field-label">PayPal · {t('instructor.settings.paypalId')}</span>
+                <label className="ins-field-label" htmlFor="recv-paypal-id">PayPal · {t('instructor.settings.paypalId')}</label>
                 <input
+                  id="recv-paypal-id"
                   className="ins-input tabular-nums"
                   placeholder="Client ID"
                   value={api.paypalClientId ?? ''}
@@ -266,8 +271,9 @@ export default function ReceiveSettings(): JSX.Element {
                 />
               </div>
               <div className="ins-field">
-                <span className="ins-field-label">PayPal · {t('instructor.settings.paypalUrl')}</span>
+                <label className="ins-field-label" htmlFor="recv-paypal-url">PayPal · {t('instructor.settings.paypalUrl')}</label>
                 <input
+                  id="recv-paypal-url"
                   className="ins-input tabular-nums"
                   placeholder="https://your-backend.com/api/paypal-order"
                   value={api.paypalUrl ?? ''}

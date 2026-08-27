@@ -1469,6 +1469,15 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
 .ins-notif-item {
   display: flex;
   align-items: flex-start;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+/* The whole notification is one keyboard-focusable button. */
+.ins-notif-card {
+  display: flex;
+  align-items: flex-start;
   gap: var(--space-3);
   width: 100%;
   padding: var(--space-4);
@@ -1477,11 +1486,16 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
-.ins-notif-item:hover {
+.ins-notif-card:hover,
+.ins-notif-card:focus-visible {
   border-color: var(--color-border-strong);
+  outline: none;
 }
 
 .ins-notif-item.is-unread {

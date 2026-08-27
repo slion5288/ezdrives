@@ -16,9 +16,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ImagePlus, LogOut, Plus, Save, Trash2, Type, Users } from 'lucide-react'
+import { ImagePlus, KeyRound, LogOut, Plus, Save, Trash2, Type, Users } from 'lucide-react'
 import type { FormEvent } from 'react'
-import { apiAdminGetContent, apiAdminLogin, apiAdminPutContent, apiAdminTranslate, apiPublicHome } from '../../data/api'
+import { apiAdminChangePassword, apiAdminGetContent, apiAdminLogin, apiAdminPutContent, apiAdminTranslate, apiPublicHome } from '../../data/api'
 import { getAdminToken, setAdminToken } from '../../data/store'
 import type { HomeInstructor } from '../../data/store'
 import { messages as zhMessages } from '../../i18n/locales/zh'
@@ -239,6 +239,14 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  // Password change card
+  const [pwOpen, setPwOpen] = useState(false)
+  const [pwOld, setPwOld] = useState('')
+  const [pwNew, setPwNew] = useState('')
+  const [pwConfirm, setPwConfirm] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
+
   // Draft state
   const [overrides, setOverrides] = useState<Record<string, { en: string; zh: string }>>({})
   const [heroImages, setHeroImages] = useState<(string | null)[]>(Array(6).fill(null))
@@ -362,6 +370,22 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
     }
   }
 
+  const submitPassword = async (): Promise<void> => {
+    if (pwNew.length < 8) { setPwError(zh('admin.password.min')); return }
+    if (pwNew !== pwConfirm) { setPwError(zh('admin.password.mismatch')); return }
+    setPwBusy(true)
+    setPwError('')
+    const res = await apiAdminChangePassword(token, pwOld, pwNew)
+    setPwBusy(false)
+    if (res.ok) {
+      setPwOpen(false)
+      setPwOld(''); setPwNew(''); setPwConfirm('')
+      toast.success(zh('admin.password.changed'))
+    } else {
+      setPwError(zh('admin.password.fail') + (res.error || ''))
+    }
+  }
+
   const pickHeroFile = (index: number) => (file: File | undefined): void => {
     if (!file) return
     fileToDataUrl(file, 1920)
@@ -396,6 +420,9 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
           <div className="admin-header__spacer" />
           <div className="admin-header__actions">
             <ThemeToggle />
+            <button type="button" className="admin-btn admin-btn--secondary" onClick={() => { setPwOpen(true); setPwError('') }}>
+              <KeyRound size={15} /> {zh('admin.password.change')}
+            </button>
             <button type="button" className="admin-btn admin-btn--secondary" onClick={() => { setAdminToken(''); onLogout() }}>
               <LogOut size={15} /> {zh('nav.logout')}
             </button>
@@ -415,6 +442,38 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
       </header>
 
       <main className="admin-main">
+        {pwOpen ? (
+          <div className="admin-card" style={{ marginBottom: 'var(--space-4)' }}>
+            <div className="admin-card__head">
+              <div>
+                <div className="admin-card__title">{zh('admin.password.change')}</div>
+              </div>
+            </div>
+            <div className="admin-field-grid">
+              <div className="admin-field">
+                <label className="admin-label" htmlFor="admin-pw-old">{zh('admin.password.current')}</label>
+                <input id="admin-pw-old" className="admin-input" type="password" autoComplete="current-password" value={pwOld} onChange={(e) => { setPwOld(e.target.value); setPwError('') }} />
+              </div>
+              <div className="admin-field">
+                <label className="admin-label" htmlFor="admin-pw-new">{zh('admin.password.new')}</label>
+                <input id="admin-pw-new" className="admin-input" type="password" autoComplete="new-password" value={pwNew} onChange={(e) => { setPwNew(e.target.value); setPwError('') }} />
+              </div>
+              <div className="admin-field">
+                <label className="admin-label" htmlFor="admin-pw-confirm">{zh('admin.password.confirm')}</label>
+                <input id="admin-pw-confirm" className="admin-input" type="password" autoComplete="new-password" value={pwConfirm} onChange={(e) => { setPwConfirm(e.target.value); setPwError('') }} />
+              </div>
+            </div>
+            {pwError ? <p className="admin-login__error">{pwError}</p> : null}
+            <div className="admin-actions">
+              <button type="button" className="admin-btn admin-btn--secondary" onClick={() => setPwOpen(false)}>
+                {zh('common.cancel')}
+              </button>
+              <button type="button" className="admin-btn admin-btn--primary" disabled={pwBusy} onClick={() => void submitPassword()}>
+                {pwBusy ? zh('auth.login.loading') : zh('common.save')}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {tab === 'text' ? (
           <div className="admin-card">
             <div className="admin-card__head">
@@ -426,12 +485,13 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
             <div className="admin-field-grid">
               {TEXT_FIELDS.map((field) => (
                 <div key={field.key} className={`admin-field${field.area ? ' admin-field--wide' : ''}`}>
-                  <span className="admin-label">{field.label}</span>
+                  <span className="admin-label" id={`admin-f-${field.key}`}>{field.label}</span>
                   {field.area ? (
                     <textarea
                       className="admin-textarea"
                       rows={2}
                       placeholder={zh('admin.placeholder')}
+                      aria-labelledby={`admin-f-${field.key}`}
                       value={currentZh(field)}
                       onChange={(e) => setOverrideZh(field.key, e.target.value)}
                     />
@@ -439,6 +499,7 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                     <input
                       className="admin-input"
                       placeholder={zh('admin.placeholder')}
+                      aria-labelledby={`admin-f-${field.key}`}
                       value={currentZh(field)}
                       onChange={(e) => setOverrideZh(field.key, e.target.value)}
                     />
@@ -529,18 +590,18 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                 <div className="admin-instructor__body">
                   <div className="admin-instructor__row">
                     <div className="admin-field" style={{ flex: 2 }}>
-                      <span className="admin-label">{zh('admin.instructor.name')}</span>
-                      <input className="admin-input" value={inst.name} onChange={(e) => setInstructor(idx, { name: e.target.value })} />
+                      <label className="admin-label" htmlFor={`admin-ins-name-${idx}`}>{zh('admin.instructor.name')}</label>
+                      <input id={`admin-ins-name-${idx}`} className="admin-input" value={inst.name} onChange={(e) => setInstructor(idx, { name: e.target.value })} />
                     </div>
                     <div className="admin-field" style={{ flex: 1 }}>
-                      <span className="admin-label">{zh('admin.instructor.years')}</span>
-                      <input className="admin-input" type="number" min={0} value={String(inst.years)} onChange={(e) => setInstructor(idx, { years: Number(e.target.value) || 0 })} />
+                      <label className="admin-label" htmlFor={`admin-ins-years-${idx}`}>{zh('admin.instructor.years')}</label>
+                      <input id={`admin-ins-years-${idx}`} className="admin-input" type="number" min={0} value={String(inst.years)} onChange={(e) => setInstructor(idx, { years: Number(e.target.value) || 0 })} />
                     </div>
                     <div className="admin-field" style={{ flex: 1 }}>
-                      <span className="admin-label">{zh('admin.photo')}</span>
+                      <span className="admin-label" id={`admin-ins-photo-${idx}`}>{zh('admin.photo')}</span>
                       <label className="admin-file-btn">
                         {zh('admin.uploadImage')}
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                        <input type="file" accept="image/*" style={{ display: 'none' }} aria-labelledby={`admin-ins-photo-${idx}`} onChange={(e) => {
                           const f = e.target.files?.[0]
                           if (f) fileToDataUrl(f, 600).then((d) => setInstructor(idx, { photo: d })).catch(() => undefined)
                         }} />
@@ -548,7 +609,8 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                     </div>
                   </div>
                   <div className="admin-bio-hint">{zh('admin.bioHint')}</div>
-                  <textarea className="admin-textarea" rows={2} placeholder={zh('admin.placeholder')} value={inst.bio?.zh ?? ''} onChange={(e) => setInstructorBio(idx, 'zh', e.target.value)} />
+                  <label className="admin-label" htmlFor={`admin-ins-bio-${idx}`}>{zh('admin.bioHint')}</label>
+                  <textarea id={`admin-ins-bio-${idx}`} className="admin-textarea" rows={2} placeholder={zh('admin.placeholder')} value={inst.bio?.zh ?? ''} onChange={(e) => setInstructorBio(idx, 'zh', e.target.value)} />
                   <div className="admin-text-preview">{zh('admin.enAuto')}: {inst.bio?.en || '—'}</div>
                   <div className="admin-instructor__actions">
                     <button type="button" className="admin-btn admin-btn--danger" onClick={() => setInstructors((prev) => prev.filter((_, i) => i !== idx))}>

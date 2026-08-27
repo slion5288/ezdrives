@@ -105,8 +105,13 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
               <li
                 key={n.id}
                 className={`ins-notif-item${n.read ? '' : ' is-unread'}${payable ? ' is-payable' : ''}`}
-                onClick={() => openDetail(n)}
               >
+                <button
+                  type="button"
+                  className="ins-notif-card"
+                  onClick={() => openDetail(n)}
+                  aria-label={locale === 'zh' ? n.title.zh : n.title.en}
+                >
                 <span className="ins-notif-icon">
                   <Icon size={18} />
                 </span>
@@ -127,6 +132,7 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
                     <Badge tone="success">{t('student.notifications.unread')}</Badge>
                   )}
                 </div>
+                </button>
               </li>
             )
           })}

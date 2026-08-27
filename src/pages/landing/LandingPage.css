@@ -324,13 +324,9 @@ html {
 }
 
 .landing-badge--warning {
-  background: var(--color-warning);
-  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: var(--color-warning);
   border-color: transparent;
-}
-
-html[data-theme='dark'] .landing-badge--warning {
-  color: var(--color-bg);
 }
 
 .landing-badge--danger {
@@ -493,6 +489,25 @@ html[data-theme='dark'] .landing-badge--info {
 .landing-hero__dot.is-active {
   background: var(--color-on-brand);
   transform: scale(1.25);
+}
+.landing-hero__pause {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.landing-hero__pause:hover {
+  background: rgba(0, 0, 0, 0.45);
+  transform: scale(1.1);
 }
 
 .landing-hero__content {
@@ -2112,8 +2127,12 @@ html[data-theme='dark'] .landing-badge--info {
 }
 
 /* Apple-style hero CTA */
-.landing-hero__ctas .landing-btn {
+.landing-hero__ctas .landing-btn,
+.landing-band__actions .landing-btn {
   border-radius: 999px;
+}
+
+.landing-hero__ctas .landing-btn {
   padding: 14px 34px;
   font-size: var(--font-size-md);
   font-weight: 600;

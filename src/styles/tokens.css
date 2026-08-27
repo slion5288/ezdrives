@@ -28,7 +28,7 @@
   --color-info: #A21CAF;               /* informational accents, body links */
   --color-border: #E3E8EC;             /* default hairlines */
   --color-border-strong: #CBD3DA;      /* inputs, hover borders */
-  --color-focus-ring: rgba(162, 28, 175, 0.38);   /* 2px focus outline + 2px offset */
+  --color-focus-ring: rgba(162, 28, 175, 0.62);   /* 2px focus outline + 2px offset */
   --color-overlay: rgba(16, 24, 40, 0.45);       /* modal scrim */
 
   /* --- Elevation --- */
@@ -113,7 +113,7 @@ html[data-theme='dark'] {
   --color-info: #DD4DE8;
   --color-border: #263039;
   --color-border-strong: #3A4651;
-  --color-focus-ring: rgba(221, 77, 232, 0.45);
+  --color-focus-ring: rgba(221, 77, 232, 0.65);
   --color-overlay: rgba(3, 7, 10, 0.65);
 
   /* --- Elevation: same token names, black-tinted layering for dark bg --- */

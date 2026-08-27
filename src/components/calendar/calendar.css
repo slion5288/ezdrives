@@ -76,6 +76,11 @@
   top: 0;
   z-index: 6;
   display: flex;
+  /* Match the columns' width so the day header scrolls WITH the body
+     horizontally instead of compressing into a narrower viewport
+     (headers and columns must stay aligned on mobile). */
+  width: max-content;
+  min-width: 100%;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -769,15 +774,12 @@
   color: var(--color-text-muted);
 }
 
-/* --- Mobile: fit all 7 days on screen by tightening columns --- */
+/* --- Mobile: keep 7-day columns wide; the whole week scrolls horizontally
+   with the day header following (head uses width:max-content above) --- */
 @media (max-width: 768px) {
-  .ios-week__corner {
+  .ios-week__corner,
+  .ios-week__gutter {
     flex-basis: 38px;
-  }
-  .ios-week__dayhead {
-    min-width: 0;
-    flex: 1 1 0;
-    padding: var(--space-2) 1px var(--space-2);
   }
   .ios-week__dow {
     font-size: 10px;

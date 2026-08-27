@@ -323,11 +323,13 @@ function StudentProfileContent(): JSX.Element {
                         onChange={(e) => onAddressChange(e.target.value)}
                         placeholder={t('student.profile.addressPlaceholder')}
                         autoComplete="street-address"
+                        aria-label={t('student.profile.address')}
+                        aria-expanded={addressSuggestions.length > 0}
                       />
                       {GEOAPIFY_API_KEY && addressSuggestions.length > 0 ? (
-                        <ul className="student-address-suggest">
+                        <ul className="student-address-suggest" role="listbox" aria-label={t('student.profile.address')}>
                           {addressSuggestions.map((s) => (
-                            <li key={s}>
+                            <li key={s} role="option">
                               <button type="button" onClick={() => pickAddress(s)}>
                                 {s}
                               </button>

@@ -296,20 +296,20 @@ export default function VideoManager({ state }: { state: AppState }): JSX.Elemen
         >
           <div className="ins-form-grid">
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.videos.nameEn')}</span>
-              <input className="ins-input" value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} />
+              <label className="ins-field-label" htmlFor="video-title-en">{t('instructor.videos.nameEn')}</label>
+              <input id="video-title-en" className="ins-input" value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} />
             </div>
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.videos.nameZh')}</span>
-              <input className="ins-input" value={form.titleZh} onChange={(e) => setForm({ ...form, titleZh: e.target.value })} />
+              <label className="ins-field-label" htmlFor="video-title-zh">{t('instructor.videos.nameZh')}</label>
+              <input id="video-title-zh" className="ins-input" value={form.titleZh} onChange={(e) => setForm({ ...form, titleZh: e.target.value })} />
             </div>
             <div className="ins-field ins-field--wide">
-              <span className="ins-field-label">{t('instructor.videos.descEn')}</span>
-              <textarea className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} />
+              <label className="ins-field-label" htmlFor="video-desc-en">{t('instructor.videos.descEn')}</label>
+              <textarea id="video-desc-en" className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} />
             </div>
             <div className="ins-field ins-field--wide">
-              <span className="ins-field-label">{t('instructor.videos.descZh')}</span>
-              <textarea className="ins-input" rows={2} value={form.descZh} onChange={(e) => setForm({ ...form, descZh: e.target.value })} />
+              <label className="ins-field-label" htmlFor="video-desc-zh">{t('instructor.videos.descZh')}</label>
+              <textarea id="video-desc-zh" className="ins-input" rows={2} value={form.descZh} onChange={(e) => setForm({ ...form, descZh: e.target.value })} />
             </div>
 
             <div className="ins-field ins-field--wide">
@@ -338,8 +338,9 @@ export default function VideoManager({ state }: { state: AppState }): JSX.Elemen
 
             {form.kind === 'youtube' ? (
               <div className="ins-field ins-field--wide">
-                <span className="ins-field-label">{t('instructor.videos.youtubeUrl')}</span>
+                <label className="ins-field-label" htmlFor="video-url">{t('instructor.videos.youtubeUrl')}</label>
                 <input
+                  id="video-url"
                   className="ins-input"
                   placeholder="https://www.youtube.com/watch?v=…"
                   value={form.youtubeUrl}

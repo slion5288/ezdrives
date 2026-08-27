@@ -5,6 +5,29 @@
 
 ---
 
+## Change 13 — 上线前 FINAL AUDIT：P1 修复（14 项全部完成）
+
+- **背景**：按上线前最终验收流程完成全站审计（FINAL_AUDIT_REPORT.md：无 P0；P1 共 14 项；P2/P3 若干）。本轮按 P1→P2→P3 顺序完成全部 **P1**。
+- **修复清单（P1）**：
+  1. **学员课程卡花括号错位**（`student.css`）：`.student-course-card:hover` 缺闭合 `}`，待支付课程卡 `.is-pending` 灰化失效 → 已修复（含 box-shadow 归属整理）。
+  2. **教练周历移动端表头/列错位**（`calendar.css`）：≤768px 表头被压缩（39px/列）而列保持 88px → 表头改用 `width:max-content; min-width:100%` 与列同宽并随横向滚动；corner/gutter 移动端统一 38px。已实测 390px 视口下表头与列完全对齐。
+  3. **管理员弱密码**：新增「修改密码」功能（`functions/api/admin/password.js` + AdminPage 头部按钮+表单卡片，旧密码校验 + 新密码 ≥8 位 PBKDF2 存储；en/zh 文案）。⚠️ 当前线上管理员密码仍为 `528830`，**请上线前登录 /admin 改为强密码**。
+  4. **表单无 label（约 90 个输入框）**：教练端课程/车辆/视频/收款设置、Admin 文案/教练表单全部补 `<label htmlFor>`/`aria-label`（套餐课时输入按「第 N 课 字段名」）；学生接送地址补 aria-label + listbox/option combobox 语义。
+  5. **教练通知列表键盘不可达**：`<li onClick>` → 整卡 `<button>`（aria-label=标题，focus-visible 样式）。
+  6. **顶部菜单无 Esc/焦点**：二级页菜单与首页移动菜单补 Esc 关闭（Esc 后焦点还原到按钮）。
+  7. **Hero 轮播无暂停**：新增暂停/继续按钮（Pause/Play），尊重 `prefers-reduced-motion`（不再自动轮播）。
+  8. **课程/车辆表单只报通用 Required**：改为逐字段校验 + 字段内联错误 + `aria-invalid` + 聚焦首个错误字段。
+  9. **输入框焦点环对比度**：`--color-focus-ring` 不透明度 0.38→0.62（亮）/ 0.45→0.65（暗）。
+  10. **主 CTA 两种形状**：底部 CTA band 主按钮统一为胶囊圆角（与 hero 一致）。
+  11. **warning 徽章四端不一致**：landing 实心黄、student 灰底 → 统一为浅黄底（warning 15%）+ warning 文字（与 shared/instructor 一致）。
+  12. **底部导航断点不一致**：学员端底部导航断点 768 → 900（与教练端一致）。
+  13. **学员课程卡 320px 溢出**：`minmax(280px,1fr)` → `minmax(min(280px,100%),1fr)`。
+  14. **P1-14 之外**：管理员密码端点、i18n 新增改密/轮播键（en/zh 同步）。
+- **是否影响旧功能**：是——① 教练通知列表项由整行点击改为按钮点击（交互等价）；② hero 增加暂停按钮、尊重系统减弱动效设置；③ 表单错误提示更具体；④ 徽章/CTA 视觉统一；其余为结构修复（无功能变化）。
+- **测试结果**：`npm run build` 通过（tsc strict 零错误）；本地回归 8 项全过——hero 暂停按钮、菜单 Esc 关闭、通知按钮化、课程表单 3 个逐字段错误、课程 label、徽章渲染、日历移动端对齐（390px 表头/列像素级对齐）、管理员改密（旧密码拒绝/新密码生效/短密码拒绝/还原）；线上验证改密端点正常。已部署。
+
+---
+
 ## Change 12 — 教学视频二级页面 /videos + 二级页面右上角统一菜单按钮
 
 - **我的要求**：① 教学视频做一个专门的二级页面；② 二级页面（课程预约 /courses、模拟题库 /g1、教学视频 /videos）右上角统一有菜单按钮，点击弹出菜单可跳转其他任何页面。

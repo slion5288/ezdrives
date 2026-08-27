@@ -88,7 +88,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
   const toast = useToast()
 
   const [form, setForm] = useState<CourseForm | null>(null)
-  const [formError, setFormError] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ nameEn?: boolean; nameZh?: boolean; lessons?: boolean }>({})
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null)
   const imageRef = useRef<HTMLInputElement>(null)
 
@@ -103,13 +103,17 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     reader.readAsDataURL(file)
   }
 
+  const clearError = (key: 'nameEn' | 'nameZh' | 'lessons'): void => {
+    setFieldErrors((prev) => ({ ...prev, [key]: false }))
+  }
+
   const openAdd = (): void => {
-    setFormError(false)
+    setFieldErrors({})
     setForm(emptyForm())
   }
 
   const openEdit = (course: Course): void => {
-    setFormError(false)
+    setFieldErrors({})
     setForm(formFromCourse(course))
   }
 
@@ -121,13 +125,15 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
 
   const submitForm = (): void => {
     if (!form) return
-    if (!form.nameEn.trim() || !form.nameZh.trim()) {
-      setFormError(true)
-      return
-    }
+    const errors: { nameEn?: boolean; nameZh?: boolean; lessons?: boolean } = {}
+    if (!form.nameEn.trim()) errors.nameEn = true
+    if (!form.nameZh.trim()) errors.nameZh = true
     const isPackage = form.type === 'package'
-    if (isPackage && form.lessons.some((l) => !l.nameEn.trim() || !l.nameZh.trim())) {
-      setFormError(true)
+    if (isPackage && form.lessons.some((l) => !l.nameEn.trim() || !l.nameZh.trim())) errors.lessons = true
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      const first = document.querySelector<HTMLInputElement>('#course-name-en, #course-name-zh')
+      first?.focus()
       return
     }
     const lessons: CourseLesson[] | undefined = isPackage
@@ -242,20 +248,22 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
         >
           <div className="ins-form-grid">
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.courses.nameEn')}</span>
-              <input className="ins-input" value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} />
+              <label className="ins-field-label" htmlFor="course-name-en">{t('instructor.courses.nameEn')}</label>
+              <input id="course-name-en" className="ins-input" aria-invalid={!!fieldErrors.nameEn} value={form.nameEn} onChange={(e) => { setForm({ ...form, nameEn: e.target.value }); clearError('nameEn') }} />
+              {fieldErrors.nameEn ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
             <div className="ins-field">
-              <span className="ins-field-label">{t('instructor.courses.nameZh')}</span>
-              <input className="ins-input" value={form.nameZh} onChange={(e) => setForm({ ...form, nameZh: e.target.value })} />
+              <label className="ins-field-label" htmlFor="course-name-zh">{t('instructor.courses.nameZh')}</label>
+              <input id="course-name-zh" className="ins-input" aria-invalid={!!fieldErrors.nameZh} value={form.nameZh} onChange={(e) => { setForm({ ...form, nameZh: e.target.value }); clearError('nameZh') }} />
+              {fieldErrors.nameZh ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
             <div className="ins-field ins-field--wide">
-              <span className="ins-field-label">{t('instructor.courses.descEn')}</span>
-              <textarea className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} />
+              <label className="ins-field-label" htmlFor="course-desc-en">{t('instructor.courses.descEn')}</label>
+              <textarea id="course-desc-en" className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} />
             </div>
             <div className="ins-field ins-field--wide">
-              <span className="ins-field-label">{t('instructor.courses.descZh')}</span>
-              <textarea className="ins-input" rows={2} value={form.descZh} onChange={(e) => setForm({ ...form, descZh: e.target.value })} />
+              <label className="ins-field-label" htmlFor="course-desc-zh">{t('instructor.courses.descZh')}</label>
+              <textarea id="course-desc-zh" className="ins-input" rows={2} value={form.descZh} onChange={(e) => setForm({ ...form, descZh: e.target.value })} />
             </div>
 
             <div className="ins-field ins-field--wide">
@@ -285,8 +293,9 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
             {form.type === 'single' ? (
               <>
                 <div className="ins-field">
-                  <span className="ins-field-label">{t('instructor.courses.price')}</span>
+                  <label className="ins-field-label" htmlFor="course-price">{t('instructor.courses.price')}</label>
                   <input
+                    id="course-price"
                     className="ins-input tabular-nums"
                     type="number"
                     min={0}
@@ -310,7 +319,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
               </>
             ) : (
               <div className="ins-field ins-field--wide">
-                <span className="ins-field-label">{t('instructor.courses.lessons')}</span>
+                <label className="ins-field-label" htmlFor="course-lesson-0">{t('instructor.courses.lessons')}</label>
                 <div className="ins-package-editor">
                   {form.lessons.map((lesson, i) => (
                     <div key={i} className="ins-package-row">
@@ -318,24 +327,28 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                       <input
                         className="ins-input"
                         placeholder={t('instructor.courses.lessonNameEn')}
+                        aria-label={t('instructor.courses.lessonNameEn') + ` (${i + 1})`}
                         value={lesson.nameEn}
                         onChange={(e) => patchLesson(i, { nameEn: e.target.value })}
                       />
                       <input
                         className="ins-input"
                         placeholder={t('instructor.courses.lessonNameZh')}
+                        aria-label={t('instructor.courses.lessonNameZh') + ` (${i + 1})`}
                         value={lesson.nameZh}
                         onChange={(e) => patchLesson(i, { nameZh: e.target.value })}
                       />
                       <input
                         className="ins-input"
                         placeholder={t('instructor.courses.lessonDescEn')}
+                        aria-label={t('instructor.courses.lessonDescEn') + ` (${i + 1})`}
                         value={lesson.descEn}
                         onChange={(e) => patchLesson(i, { descEn: e.target.value })}
                       />
                       <input
                         className="ins-input"
                         placeholder={t('instructor.courses.lessonDescZh')}
+                        aria-label={t('instructor.courses.lessonDescZh') + ` (${i + 1})`}
                         value={lesson.descZh}
                         onChange={(e) => patchLesson(i, { descZh: e.target.value })}
                       />
@@ -344,6 +357,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                         type="number"
                         min={0}
                         placeholder="$"
+                        aria-label={t('instructor.courses.price') + ` (${i + 1})`}
                         value={lesson.price}
                         onChange={(e) => patchLesson(i, { price: e.target.value })}
                       />
@@ -355,6 +369,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                     total: form.lessons.reduce((sum, l) => sum + (Math.max(0, Number(l.price) || 0)), 0),
                   })}
                 </p>
+                {fieldErrors.lessons ? <p className="ins-field-error">{t('common.required')}</p> : null}
               </div>
             )}
 
@@ -394,7 +409,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
               />
             </div>
           </div>
-          {formError ? <p className="ins-field-error">{t('common.required')}</p> : null}
+          {Object.values(fieldErrors).some(Boolean) ? <p className="ins-field-error">{t('common.required')}</p> : null}
         </Modal>
       ) : null}
 
