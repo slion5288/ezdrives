@@ -1345,6 +1345,25 @@ html[data-theme='dark'] .landing-badge--info {
 
 /* --- Instructor --- */
 
+/* Instructor list (admin-managed) */
+.landing-instructors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-5);
+}
+.landing-instructor--card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  background: var(--color-surface);
+}
+.landing-instructor__photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-surface-2);
+}
 .landing-instructor {
   display: grid;
   grid-template-columns: 340px 1fr;

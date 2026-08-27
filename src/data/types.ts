@@ -203,4 +203,24 @@ export interface AppState {
   notifications: Notification[]
   payments: Payment[]
   videos: TeachingVideo[]
+  /** Admin-edited homepage content (served to public visitors + instructor). */
+  homeContent?: HomeContent | null
+}
+
+/** Admin-edited homepage content (text overrides / hero images / instructors). */
+export interface HomeInstructor {
+  id: string
+  name: string
+  bio: { en: string; zh: string }
+  years: number
+  photo?: string // data URL
+}
+
+export interface HomeContent {
+  /** i18n key → { en, zh } replacement shown on the homepage. */
+  overrides?: Record<string, { en: string; zh: string }>
+  /** Up to 6 hero slide data URLs; null/empty keeps the bundled /hero images. */
+  heroImages?: string[] | null
+  /** Instructor cards shown in 认识你的教练; empty keeps the single profile. */
+  instructors?: HomeInstructor[]
 }

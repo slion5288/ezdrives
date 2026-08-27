@@ -13,7 +13,7 @@ export function icsToken() {
 
 /** Full business state assembled from D1 (all tables). */
 export async function readFullState(env) {
-  const [instructor, rules, exceptions, courses, vehicles, videos, students, appointments, payments, notifications] =
+  const [instructor, rules, exceptions, courses, vehicles, videos, students, appointments, payments, notifications, homeContent] =
     await Promise.all([
       env.DB.prepare('SELECT payload FROM instructor WHERE id = 1').first(),
       env.DB.prepare('SELECT payload FROM weekly_rules ORDER BY id').all(),
@@ -25,6 +25,7 @@ export async function readFullState(env) {
       env.DB.prepare('SELECT payload FROM appointments ORDER BY rowid').all(),
       env.DB.prepare('SELECT payload FROM payments ORDER BY rowid').all(),
       env.DB.prepare('SELECT payload FROM notifications ORDER BY rowid').all(),
+      env.DB.prepare('SELECT payload FROM home_content WHERE id = 1').first(),
     ])
 
   // Backfill calendar-subscription tokens for students created before the
@@ -56,9 +57,23 @@ export async function readFullState(env) {
     notifications: mapRows(notifications),
     payments: mapRows(payments),
     videos: mapRows(videos),
+    homeContent: homeContent ? JSON.parse(homeContent.payload) : null,
   }
   if (!state.instructor) throw new Error('System not initialized — run /api/setup')
   return state
+}
+
+/** Public view for unauthenticated visitors (landing + courses pages). */
+export function publicView(state) {
+  return {
+    instructor: state.instructor,
+    weeklyRules: state.weeklyRules,
+    exceptions: state.exceptions,
+    courses: (state.courses || []).filter((c) => c.active),
+    vehicles: (state.vehicles || []).filter((v) => v.active),
+    videos: state.videos || [],
+    homeContent: state.homeContent || null,
+  }
 }
 
 /**

@@ -5,6 +5,20 @@
 
 ---
 
+## Change 9 — 后台管理页 /admin（登录 slion / 528830）：主页文字、图片、教练都可改
+
+- **我的要求**：做一个专门的后台管理页面，网址 https://ezdrives.net/admin，管理登录名 slion、密码 528830；主页需要改文字、画面等的地方都能进管理页改，并且可以增加/删减教练。
+- **涉及页面**：`/admin`（新增后台管理页）、首页（/）、全部课程页（/courses）。
+- **涉及功能**：主页文字覆盖、首页轮播图上传、教练增删改；首页公开数据不再使用演示(seed)数据。
+- **修改文件**：
+  - 后端：`migrations/0004_admin_and_home_content.sql`（新表 `admin_users`（用户名 slion，PBKDF2 哈希存储密码）、`admin_sessions`、`home_content`（存文字覆盖/轮播图/教练列表 JSON））；`functions/lib/db.js`（读状态时加载 `home_content`；新增 `publicView()`——未登录访客只拿公开字段：教练、每周规则、课程/车辆/视频、主页内容）；`functions/lib/admin.js`（新建/校验/删除管理会话）；`functions/api/admin/login.js`（POST，PBKDF2 校验，失败限流 5 次/5 分钟）；`functions/api/admin/content.js`（GET/PUT 主页内容，管理员鉴权，4MB 上限，图片 data URL 每张 ≤900KB）；`functions/api/public/home.js`（GET 公开主页数据，无需登录）。
+  - 前端：`src/pages/admin/AdminPage.tsx` + `admin.css`（登录页 + 三个页签：主页文字 29 个可编辑字段（中英各存）、主页图片 6 张轮播图上传（canvas 压缩）、教练管理（新增/编辑/删除，含照片）；本地保存 token）；`src/App.tsx`（注册 `/admin` 路由）；`src/data/api.ts` + `store.ts`（`apiAdminLogin/Get/Put`、`apiPublicHome`、`initPublicHome()`、`get/setAdminToken`）；`src/pages/landing/LandingPage.tsx`（文字取「管理覆盖 → 默认文案」、轮播图取管理上传、教练区：管理列表存在则展示多人卡片，否则展示单人档案+覆盖姓名/简介）；`src/pages/landing/CoursesPage.tsx`（访客也拉公开数据）；`src/data/types.ts`（`HomeContent`/`HomeInstructor`）；i18n 新增 `admin.*` 键（en/zh 同步）。
+- **是否影响旧功能**：是——① 首页/课程页公开访客改为读取**真实数据库数据**（此前访客看到的是内置演示数据，含假课程/假视频），现在后台有多少就显示多少；② 教练区从固定单人展示改为「有管理教练列表则显示多人」；其余不变。
+- **测试结果**：编译通过；本地端到端——admin 登录（对/错密码）、内容 GET/PUT、公开接口反映覆盖与教练、浏览器登录管理页进仪表盘、首页显示覆盖文字与新增教练，全部通过；已部署线上，https://ezdrives.net/admin 登录 slion/528830 成功、仪表盘三个页签正常、首页正常渲染。⚠️ 密码 528830 为简单密码，建议上线后尽快在后台页后续版本里提供改密功能（或告知我帮你改）。
+- **数据提示**：公开访客现在看到的是真实数据——目前后台数据库里**还没有课程**（教练端 App 里也需添加课程，首页课程区才显示），当前首页课程区显示「课程暂未开放」占位；车辆/视频/教练资料已正常显示。教练（多人）功能已就绪，1-2 年内只有你一人时首页仍按单人档案展示。
+
+---
+
 ## Change 8 — 个人中心：Google 地址自动补全、注册时间修复、日历订阅改为预约后弹「添加到日历」
 
 - **我的要求**：① 接送地址用 Google 地图自动填写防填错；② 修复注册时间显示错误；③ 日历同步不需要专门的订阅链接，预约新课程后直接弹出「添加到日历」按钮。

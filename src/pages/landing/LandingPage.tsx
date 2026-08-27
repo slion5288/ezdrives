@@ -30,7 +30,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
-import { maskPhone, useAppState } from '../../data/store'
+import { getSession, initPublicHome, maskPhone, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
 import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
 import { COURSE_IMAGES, G1_IMAGE, HERO_IMAGES } from '../../data/assets'
@@ -52,17 +52,17 @@ import './LandingPage.css'
 // public/hero/README.txt); falls back to the bundled base64 images on error.
 const HERO_FILES = ['/hero/hero-1.jpg', '/hero/hero-2.jpg', '/hero/hero-3.jpg', '/hero/hero-4.jpg', '/hero/hero-5.jpg', '/hero/hero-6.jpg']
 
-function HeroCarousel(): JSX.Element {
+function HeroCarousel({ slides }: { slides?: string[] }): JSX.Element {
   const locale = useLocale()
   const [idx, setIdx] = useState(0)
-  const slideCount = HERO_FILES.length
+  const slideCount = slides?.length ?? HERO_FILES.length
   useEffect(() => {
     const id = window.setInterval(() => setIdx((i) => (i + 1) % slideCount), 5000)
     return () => window.clearInterval(id)
   }, [slideCount])
   return (
     <div className="landing-hero__media" aria-hidden="true">
-      {HERO_FILES.map((file, i) => {
+      {(slides ?? HERO_FILES).map((file, i) => {
         const slide = HERO_IMAGES[i % HERO_IMAGES.length]
         return (
         <div key={i} className={`landing-hero__slide${i === idx ? ' is-active' : ''}`}>
@@ -191,7 +191,28 @@ export default function LandingPage(): JSX.Element {
   const isMobile = useIsMobile()
   const [playingVideo, setPlayingVideo] = useState<TeachingVideo | null>(null)
 
+  // Visitors (no session) fetch the real public homepage data instead of the
+  // placeholder — this also carries the admin-edited content.
+  useEffect(() => {
+    if (!getSession().token) {
+      initPublicHome().catch(() => undefined)
+    }
+  }, [])
+
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
+
+  /** Admin-edited text override: key → localized replacement, else default. */
+  const overrides = state.homeContent?.overrides || {}
+  const c = (key: string): string => {
+    const o = overrides[key]
+    return o ? (locale === 'zh' ? o.zh : o.en) : t(key)
+  }
+
+  /** Admin-edited hero slides (data URLs) or null to keep the bundled photos. */
+  const heroSlides = state.homeContent?.heroImages?.filter((v): v is string => typeof v === 'string' && v.length > 0)
+  const instructorsList = state.homeContent?.instructors?.length ? state.homeContent.instructors : null
+  const instructorName = overrides['instructor.name'] ? pick(overrides['instructor.name']) : instructor.name
+  const instructorBio = overrides['instructor.bio'] ? pick(overrides['instructor.bio']) : pick(instructor.bio)
 
   const closeMenu = (): void => setMenuOpen(false)
 
@@ -350,13 +371,13 @@ export default function LandingPage(): JSX.Element {
       <main>
         {/* ---- Hero: full-bleed HD carousel + headline (Apple-style) ---- */}
         <section className="landing-hero">
-          <HeroCarousel />
+          <HeroCarousel slides={heroSlides} />
           <div className="landing-hero__content container">
             <LandingBadge tone="success" dot className="landing-hero__badge">
               {t('landing.badge')} · {t('landing.instructors.years', { years: instructor.yearsExperience })}
             </LandingBadge>
-            <h1 className="landing-hero__title">{t('landing.hero.title')}</h1>
-            <p className="landing-hero__subtitle">{t('landing.hero.subtitle')}</p>
+            <h1 className="landing-hero__title">{c('landing.hero.title')}</h1>
+            <p className="landing-hero__subtitle">{c('landing.hero.subtitle')}</p>
             <div className="landing-hero__ctas">
               <LandingButton size="lg" to="/student/book">
                 {t('landing.cta.book')}
@@ -403,8 +424,8 @@ export default function LandingPage(): JSX.Element {
                     <span className="landing-steps__icon">
                       <Icon size={22} strokeWidth={2} />
                     </span>
-                    <h3>{t(step.titleKey)}</h3>
-                    <p>{t(step.bodyKey)}</p>
+                    <h3>{c(step.titleKey)}</h3>
+                    <p>{c(step.bodyKey)}</p>
                   </div>
                 )
               })}
@@ -415,7 +436,7 @@ export default function LandingPage(): JSX.Element {
         {/* ---- Courses (from store state) ---- */}
         <section id="courses" className="landing-section landing-section--alt">
           <div className="container">
-            <SectionHeading title={t('landing.courses.title')} subtitle={t('landing.courses.subtitle')} />
+            <SectionHeading title={t('landing.courses.title')} subtitle={c('landing.courses.subtitle')} />
             {shownCourses.length === 0 ? (
               <p className="landing-section__empty">{t('courses.unavailable')}</p>
             ) : (
@@ -445,7 +466,7 @@ export default function LandingPage(): JSX.Element {
         {/* ---- Teaching videos (from instructor 视频管理) ---- */}
         <section id="videos" className="landing-section landing-section--alt">
           <div className="container">
-            <SectionHeading title={t('landing.videos.title')} subtitle={t('landing.videos.subtitle')} />
+            <SectionHeading title={t('landing.videos.title')} subtitle={c('landing.videos.subtitle')} />
             <div className="landing-panel">
             {homeVideos.length === 0 ? (
               <p className="landing-section__empty">{t('landing.videos.empty')}</p>
@@ -541,13 +562,44 @@ export default function LandingPage(): JSX.Element {
         <section id="instructor" className="landing-section">
           <div className="container">
             <SectionHeading title={t('landing.instructors.title')} subtitle={t('landing.instructors.subtitle')} />
+            {instructorsList ? (
+              <div className="landing-instructors">
+                {instructorsList.map((coach) => (
+                  <div className="landing-instructor landing-instructor--card" key={coach.id}>
+                    <div className="landing-instructor__left">
+                      {coach.photo ? (
+                        <img className="landing-instructor__photo" src={coach.photo} alt={coach.name} />
+                      ) : (
+                        <span className="landing-instructor__avatar-wrap">
+                          <LandingAvatar name={coach.name} color={instructor.avatarColor} size={64} />
+                        </span>
+                      )}
+                      <h3 className="landing-instructor__name">{coach.name}</h3>
+                      <LandingBadge tone="success" className="landing-instructor__badge">
+                        <ShieldCheck size={12} />
+                        {t('landing.badge')}
+                      </LandingBadge>
+                    </div>
+                    <div className="landing-instructor__right">
+                      <p className="landing-instructor__bio">{pick(coach.bio)}</p>
+                      <div className="landing-instructor__stats">
+                        <LandingBadge tone="neutral">
+                          <ShieldCheck size={12} />
+                          {t('landing.instructors.years', { years: coach.years })}
+                        </LandingBadge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
             <div className="landing-instructor">
               <div className="landing-instructor__left">
                 <span className="landing-instructor__avatar-wrap">
-                  <LandingAvatar name={instructor.name} color={instructor.avatarColor} size={64} />
+                  <LandingAvatar name={instructorName} color={instructor.avatarColor} size={64} />
                   <span className="landing-instructor__online" aria-hidden="true" />
                 </span>
-                <h3 className="landing-instructor__name">{instructor.name}</h3>
+                <h3 className="landing-instructor__name">{instructorName}</h3>
                 <span className="landing-instructor__rating-row">
                   <StarRating value={instructor.rating} label={t('landing.trust.rating')} size={15} />
                   <span className="landing-instructor__rating tabular-nums">{instructor.rating.toFixed(1)}</span>
@@ -558,7 +610,7 @@ export default function LandingPage(): JSX.Element {
                 </LandingBadge>
               </div>
               <div className="landing-instructor__right">
-                <p className="landing-instructor__bio">{pick(instructor.bio)}</p>
+                <p className="landing-instructor__bio">{instructorBio}</p>
                 <div className="landing-instructor__stats">
                   <LandingBadge tone="neutral">
                     <Users size={12} />
@@ -589,6 +641,7 @@ export default function LandingPage(): JSX.Element {
                 </LandingButton>
               </div>
             </div>
+            )}
           </div>
         </section>
 
@@ -601,8 +654,8 @@ export default function LandingPage(): JSX.Element {
                 <figure className="landing-testimonials__card" key={n}>
                   <Quote size={22} className="landing-testimonials__quote-icon" />
                   <StarRating value={5} size={14} />
-                  <blockquote>{t(`landing.testimonials.${n}.quote`)}</blockquote>
-                  <figcaption>{t(`landing.testimonials.${n}.author`)}</figcaption>
+                  <blockquote>{c(`landing.testimonials.${n}.quote`)}</blockquote>
+                  <figcaption>{c(`landing.testimonials.${n}.author`)}</figcaption>
                 </figure>
               ))}
             </div>
@@ -617,10 +670,10 @@ export default function LandingPage(): JSX.Element {
               {[1, 2, 3, 4].map((n) => (
                 <details className="landing-faq__item" key={n}>
                   <summary>
-                    <span>{t(`landing.faq.${n}.q`)}</span>
+                    <span>{c(`landing.faq.${n}.q`)}</span>
                     <ChevronDown size={18} className="landing-faq__chevron" />
                   </summary>
-                  <p>{t(`landing.faq.${n}.a`)}</p>
+                  <p>{c(`landing.faq.${n}.a`)}</p>
                 </details>
               ))}
             </div>
@@ -632,8 +685,8 @@ export default function LandingPage(): JSX.Element {
           <div className="container">
             <div className="landing-band__inner">
               <div className="landing-band__copy">
-                <h2>{t('landing.cta.band.title')}</h2>
-                <p>{t('landing.cta.band.body')}</p>
+                <h2>{c('landing.cta.band.title')}</h2>
+                <p>{c('landing.cta.band.body')}</p>
               </div>
               <div className="landing-band__actions">
                 <LandingButton size="lg" to="/student/book">
@@ -652,7 +705,7 @@ export default function LandingPage(): JSX.Element {
           <div className="landing-footer__grid">
             <div className="landing-footer__brand">
               <Logo />
-              <p className="landing-footer__tagline">{t('landing.footer.tagline')}</p>
+              <p className="landing-footer__tagline">{c('landing.footer.tagline')}</p>
               <p className="landing-footer__lang">{t('landing.footer.language')}</p>
             </div>
             <div className="landing-footer__col">

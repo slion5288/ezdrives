@@ -70,3 +70,23 @@ export async function apiPutState(token: string, state: unknown): Promise<ApiSta
 export async function apiAction(token: string, action: string, args: Record<string, unknown>): Promise<ApiState> {
   return request('/student/actions', { method: 'POST', body: { action, args }, token })
 }
+
+/** POST /api/admin/login — site content-admin login */
+export async function apiAdminLogin(username: string, password: string): Promise<{ ok: boolean; token?: string; error?: string }> {
+  return request('/admin/login', { method: 'POST', body: { username, password } })
+}
+
+/** GET /api/admin/content — admin-edited homepage content */
+export async function apiAdminGetContent(token: string): Promise<{ ok: boolean; content?: { overrides?: Record<string, { en: string; zh: string }>; heroImages?: (string | null)[]; instructors?: unknown[] } | null; error?: string }> {
+  return request('/admin/content', { token })
+}
+
+/** PUT /api/admin/content — save homepage content */
+export async function apiAdminPutContent(token: string, content: unknown): Promise<{ ok: boolean; error?: string }> {
+  return request('/admin/content', { method: 'PUT', body: content, token })
+}
+
+/** GET /api/public/home — public homepage data (no auth) */
+export async function apiPublicHome(): Promise<ApiState> {
+  return request('/public/home')
+}

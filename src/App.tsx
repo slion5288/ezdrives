@@ -22,6 +22,7 @@ import StudentBookingPage from './pages/student/StudentBookingPage'
 import StudentDashboardPage from './pages/student/StudentDashboardPage'
 import StudentNotificationsPage from './pages/student/StudentNotificationsPage'
 import StudentProfilePage from './pages/student/StudentProfilePage'
+import AdminPage from './pages/admin/AdminPage'
 
 /** Reset scroll position on every route change. */
 function ScrollToTop(): null {
@@ -47,6 +48,7 @@ export default function App(): JSX.Element {
           <Route path="/student/profile" element={<StudentProfilePage />} />
           <Route path="/student/notifications" element={<StudentNotificationsPage />} />
           <Route path="/instructor" element={<InstructorDashboardPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </ToastProvider>

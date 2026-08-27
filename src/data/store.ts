@@ -32,13 +32,33 @@ import {
   startOfDay,
   toLocalISO,
 } from './timeEngine'
-import { apiAction, apiFetchState, apiLogin, apiLogout, apiPutState, apiRegister, apiSendCode } from './api'
+import { apiAction, apiFetchState, apiLogin, apiLogout, apiPublicHome, apiPutState, apiRegister, apiSendCode } from './api'
 import type { ApiUser } from './api'
 
-export type { AppState, Appointment, Course, CourseLesson, DayException, InstructorBank, Notification, PayApiConfig, Payment, PaymentMethod, Student, TeachingVideo, Vehicle, WeeklyRule } from './types'
+export type { AppState, Appointment, Course, CourseLesson, DayException, HomeContent, HomeInstructor, InstructorBank, Notification, PayApiConfig, Payment, PaymentMethod, Student, TeachingVideo, Vehicle, WeeklyRule } from './types'
 export type { Slot } from './timeEngine'
 
 const SESSION_KEY = 'dw.session.v2' // { token, user }
+const ADMIN_KEY = 'dw.admin.v2' // site content-admin session token
+
+// --- Admin (content manager) session helpers ---
+
+export function getAdminToken(): string {
+  try {
+    return localStorage.getItem(ADMIN_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+export function setAdminToken(token: string): void {
+  try {
+    if (token) localStorage.setItem(ADMIN_KEY, token)
+    else localStorage.removeItem(ADMIN_KEY)
+  } catch {
+    // storage unavailable — in-memory only
+  }
+}
 
 export interface Session {
   token: string
@@ -154,6 +174,25 @@ export async function initStateFromServer(): Promise<boolean> {
 /** True once the server state has been loaded for this session. */
 export function isStateLoaded(): boolean {
   return stateLoaded
+}
+
+/**
+ * Pull the PUBLIC homepage state (no login) — real courses/videos/instructor
+ * plus the admin-edited homepage content, so visitors never see seed data.
+ */
+export async function initPublicHome(): Promise<boolean> {
+  try {
+    const res = await apiPublicHome()
+    if (res.ok && res.state) {
+      state = res.state as AppState
+      notifyListeners()
+      return true
+    }
+    return false
+  } catch (e) {
+    console.error('[store] initPublicHome error:', e)
+    return false
+  }
 }
 
 // --- Notification engine (internal) ---

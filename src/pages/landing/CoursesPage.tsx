@@ -6,10 +6,10 @@
 // ============================================================================
 
 import { ArrowLeft, ArrowRight, Check, Clock, GraduationCap, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLocale, useT } from '../../i18n'
-import { useAppState } from '../../data/store'
+import { getSession, initPublicHome, useAppState } from '../../data/store'
 import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
 import { LandingBadge, LandingButton, LanguageSwitcher, Logo, ThemeToggle } from './primitives'
 import './LandingPage.css'
@@ -20,6 +20,11 @@ export default function CoursesPage(): JSX.Element {
   const state = useAppState()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // Visitors (no session) load the real public catalogue instead of the seed.
+  useEffect(() => {
+    if (!getSession().token) initPublicHome().catch(() => undefined)
+  }, [])
 
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
   const courses = state.courses.filter((c) => c.active)
