@@ -5,6 +5,20 @@
 
 ---
 
+## Change 10 — 管理页对接现有内容 + 只填中文、英文自动翻译
+
+- **我的要求**：① 管理页面要能看到主页现有的原始内容（不是空字段），做好数据对接，方便修改；② 整个网站中英双语，但我只会中文，只需要修改中文；英文请自动翻译，不用单独改英文。
+- **涉及页面**：`/admin`（后台管理页）、首页（/）。
+- **涉及功能**：管理页文字编辑改为「显示当前生效内容 + 只填中文 + 保存时自动翻译英文」；管理界面固定中文。
+- **修改文件**：
+  - 后端：`functions/api/admin/translate.js`（新增，管理员鉴权 + 限流 60 次/分钟；翻译链：Google Cloud Translation API v2（配置 `GOOGLE_TRANSLATE_API_KEY` 时启用）→ MyMemory 免费 API → Google 无 key 端点。**注意**：MyMemory/无 key 端点从 Cloudflare 数据中心 IP 会被限流（429），见下方前端兜底）。
+  - 前端：`src/pages/admin/AdminPage.tsx`（大改：管理界面固定中文；文字页 29 个字段预填**当前生效中文**（默认文案或已有覆盖），只编辑中文，下方显示「英文（自动翻译）」只读预览；保存时对比默认值——有改动才存覆盖、英文自动翻译，改回默认/留空则恢复默认；教练 bio 同样只填中文 + 自动翻译；**翻译兜底**：先走后端翻译接口，若失败（如云端 429）则浏览器直连 MyMemory（CORS 允许，家用 IP 可用））；`src/data/api.ts`（新增 `apiAdminTranslate`）；i18n（`admin.textHint` 改为「只填中文，保存时自动翻译成英文。留空 = 恢复默认文案。」，新增 `admin.translateFail`/`admin.enAuto`/`admin.placeholder`/`admin.bioHint`，en/zh 同步）；`src/pages/admin/admin.css`（英文预览/提示样式）。
+- **是否影响旧功能**：是——管理页文字编辑从「中英两个输入框」改为「只有中文输入框 + 英文自动翻译」；管理界面语言固定为中文；其余（图片上传、教练增删）不变。
+- **测试结果**：编译通过；本地端到端——文字 tab 预填当前中文（"自信驾驶，安心上路。"）、修改中文保存后英文自动翻译（"新标题：安心学车，轻松拿牌" → "New title: Learn to drive with peace of mind and grab a card with ease"）、首页显示新中文标题；教练 bio 中文保存 + 英文自动翻译（"耐心细致，专攻路考强化。" → "Patient and meticulous, specializing in road test strengthening."）、首页显示教练卡片，全部通过。线上验证——https://ezdrives.net/admin 登录、预填当前中文、改中文保存 → 英文自动翻译（"线上改文案测试：轻松学车" → "Online Copywriting Test: Easy Car Learning"）、首页显示新标题，全部通过。测试数据已还原为默认。
+- **翻译服务说明**：当前线上翻译走「浏览器直连 MyMemory 免费 API」（家用 IP 可用，每日约 5K 字符额度，日常改文案足够）；若要更稳定/更高质量的翻译，请在 Google Cloud 启用 **Cloud Translation API** 并把 API Key 配置为 Cloudflare Pages 环境变量 `GOOGLE_TRANSLATE_API_KEY`（部署后自动优先走 Google）。
+
+---
+
 ## Change 9 — 后台管理页 /admin（登录 slion / 528830）：主页文字、图片、教练都可改
 
 - **我的要求**：做一个专门的后台管理页面，网址 https://ezdrives.net/admin，管理登录名 slion、密码 528830；主页需要改文字、画面等的地方都能进管理页改，并且可以增加/删减教练。

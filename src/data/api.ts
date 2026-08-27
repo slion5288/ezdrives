@@ -86,6 +86,11 @@ export async function apiAdminPutContent(token: string, content: unknown): Promi
   return request('/admin/content', { method: 'PUT', body: content, token })
 }
 
+/** POST /api/admin/translate — zh → en machine translation (admin only) */
+export async function apiAdminTranslate(token: string, texts: string[]): Promise<{ ok: boolean; translations?: string[]; error?: string }> {
+  return request('/admin/translate', { method: 'POST', body: { texts }, token })
+}
+
 /** GET /api/public/home — public homepage data (no auth) */
 export async function apiPublicHome(): Promise<ApiState> {
   return request('/public/home')

@@ -36,7 +36,8 @@
   - 可访问：`/student*`；只能读写自己的预约/支付/通知/地址。
   - 接送地址在登录后于「个人中心」填写。
 - **管理员（Admin）**：站点内容管理员，登录 `/admin`（用户名 `slion`，密码存 D1 `admin_users` 表 PBKDF2 哈希；当前密码 `528830`，待提供改密功能）。
-  - 可访问：`/admin` 后台（主页文字 29 字段中英覆盖、6 张轮播图上传、教练增删改）；`GET/PUT /api/admin/content`。
+  - 可访问：`/admin` 后台（主页文字 29 字段中英覆盖、6 张轮播图上传、教练增删改）；`GET/PUT /api/admin/content`、`POST /api/admin/translate`。
+  - **管理员只会中文**：管理界面固定中文；文字编辑显示「当前生效内容」（默认文案或已有覆盖），只填中文，保存时英文自动翻译（后端 Google Cloud Translation（配置 key 时）→ 浏览器直连 MyMemory 兜底）；留空 = 恢复默认文案。
   - 与教练角色分离：管理员只管**主页展示内容**；课程/车辆/视频/工作时间/支付仍由教练后台管理。
 - **游客（Public）**：可访问 `/`、`/courses`、`/g1`、`/login`、`/student/book`（公开课程目录，购买时先登录）。
   - 游客看到的数据来自 `GET /api/public/home`（**真实数据库**公开字段：教练、课程/车辆/视频、主页覆盖内容），**不再使用内置演示数据**（2025-08 需求：无任何演示数据）。
@@ -47,7 +48,7 @@
 
 | 事项 | 维护人 | 入口 | 数据位置 |
 | --- | --- | --- | --- |
-| 主页文字（29 字段中英） | 管理员 | `/admin` → 主页文字 | `home_content.overrides` |
+| 主页文字（29 字段，只填中文、英文自动翻译） | 管理员 | `/admin` → 主页文字 | `home_content.overrides` |
 | 首页轮播图（6 张） | 管理员 | `/admin` → 主页图片 | `home_content.heroImages` |
 | 教练名单（多人展示用） | 管理员 | `/admin` → 教练 | `home_content.instructors` |
 | 教练个人资料（姓名/bio/车辆） | 教练 | `/instructor` → 设置 → 教练资料 | `users` / 车辆表 |

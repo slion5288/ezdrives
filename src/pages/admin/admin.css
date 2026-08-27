@@ -147,6 +147,17 @@
   min-height: 64px;
   resize: vertical;
 }
+.admin-text-preview {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
+.admin-bio-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
 
 .admin-btn {
   display: inline-flex;
