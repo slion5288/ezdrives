@@ -1795,7 +1795,13 @@
   flex: 1;
   min-width: 0;
 }
-/* Google Places autocomplete dropdown for the pickup address */
+/* Geoapify autocomplete dropdown for the pickup address */
+.student-address-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
 .student-address-wrap {
   position: relative;
   flex: 1;

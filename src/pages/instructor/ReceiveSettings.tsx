@@ -4,9 +4,10 @@
 // email, bank account and Stripe/PayPal API credentials. Everything saved here
 // is shown to students in the payment modal exactly as configured.
 //
-// Edit/save pattern (site-wide): each section is read-only by default with an
-// 编辑 button; clicking it clears the fields, the button becomes 保存; saving
-// returns to read-only. Empty fields keep their previous value on save.
+// Edit/save pattern (mainstream): each section is read-only by default with an
+// 编辑 button; clicking it opens the form PRE-FILLED with the current values
+// plus 保存 / 取消 buttons — 取消 discards the edits and returns to the
+// read-only summary untouched, so accidental clicks never lose information.
 // ============================================================================
 
 import { useRef, useState } from 'react'
@@ -46,46 +47,50 @@ export default function ReceiveSettings(): JSX.Element {
   }
 
   const startEditEmt = (): void => {
-    setEmt('')
+    setEmt(state.instructor.emtEmail ?? '')
     setEditingEmt(true)
   }
 
+  const cancelEmt = (): void => setEditingEmt(false)
+
   const saveEmt = (): void => {
-    setEmtEmail(emt.trim() || (state.instructor.emtEmail ?? ''))
+    setEmtEmail(emt.trim())
     setEditingEmt(false)
     toast({ tone: 'success', title: t('common.toast.saved') })
   }
 
   const startEditBank = (): void => {
-    setBankForm({})
+    setBankForm(state.instructor.bank ?? {})
     setEditingBank(true)
   }
 
+  const cancelBank = (): void => setEditingBank(false)
+
   const saveBank = (): void => {
-    const prev = state.instructor.bank ?? {}
     setBank({
-      bankName: bank.bankName?.trim() || prev.bankName || '',
-      holderName: bank.holderName?.trim() || prev.holderName || '',
-      transit: bank.transit?.trim() || prev.transit || '',
-      institution: bank.institution?.trim() || prev.institution || '',
-      account: bank.account?.trim() || prev.account || '',
+      bankName: bank.bankName?.trim() ?? '',
+      holderName: bank.holderName?.trim() ?? '',
+      transit: bank.transit?.trim() ?? '',
+      institution: bank.institution?.trim() ?? '',
+      account: bank.account?.trim() ?? '',
     })
     setEditingBank(false)
     toast({ tone: 'success', title: t('common.toast.saved') })
   }
 
   const startEditApi = (): void => {
-    setApi({})
+    setApi(state.instructor.payConfig ?? {})
     setEditingApi(true)
   }
 
+  const cancelApi = (): void => setEditingApi(false)
+
   const saveApi = (): void => {
-    const prev = state.instructor.payConfig ?? {}
     setPayConfig({
-      stripeKey: api.stripeKey?.trim() || prev.stripeKey || '',
-      stripeUrl: api.stripeUrl?.trim() || prev.stripeUrl || '',
-      paypalClientId: api.paypalClientId?.trim() || prev.paypalClientId || '',
-      paypalUrl: api.paypalUrl?.trim() || prev.paypalUrl || '',
+      stripeKey: api.stripeKey?.trim() ?? '',
+      stripeUrl: api.stripeUrl?.trim() ?? '',
+      paypalClientId: api.paypalClientId?.trim() ?? '',
+      paypalUrl: api.paypalUrl?.trim() ?? '',
     })
     setEditingApi(false)
     toast({ tone: 'success', title: t('common.toast.saved') })
@@ -136,18 +141,25 @@ export default function ReceiveSettings(): JSX.Element {
           ) : null}
         </div>
         {editingEmt ? (
-          <div className="ins-settings-row">
-            <input
-              className="ins-input"
-              type="email"
-              placeholder="you@bank.ca"
-              value={emt}
-              onChange={(e) => setEmt(e.target.value)}
-            />
-            <button type="button" className="ins-btn ins-btn--primary" onClick={saveEmt}>
-              {t('common.save')}
-            </button>
-          </div>
+          <>
+            <div className="ins-settings-row">
+              <input
+                className="ins-input"
+                type="email"
+                placeholder="you@bank.ca"
+                value={emt}
+                onChange={(e) => setEmt(e.target.value)}
+              />
+            </div>
+            <div className="ins-settings-row">
+              <button type="button" className="ins-btn ins-btn--secondary" onClick={cancelEmt}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="ins-btn ins-btn--primary" onClick={saveEmt}>
+                {t('common.save')}
+              </button>
+            </div>
+          </>
         ) : (
           <p className="ins-settings-value">{state.instructor.emtEmail || '—'}</p>
         )}
@@ -190,9 +202,14 @@ export default function ReceiveSettings(): JSX.Element {
                 <input className="ins-input tabular-nums" value={bank.account ?? ''} onChange={(e) => setBankForm({ ...bank, account: e.target.value })} />
               </div>
             </div>
-            <button type="button" className="ins-btn ins-btn--primary" onClick={saveBank}>
-              {t('common.save')}
-            </button>
+            <div className="ins-settings-row">
+              <button type="button" className="ins-btn ins-btn--secondary" onClick={cancelBank}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="ins-btn ins-btn--primary" onClick={saveBank}>
+                {t('common.save')}
+              </button>
+            </div>
           </>
         ) : (
           <div className="ins-settings-view">
@@ -258,9 +275,14 @@ export default function ReceiveSettings(): JSX.Element {
                 />
               </div>
             </div>
-            <button type="button" className="ins-btn ins-btn--primary" onClick={saveApi}>
-              {t('common.save')}
-            </button>
+            <div className="ins-settings-row">
+              <button type="button" className="ins-btn ins-btn--secondary" onClick={cancelApi}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="ins-btn ins-btn--primary" onClick={saveApi}>
+                {t('common.save')}
+              </button>
+            </div>
           </>
         ) : (
           <p className="ins-settings-value">

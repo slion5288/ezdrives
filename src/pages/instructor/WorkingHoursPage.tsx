@@ -262,6 +262,9 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
           </div>
 
           <div className="ins-panel-foot">
+            <button type="button" className="ins-btn ins-btn--secondary" onClick={() => setEditing(false)}>
+              {t('common.cancel')}
+            </button>
             <button type="button" className="ins-btn ins-btn--primary" onClick={handleSave}>
               {t('instructor.workinghours.save')}
             </button>

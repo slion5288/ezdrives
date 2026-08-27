@@ -3,10 +3,10 @@
 // Edits the instructor's public profile (name / phone / email / bilingual bio)
 // shown on the homepage 认识你的教练 section. Saved via mutate → PUT /api/state.
 //
-// Edit/save pattern (site-wide requirement): the form is displayed read-only;
-// click 编辑 to enter edit mode — inputs start empty, the button becomes 保存;
-// saving returns to read-only and the button becomes 编辑 again. Empty fields
-// on save keep their previous value (only fields you fill in are updated).
+// Edit/save pattern (mainstream): read-only summary + 编辑 button. Clicking 编辑
+// opens the form PRE-FILLED with the current values plus 保存 / 取消 buttons —
+// 取消 discards the edits and returns to the summary untouched, so accidental
+// clicks can never lose existing information.
 // ============================================================================
 
 import { useState } from 'react'
@@ -29,24 +29,25 @@ export default function ProfileSettings({ state }: { state: AppState }): JSX.Ele
   const [busy, setBusy] = useState(false)
 
   const startEdit = (): void => {
-    setName('')
-    setPhone('')
-    setEmail('')
-    setBioEn('')
-    setBioZh('')
+    setName(inst.name)
+    setPhone(inst.phone)
+    setEmail(inst.email)
+    setBioEn(inst.bio?.en ?? '')
+    setBioZh(inst.bio?.zh ?? '')
     setEditing(true)
+  }
+
+  const cancel = (): void => {
+    setEditing(false)
   }
 
   const save = (): void => {
     setBusy(true)
     updateInstructorProfile({
-      name: name.trim() || inst.name,
-      phone: phone.trim() || inst.phone,
-      email: email.trim() || inst.email,
-      bio: {
-        en: bioEn.trim() || (inst.bio?.en ?? ''),
-        zh: bioZh.trim() || (inst.bio?.zh ?? ''),
-      },
+      name: name.trim(),
+      phone: phone.trim(),
+      email: email.trim(),
+      bio: { en: bioEn.trim(), zh: bioZh.trim() },
     })
     setBusy(false)
     setEditing(false)
@@ -101,6 +102,9 @@ export default function ProfileSettings({ state }: { state: AppState }): JSX.Ele
             </div>
           </div>
           <div className="ins-settings-actions">
+            <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={cancel}>
+              {t('common.cancel')}
+            </button>
             <button type="button" className="ins-btn ins-btn--primary ins-btn--sm" disabled={busy} onClick={save}>
               {t('common.save')}
             </button>

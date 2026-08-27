@@ -339,19 +339,40 @@ function StudentProfileContent(): JSX.Element {
                   ) : (
                     <span className="student-summary-value">{student?.address || '—'}</span>
                   )}
-                  <button
-                    type="button"
-                    className="student-btn student-btn-primary student-btn-sm"
-                    onClick={() => {
-                      if (addressEditing) void saveAddress()
-                      else {
-                        setAddressDraft('')
-                        setAddressEditing(true)
-                      }
-                    }}
-                  >
-                    {addressEditing ? t('common.save') : t('common.edit')}
-                  </button>
+                  <div className="student-address-actions">
+                    {!addressEditing ? (
+                      <button
+                        type="button"
+                        className="student-btn student-btn-primary student-btn-sm"
+                        onClick={() => {
+                          setAddressDraft(student?.address ?? '')
+                          setAddressEditing(true)
+                        }}
+                      >
+                        {t('common.edit')}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="student-btn student-btn-secondary student-btn-sm"
+                          onClick={() => {
+                            setAddressEditing(false)
+                            setAddressSuggestions([])
+                          }}
+                        >
+                          {t('common.cancel')}
+                        </button>
+                        <button
+                          type="button"
+                          className="student-btn student-btn-primary student-btn-sm"
+                          onClick={() => void saveAddress()}
+                        >
+                          {t('common.save')}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               {student?.email && (
