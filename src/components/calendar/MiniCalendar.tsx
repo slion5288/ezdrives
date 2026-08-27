@@ -127,7 +127,13 @@ export function MiniCalendar({ value, onChange, state, markers }: MiniCalendarPr
             .filter(Boolean)
             .join(' ')
           return (
-            <button key={key} type="button" className={classes} onClick={() => onChange(day)}>
+            <button
+              key={key}
+              type="button"
+              className={classes}
+              onClick={() => onChange(day)}
+              aria-label={day.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-CA', { month: 'long', day: 'numeric', weekday: 'short' })}
+            >
               {day.getDate()}
               {(hasEvent || isMarked) && !otherMonth ? (
                 <span className="ios-mini__dots" aria-hidden="true">

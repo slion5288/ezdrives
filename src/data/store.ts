@@ -246,14 +246,14 @@ type BookingError = 'conflict' | 'closed' | 'past' | 'not_purchased'
 
 /** Whether the student has a CONFIRMED payment for the course (purchased). */
 export function isCoursePurchased(source: AppState, studentId: string, courseId: string): boolean {
-  return source.payments.some(
+  return (source.payments ?? []).some(
     (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'confirmed',
   )
 }
 
 /** Whether the student has a payment still awaiting instructor confirmation. */
 export function hasPendingPayment(source: AppState, studentId: string, courseId: string): boolean {
-  return source.payments.some(
+  return (source.payments ?? []).some(
     (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'pending',
   )
 }
@@ -262,7 +262,7 @@ export function hasPendingPayment(source: AppState, studentId: string, courseId:
 function lessonState(source: AppState, studentId: string, courseId: string, lessonIndex: number): 'free' | 'booked' | 'done' {
   const now = new Date().getTime()
   let booked = false
-  for (const a of source.appointments) {
+  for (const a of source.appointments ?? []) {
     if (a.courseId !== courseId || a.lessonIndex !== lessonIndex || a.studentId !== studentId) continue
     if (a.status !== 'confirmed' && a.status !== 'pending') continue
     if (fromLocalISO(a.start).getTime() < now) return 'done'

@@ -52,9 +52,10 @@ function PhoneField({
   id: string
   placeholder?: string
 }): JSX.Element {
+  const t = useT()
   return (
     <div className="phone-field">
-      <select className="phone-field__code" value={country} onChange={(e) => onCountry(e.target.value)} aria-label="Country code">
+      <select className="phone-field__code" value={country} onChange={(e) => onCountry(e.target.value)} aria-label={t('auth.countryCode')}>
         {PHONE_COUNTRIES.map((c) => (
           <option key={`${c.code}-${c.flag}`} value={c.code}>
             {c.flag} {c.code}

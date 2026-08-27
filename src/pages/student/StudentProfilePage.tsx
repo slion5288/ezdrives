@@ -53,7 +53,7 @@ function RescheduleModal({
   const [startISO, setStartISO] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const course = state.courses.find((c) => c.id === appointment.courseId)
+  const course = (state.courses ?? []).find((c) => c.id === appointment.courseId)
   const duration = course ? (course.type === 'package' ? 60 : course.durationMin) : 60
   const starts = getLessonStarts(parseDateKey(date), state, duration, appointment.studentId, appointment.id)
 
@@ -150,9 +150,9 @@ function StudentProfileContent(): JSX.Element {
 
   const session = getSession()
   const studentId = session.studentId ?? ''
-  const student = state.students.find((s) => s.id === studentId)
+  const student = (state.students ?? []).find((s) => s.id === studentId)
 
-  const courseById = (id: string): Course | undefined => state.courses.find((c) => c.id === id)
+  const courseById = (id: string): Course | undefined => (state.courses ?? []).find((c) => c.id === id)
   const courseLabel = (appt: Appointment): string => {
     const c = courseById(appt.courseId)
     if (!c) return ''
@@ -224,7 +224,7 @@ function StudentProfileContent(): JSX.Element {
   }
 
   const now = new Date()
-  const myAppointments = state.appointments.filter((a) => a.studentId === studentId)
+  const myAppointments = (state.appointments ?? []).filter((a) => a.studentId === studentId)
   const upcoming = myAppointments
     .filter((a) => (a.status === 'confirmed' || a.status === 'pending') && fromLocalISO(a.start).getTime() > now.getTime())
     .sort((a, b) => a.start.localeCompare(b.start))

@@ -5,6 +5,18 @@
 
 ---
 
+## Change 15 — 上线前 FINAL AUDIT：P3 微项 + Full Regression + 修复真实 P1 白屏 bug
+
+- **背景**：按最终上线流程执行 P3 微项、全站 Full Regression、最终上线检查。
+- **P3 修复**：
+  - SEO：index.html 增加 Open Graph / Twitter Card meta（og:title/description/image、twitter:card）；新增 `public/robots.txt` 与 `public/sitemap.xml`。
+  - 可访问性：装饰性 lucide 图标补 `aria-hidden`（引言/咖啡/提示图标）；登录页区号 select 的硬编码英文 `aria-label` 改为 `t('auth.countryCode')`（新增 i18n 键）；G1 切题后焦点移到题目区；MiniCalendar 日期格补完整日期 `aria-label`；学员/教练底部导航标签字号由 9–10px 提升到 12px（中文可读性）。
+  - 对比度：`--color-text-soft` 亮色主题 `#98A2B3 → #8A94A6`。
+- **Full Regression 发现并修复真实 P1 bug（访客白屏）**：访客先打开首页 → `initPublicHome()` 把 state 替换为「公开视图」（**不含 payments/appointments**）→ 再访问 `/student`（守卫重定向前的组件计算 `isCoursePurchased` 读 `source.payments.some`）→ **白屏**。修复：`store.ts` 的 `isCoursePurchased`/`hasPendingPayment`/`lessonState` 对 `payments`/`appointments` 加 `?? []` 防御；学生页所有 `state.students/courses/appointments/notifications/payments` 访问统一 `?? []`。**此前守卫测试未覆盖「先看首页再进学员页」的真实路径，本轮暴露并修复。**
+- **测试结果（Full Regression 22 项全过）**：公开页 ×4（首页/课程/视频/G1）、守卫 ×3（/student、/instructor → 登录页；未知路由 → 首页）、教练端 ×7（登录/仪表盘/日程/课程表单逐字段错误/设置编辑按钮/登出）、学员端 ×5（登录/我的课程/个人中心/地址编辑预填/取消）、Admin ×2（登录/仪表盘）、API ×2（public home、/api/setup 已删 405）、**Console 零错误**。`npm run build` 通过；Preview.html 离线 /g1 答题通过。已部署线上。
+
+---
+
 ## Change 14 — 上线前 FINAL AUDIT：P2 修复（死代码/安全/统计/性能/离线交付）
 
 - **背景**：FINAL_AUDIT_REPORT.md 的 P2 项按优先级执行。

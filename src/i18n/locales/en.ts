@@ -122,6 +122,7 @@ export const messages = {
   'auth.register.passwordHint': 'At least 6 characters',
   'auth.register.submit': 'Create account & log in',
   'auth.register.resend': 'Resend',
+  'auth.countryCode': 'Country code',
   'auth.error.network': 'Cannot reach the server. Please try again.',
   'auth.register.switch': 'Already have an account? Log in',
   'auth.register.welcome': 'Welcome, {name}!',

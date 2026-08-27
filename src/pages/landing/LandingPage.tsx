@@ -684,7 +684,7 @@ export default function LandingPage(): JSX.Element {
             <div className="landing-testimonials">
               {[1, 2, 3].map((n) => (
                 <figure className="landing-testimonials__card" key={n}>
-                  <Quote size={22} className="landing-testimonials__quote-icon" />
+                  <Quote size={22} className="landing-testimonials__quote-icon" aria-hidden="true" />
                   <StarRating value={5} size={14} />
                   <blockquote>{c(`landing.testimonials.${n}.quote`)}</blockquote>
                   <figcaption>{c(`landing.testimonials.${n}.author`)}</figcaption>

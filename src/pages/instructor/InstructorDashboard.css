@@ -2063,7 +2063,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
     border: none;
     background: transparent;
     color: var(--color-text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     cursor: pointer;
     position: relative;
@@ -2175,7 +2175,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
     padding-inline: 2px;
   }
   .ins-bottom-label {
-    font-size: 9px;
+    font-size: var(--font-size-xs);
   }
 }
 

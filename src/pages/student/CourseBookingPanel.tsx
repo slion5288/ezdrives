@@ -151,7 +151,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
       {/* Instructor break notice — links the break setting to available times */}
       {(state.instructor.breakMin ?? 0) > 0 ? (
         <div className="course-booking__break">
-          <Coffee size={15} />
+          <Coffee size={15} aria-hidden="true" />
           <span>{t('student.booking.breakInfo', { break: state.instructor.breakMin })}</span>
         </div>
       ) : null}

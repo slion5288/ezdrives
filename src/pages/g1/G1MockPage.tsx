@@ -67,6 +67,10 @@ export default function G1MockPage(): JSX.Element {
     } else {
       setIdx((i) => i + 1)
       setPicked(null)
+      // Move focus to the new question for keyboard/screen-reader users.
+      requestAnimationFrame(() => {
+        document.getElementById('g1-question')?.focus()
+      })
     }
   }
 

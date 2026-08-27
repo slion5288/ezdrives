@@ -34,7 +34,7 @@ export default function StudentBookingPage(): JSX.Element {
 
   const session = getSession()
   const studentId = session.studentId ?? ''
-  const activeCourses = state.courses.filter((c) => c.active)
+  const activeCourses = (state.courses ?? []).filter((c) => c.active)
 
   const [payCourse, setPayCourse] = useState<Course | null>(null)
 
@@ -122,7 +122,7 @@ function CourseCatalog({
 }): JSX.Element {
   const t = useT()
   const state = useAppState()
-  const activeCourses = state.courses.filter((c) => c.active)
+  const activeCourses = (state.courses ?? []).filter((c) => c.active)
 
   if (activeCourses.length === 0) {
     return <p className="student-muted-note">{t('student.book.empty')}</p>
@@ -171,7 +171,7 @@ function CatalogSection({
   const locale = useLocale()
   const state = useAppState()
 
-  const activeCourses = state.courses.filter((c) => c.active)
+  const activeCourses = (state.courses ?? []).filter((c) => c.active)
   const list = activeCourses.filter((c) => {
     const owned = studentId !== null && isCoursePurchased(state, studentId, c.id)
     return purchasedOnly ? owned : !owned

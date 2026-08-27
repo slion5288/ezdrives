@@ -124,6 +124,7 @@ export const messages: Record<MessageKey, string> = {
   'auth.register.passwordHint': '至少 6 位字符',
   'auth.register.submit': '注册并登录',
   'auth.register.resend': '重新发送',
+  'auth.countryCode': '国家区号',
   'auth.error.network': '无法连接服务器，请稍后重试。',
   'auth.register.switch': '已有账号？去登录',
   'auth.register.welcome': '欢迎，{name}！',

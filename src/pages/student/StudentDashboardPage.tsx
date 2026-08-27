@@ -21,9 +21,9 @@ export default function StudentDashboardPage(): JSX.Element {
 
   const session = getSession()
   const studentId = session.studentId ?? ''
-  const student = state.students.find((s) => s.id === studentId)
+  const student = (state.students ?? []).find((s) => s.id === studentId)
 
-  const activeCourses = state.courses.filter((c) => c.active)
+  const activeCourses = (state.courses ?? []).filter((c) => c.active)
   // Purchased = the instructor confirmed the payment (支付已确认) — booked or not.
   const purchased = activeCourses.filter((c) => isCoursePurchased(state, studentId, c.id))
 

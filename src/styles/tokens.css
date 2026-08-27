@@ -13,7 +13,7 @@
   --color-surface-2: #EDF1F3;          /* inset wells, hover fills, table headers, slot-grid bg */
   --color-text: #101828;               /* primary text, headings */
   --color-text-muted: #475467;         /* secondary body text */
-  --color-text-soft: #98A2B3;          /* placeholders, disabled, captions (≥14px only) */
+  --color-text-soft: #8A94A6;          /* placeholders, disabled, captions (≥14px only) */
   --color-accent: #A21CAF;             /* brand magenta-violet (logo #D300E6) — primary actions */
   --color-accent-hover: #86158F;       /* accent hover/pressed */
   --color-accent-soft: rgba(162, 28, 175, 0.10); /* accent tint: selected nav, chips */

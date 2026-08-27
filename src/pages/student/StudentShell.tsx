@@ -98,7 +98,7 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
     )
   }
 
-  const unread = state.notifications.filter(
+  const unread = (state.notifications ?? []).filter(
     (n) => n.role === 'student' && n.recipientId === session.studentId && !n.read,
   ).length
 

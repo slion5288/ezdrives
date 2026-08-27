@@ -118,7 +118,7 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
   return (
     <div className="ins-wh">
       <div className="ins-info-banner">
-        <Info size={16} />
+        <Info size={16} aria-hidden="true" />
         <span>{t('instructor.workinghours.warning')}</span>
       </div>
 
