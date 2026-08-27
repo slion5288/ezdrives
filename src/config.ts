@@ -7,7 +7,7 @@
  *
  * The address autocomplete calls the Geoapify autocomplete endpoint directly
  * from the browser:
- *   GET https://api.geoapify.com/v1/geocode/autocomplete?text=…&apiKey=…&bias=countrycode:ca&format=json
+ *   GET https://api.geoapify.com/v1/geocode/autocomplete?text=…&apiKey=…&filter=countrycode:ca
  *
  * Geoapify is free for small sites (≈3,000 requests/day free tier — plenty for
  * this website). Get a key here: https://www.geoapify.com/ (sign up → create a
@@ -17,4 +17,4 @@
  * While the key is empty, the address field silently falls back to a plain
  * text input — the rest of the site is unaffected.
  */
-export const GEOAPIFY_API_KEY = ''
+export const GEOAPIFY_API_KEY = '036a9217c03c42f9a68141482394c500'

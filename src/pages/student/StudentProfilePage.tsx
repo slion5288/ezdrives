@@ -178,7 +178,7 @@ function StudentProfileContent(): JSX.Element {
       'https://api.geoapify.com/v1/geocode/autocomplete' +
       `?text=${encodeURIComponent(input)}` +
       `&apiKey=${encodeURIComponent(GEOAPIFY_API_KEY)}` +
-      '&limit=5&lang=en&bias=countrycode:ca&format=json'
+      '&limit=5&lang=en&filter=countrycode:ca'
     fetch(url)
       .then((r) => r.json().catch(() => ({})))
       .then((data: { features?: { properties?: { formatted?: string } }[] }) => {

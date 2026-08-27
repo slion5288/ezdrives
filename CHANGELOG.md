@@ -32,7 +32,7 @@
   - ③ 测试内容清理：`src/data/store.ts`（`initPublicHome` 失败时把 state 的 courses/videos/vehicles 置空，**访客永不看到 seed 演示数据**；新增 `isPublicReady()`）；`src/pages/landing/LandingPage.tsx`、`src/pages/landing/CoursesPage.tsx`（访客在公开数据就绪前渲染空课程/视频，不闪现 seed）。
 - **是否影响旧功能**：是——① 地址补全服务商更换（无 key 时自动补全关闭，不影响填写）；② 教练资料/工作时间/收款/学生地址从「常显表单+保存按钮」改为「只读+编辑/保存切换」（保存时空字段保留原值，不会误清空）；③ 公开课程区现在**只显示数据库真实课程**（当前为 0 个 → 显示「课程暂未开放」），不再显示演示课程。
 - **测试结果**：编译通过；本地端到端 22 项全过——首页/课程页只显示本地 D1 真实课程（1 个）且无 seed 课程名；教练资料/工作时间/收款（EMT）/学生地址的「编辑→清空→保存→恢复编辑」全部验证；线上验证 12 项全过——首页/课程页无任何测试课程（显示空态）、显示真实教练 liang shi、设置页 5 个编辑按钮、编辑态输入框清空、保存按钮出现、空保存不改变数据。已部署。
-- **Geoapify 配置说明**：去 https://www.geoapify.com/ 注册（免费）→ 创建项目 → 复制 API Key → 填入 `src/config.ts` 的 `GEOAPIFY_API_KEY`（或告诉我帮你填）→ 重新部署。也可在 Geoapify 后台把 key 限制为 ezdrives.net 域名。
+- **Geoapify 配置说明（已完成）**：用户提供免费 API Key（`036a9217…4c500`）已填入 `src/config.ts` 并部署。排障记录：① Geoapify autocomplete **不支持 `bias=countrycode:ca`**（返回 0 结果）→ 改用 `filter=countrycode:ca`；② **不支持 `format=json` 参数**（返回 0 结果）→ 移除（默认即 JSON）；③ 免费层有较严的速率限制（高频连续请求会返回空），日常输入防抖 300ms 足够。本地与线上验证：输入 "toronto" 弹出 "Toronto, ON, Canada"、"Old Toronto…"；输入 "kitchener" 弹出 "Kitchener, ON, Canada"、"Kitchener, BC, Canada"；点选后自动填入地址框。建议后续在 Geoapify 后台把 key 限制为 ezdrives.net 域名。
 
 ---
 
