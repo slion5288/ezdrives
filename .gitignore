@@ -5,3 +5,6 @@ dist-ssr
 .DS_Store
 npm-debug.log*
 .wrangler
+
+# make-preview temp build (single-chunk offline variant)
+.preview-dist
