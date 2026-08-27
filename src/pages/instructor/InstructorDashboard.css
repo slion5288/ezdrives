@@ -2226,6 +2226,49 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   margin-bottom: 0;
 }
 
+/* Read-only summaries for the edit/save pattern (设置页) */
+.ins-settings-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin: 0;
+  word-break: break-word;
+}
+.ins-settings-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ins-profile-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ins-view-row {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border-soft);
+}
+.ins-view-label {
+  flex: 0 0 120px;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+.ins-view-value {
+  color: var(--color-text);
+  word-break: break-word;
+  flex: 1;
+}
+.ins-week-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ins-panel-head .ins-btn--sm {
+  margin-left: auto;
+}
+
 /* --- Teaching videos (视频管理, on Courses page) --- */
 .ins-videos {
   margin-top: var(--space-5);

@@ -179,20 +179,37 @@ export function isStateLoaded(): boolean {
 /**
  * Pull the PUBLIC homepage state (no login) — real courses/videos/instructor
  * plus the admin-edited homepage content, so visitors never see seed data.
+ *
+ * On success the state is replaced with the real public snapshot. On failure
+ * the state is reset to a shell WITHOUT the demo courses/videos/vehicles so
+ * visitors can never see seed business data (the "test content" on the
+ * homepage course section). `publicReady` flips true either way once settled,
+ * so public pages can avoid flashing the seed before the fetch resolves.
  */
+let publicReady = false
+
+/** True once the public homepage data has been fetched (success or settled-empty). */
+export function isPublicReady(): boolean {
+  return publicReady
+}
+
 export async function initPublicHome(): Promise<boolean> {
   try {
     const res = await apiPublicHome()
     if (res.ok && res.state) {
       state = res.state as AppState
+      publicReady = true
       notifyListeners()
       return true
     }
-    return false
   } catch (e) {
     console.error('[store] initPublicHome error:', e)
-    return false
   }
+  // Failure path: never show the demo seed to visitors.
+  state = { ...seed(), courses: [], videos: [], vehicles: [] }
+  publicReady = true
+  notifyListeners()
+  return false
 }
 
 // --- Notification engine (internal) ---

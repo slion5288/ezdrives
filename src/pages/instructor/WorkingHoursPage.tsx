@@ -14,7 +14,7 @@ import type { AppState, DayException, WeeklyRule } from '../../data/store'
 import { addException, removeException, setBreakMin, setWeeklyRules } from '../../data/store'
 import { dateKey, formatDateEn, formatDateZh, parseDateKey } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
-import { Info, Trash2 } from 'lucide-react'
+import { Info, Pencil, Trash2 } from 'lucide-react'
 import { MiniCalendar } from '../../components/calendar/MiniCalendar'
 import { Badge } from './ui'
 import { useToast } from './toast'
@@ -37,12 +37,22 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
   const locale = useLocale()
   const toast = useToast()
 
-  // --- Weekly schedule (week as the unit) ---
+  // Edit/save pattern: read-only summary by default; click 编辑 to edit,
+  // the button becomes 保存, saving returns to the summary.
   const firstRule = state.weeklyRules[0]
+  const [editing, setEditing] = useState(false)
   const [enabled, setEnabled] = useState<boolean[]>(() => DAYS.map((wd) => state.weeklyRules.some((r) => r.weekday === wd)))
   const [defStart, setDefStart] = useState<number>(() => firstRule?.startMin ?? 540)
   const [defEnd, setDefEnd] = useState<number>(() => firstRule?.endMin ?? 1080)
   const [breakMin, setBreakMinState] = useState<number>(() => state.instructor.breakMin ?? 10)
+
+  const startEdit = (): void => {
+    setEnabled(DAYS.map((wd) => state.weeklyRules.some((r) => r.weekday === wd)))
+    setDefStart(firstRule?.startMin ?? 540)
+    setDefEnd(firstRule?.endMin ?? 1080)
+    setBreakMinState(state.instructor.breakMin ?? 10)
+    setEditing(true)
+  }
 
   const toggleDay = (idx: number): void => {
     setEnabled((prev) => prev.map((on, i) => (i === idx ? !on : on)))
@@ -56,6 +66,7 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
     const rules: WeeklyRule[] = enabled.flatMap((on, i) => (on ? [{ weekday: DAYS[i], startMin: defStart, endMin: defEnd }] : []))
     setWeeklyRules(rules)
     setBreakMin(breakMin)
+    setEditing(false)
     toast({ tone: 'success', title: t('instructor.workinghours.saved') })
   }
 
@@ -117,8 +128,38 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
           <div className="ins-panel-head">
             <h2 className="ins-panel-title">{t('instructor.workinghours.weekly')}</h2>
             <span className="ins-panel-sub">{t('instructor.workinghours.weeklyBody')}</span>
+            {!editing ? (
+              <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={startEdit}>
+                <Pencil size={14} /> {t('common.edit')}
+              </button>
+            ) : null}
           </div>
 
+          {!editing ? (
+            <div className="ins-week-view">
+              {state.weeklyRules.length === 0 ? (
+                <p className="ins-week-summary ins-week-summary--off">{t('instructor.workinghours.offDay')}</p>
+              ) : (
+                <>
+                  <p className="ins-week-summary">
+                    <span>
+                      {state.weeklyRules
+                        .map((r) => t(`calendar.weekday.${r.weekday}`))
+                        .join(' · ')}
+                    </span>
+                    <span className="ins-week-summary-range tabular-nums">
+                      {fmtMin(state.weeklyRules[0].startMin)}–{fmtMin(state.weeklyRules[0].endMin)}
+                    </span>
+                  </p>
+                  <p className="ins-field-hint">
+                    {t('instructor.workinghours.break')}: {state.instructor.breakMin ?? 0}{' '}
+                    {t('common.minutes')}
+                  </p>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
           <div className="ins-field-label">{t('instructor.workinghours.days')}</div>
           <div className="ins-week-strip">
             {DAYS.map((wd, i) => (
@@ -225,6 +266,8 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
               {t('instructor.workinghours.save')}
             </button>
           </div>
+            </>
+          )}
         </section>
 
         {/* --- Temporary adjustments --- */}

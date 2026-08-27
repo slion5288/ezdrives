@@ -5,6 +5,21 @@
 
 ---
 
+## Change 11 — 三合一：Geoapify 免费地址补全 + 全站「编辑→保存」按钮模式 + 清空测试课程数据
+
+- **我的要求**：① 学生后台接送地址自动补全从 Google Maps API 换成 **Geoapify 免费 API**（网站用量小，Google 收费）；② 学生后台和教练后台所有「修改内容」的按钮统一改为：默认只读 + 点「编辑」→ 内容清空可输入、按钮变「保存」→ 保存后按钮恢复「编辑」；③ 教练后台没添加课程，但主页课程预约页仍显示以前测试的内容，请清空，完全用真实数据关联。
+- **涉及页面**：学生个人中心（地址）、教练设置页（教练资料/工作时间/收款设置）、首页与 /courses（课程区）。
+- **涉及功能**：地址自动补全、表单编辑交互、公开课程数据。
+- **修改文件**：
+  - ① Geoapify：`src/config.ts`（`GOOGLE_MAPS_API_KEY` → `GEOAPIFY_API_KEY`，留空=关闭补全，静默降级为普通输入框）；`src/pages/student/StudentProfilePage.tsx`（Places API (New) → Geoapify autocomplete REST：`api.geoapify.com/v1/geocode/autocomplete`，`bias=countrycode:ca` 加拿大偏置，`limit=5`；交互不变：输入 ≥3 字符 → 300ms 防抖 → 下拉 → 点选）。⚠️ 需用户在 Geoapify 注册免费 key（3000 次/天免费）后填入 `src/config.ts`。
+  - ② 编辑/保存模式：`src/pages/instructor/ProfileSettings.tsx`（教练资料只读展示 + 编辑按钮 → 编辑态输入框清空 + 保存 → 恢复只读；**保存时空字段保持原值**，只更新填写的字段）；`src/pages/instructor/WorkingHoursPage.tsx`（周规则/休息改为「只读总结 + 编辑 → 编辑器 → 保存」）；`src/pages/instructor/ReceiveSettings.tsx`（Interac 邮箱/银行账户/API 凭证三个区块同样模式）；`src/pages/student/StudentProfilePage.tsx`（接送地址：只读显示 + 编辑 → 输入框清空 + 保存）；`src/pages/instructor/InstructorDashboard.css`（新增只读展示样式 `.ins-profile-view/.ins-view-row/.ins-settings-value` 等）。车辆/视频/课程本就是「模态框编辑」（天然符合），支付方式开关即时生效（非保存按钮模式），未改动。
+  - ③ 测试内容清理：`src/data/store.ts`（`initPublicHome` 失败时把 state 的 courses/videos/vehicles 置空，**访客永不看到 seed 演示数据**；新增 `isPublicReady()`）；`src/pages/landing/LandingPage.tsx`、`src/pages/landing/CoursesPage.tsx`（访客在公开数据就绪前渲染空课程/视频，不闪现 seed）。
+- **是否影响旧功能**：是——① 地址补全服务商更换（无 key 时自动补全关闭，不影响填写）；② 教练资料/工作时间/收款/学生地址从「常显表单+保存按钮」改为「只读+编辑/保存切换」（保存时空字段保留原值，不会误清空）；③ 公开课程区现在**只显示数据库真实课程**（当前为 0 个 → 显示「课程暂未开放」），不再显示演示课程。
+- **测试结果**：编译通过；本地端到端 22 项全过——首页/课程页只显示本地 D1 真实课程（1 个）且无 seed 课程名；教练资料/工作时间/收款（EMT）/学生地址的「编辑→清空→保存→恢复编辑」全部验证；线上验证 12 项全过——首页/课程页无任何测试课程（显示空态）、显示真实教练 liang shi、设置页 5 个编辑按钮、编辑态输入框清空、保存按钮出现、空保存不改变数据。已部署。
+- **Geoapify 配置说明**：去 https://www.geoapify.com/ 注册（免费）→ 创建项目 → 复制 API Key → 填入 `src/config.ts` 的 `GEOAPIFY_API_KEY`（或告诉我帮你填）→ 重新部署。也可在 Geoapify 后台把 key 限制为 ezdrives.net 域名。
+
+---
+
 ## Change 10 — 管理页对接现有内容 + 只填中文、英文自动翻译
 
 - **我的要求**：① 管理页面要能看到主页现有的原始内容（不是空字段），做好数据对接，方便修改；② 整个网站中英双语，但我只会中文，只需要修改中文；英文请自动翻译，不用单独改英文。

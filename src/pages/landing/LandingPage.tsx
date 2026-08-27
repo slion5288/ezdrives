@@ -30,7 +30,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
-import { getSession, initPublicHome, maskPhone, useAppState } from '../../data/store'
+import { getSession, initPublicHome, isPublicReady, maskPhone, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
 import { G1_BANK_EN, G1_BANK_ZH } from '../../data/g1'
 import { COURSE_IMAGES, G1_IMAGE, HERO_IMAGES } from '../../data/assets'
@@ -201,6 +201,11 @@ export default function LandingPage(): JSX.Element {
 
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
 
+  // Visitors: never show the seed placeholder — render empty until the real
+  // public data has been fetched (isPublicReady), or forever if it failed.
+  const visitor = !getSession().token
+  const publicReady = isPublicReady()
+
   /** Admin-edited text override: key → localized replacement, else default. */
   const overrides = state.homeContent?.overrides || {}
   const c = (key: string): string => {
@@ -211,8 +216,14 @@ export default function LandingPage(): JSX.Element {
   /** Admin-edited hero slides (data URLs) or null to keep the bundled photos. */
   const heroSlides = state.homeContent?.heroImages?.filter((v): v is string => typeof v === 'string' && v.length > 0)
   const instructorsList = state.homeContent?.instructors?.length ? state.homeContent.instructors : null
-  const instructorName = overrides['instructor.name'] ? pick(overrides['instructor.name']) : instructor.name
-  const instructorBio = overrides['instructor.bio'] ? pick(overrides['instructor.bio']) : pick(instructor.bio)
+  // While the public data is still loading, hide the seed instructor placeholder.
+  const placeholderInstructor = visitor && !publicReady
+  const instructorName = placeholderInstructor
+    ? ''
+    : overrides['instructor.name'] ? pick(overrides['instructor.name']) : instructor.name
+  const instructorBio = placeholderInstructor
+    ? ''
+    : overrides['instructor.bio'] ? pick(overrides['instructor.bio']) : pick(instructor.bio)
 
   const closeMenu = (): void => setMenuOpen(false)
 
@@ -223,12 +234,12 @@ export default function LandingPage(): JSX.Element {
   }
 
   /** Every active course — desktop shows them all in a horizontal rail. */
-  const allCourses = state.courses.filter((c) => c.active)
+  const allCourses = visitor && !publicReady ? [] : state.courses.filter((c) => c.active)
   /** Mobile shows a few cards + a "view all" entry to the /courses page. */
   const shownCourses = isMobile ? allCourses.slice(0, 3) : allCourses
   const popularIndex = shownCourses.length > 1 ? 1 : 0
   /** Videos with the homepage toggle on, ordered by the instructor. */
-  const homeVideos = state.videos
+  const homeVideos = (visitor && !publicReady ? [] : state.videos)
     .filter((v) => v.active)
     .sort((a, b) => a.order - b.order || a.addedAt.localeCompare(b.addedAt))
 

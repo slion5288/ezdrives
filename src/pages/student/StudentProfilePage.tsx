@@ -16,7 +16,7 @@ import { dateKey, formatHM, fromLocalISO, fromServerISO, getLessonStarts, parseD
 import { useLocale, useT } from '../../i18n'
 import { downloadICS } from '../../utils/ics'
 import type { IcsEvent } from '../../utils/ics'
-import { GOOGLE_MAPS_API_KEY } from '../../config'
+import { GEOAPIFY_API_KEY } from '../../config'
 import { Avatar, ConfirmModal, EmptyState, ModalFrame, StatusBadge } from './StudentShared'
 import type { BadgeTone } from './StudentShared'
 import { StudentShell } from './StudentShell'
@@ -159,26 +159,30 @@ function StudentProfileContent(): JSX.Element {
     return `${c.name[locale]}${lessonLabel(c, appt.lessonIndex, locale)}`
   }
 
-  // Editable pickup address (接送地址) with Google Places autocomplete.
-  const [addressDraft, setAddressDraft] = useState<string>(student?.address ?? '')
+  // Editable pickup address (接送地址) with Geoapify autocomplete.
+  // Edit/save pattern: read-only by default with an 编辑 button; clicking it
+  // clears the field and the button becomes 保存; saving returns to read-only.
+  const [addressEditing, setAddressEditing] = useState(false)
+  const [addressDraft, setAddressDraft] = useState<string>('')
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
   const addressSearchTimer = useRef<number | null>(null)
   const addressWrapRef = useRef<HTMLDivElement | null>(null)
 
-  /** Places API (New) REST autocomplete — debounced by the caller. */
+  /** Geoapify autocomplete (free, Canada-biased) — debounced by the caller. */
   const fetchAddressSuggestions = (input: string): void => {
-    if (!GOOGLE_MAPS_API_KEY || input.trim().length < 3) {
+    if (!GEOAPIFY_API_KEY || input.trim().length < 3) {
       setAddressSuggestions([])
       return
     }
-    fetch('https://places.googleapis.com/v1/places:autocomplete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY },
-      body: JSON.stringify({ input, regionCode: 'CA' }),
-    })
+    const url =
+      'https://api.geoapify.com/v1/geocode/autocomplete' +
+      `?text=${encodeURIComponent(input)}` +
+      `&apiKey=${encodeURIComponent(GEOAPIFY_API_KEY)}` +
+      '&limit=5&lang=en&bias=countrycode:ca&format=json'
+    fetch(url)
       .then((r) => r.json().catch(() => ({})))
-      .then((data: { suggestions?: { placePrediction?: { text?: { text?: string } } }[] }) => {
-        const list = (data.suggestions || []).map((s) => s.placePrediction?.text?.text || '').filter(Boolean)
+      .then((data: { features?: { properties?: { formatted?: string } }[] }) => {
+        const list = (data.features || []).map((f) => f.properties?.formatted || '').filter(Boolean)
         setAddressSuggestions(list)
       })
       .catch(() => setAddressSuggestions([]))
@@ -210,9 +214,13 @@ function StudentProfileContent(): JSX.Element {
   }, [])
 
   const saveAddress = async (): Promise<void> => {
-    const result = await updateStudentAddress(addressDraft)
-    if (result.ok) showToast('success', t('common.toast.saved'))
-    else showToast('error', t('common.toast.error'))
+    const result = await updateStudentAddress(addressDraft.trim() || (student?.address ?? ''))
+    if (result.ok) {
+      setAddressEditing(false)
+      showToast('success', t('common.toast.saved'))
+    } else {
+      showToast('error', t('common.toast.error'))
+    }
   }
 
   const now = new Date()
@@ -307,33 +315,42 @@ function StudentProfileContent(): JSX.Element {
               <div className="student-profile-row">
                 <span className="student-summary-label">{t('student.profile.address')}</span>
                 <div className="student-profile-address">
-                  <div className="student-address-wrap" ref={addressWrapRef}>
-                    <input
-                      className="student-address-input"
-                      value={addressDraft}
-                      onChange={(e) => onAddressChange(e.target.value)}
-                      placeholder={t('student.profile.addressPlaceholder')}
-                      autoComplete="street-address"
-                    />
-                    {GOOGLE_MAPS_API_KEY && addressSuggestions.length > 0 ? (
-                      <ul className="student-address-suggest">
-                        {addressSuggestions.map((s) => (
-                          <li key={s}>
-                            <button type="button" onClick={() => pickAddress(s)}>
-                              {s}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
+                  {addressEditing ? (
+                    <div className="student-address-wrap" ref={addressWrapRef}>
+                      <input
+                        className="student-address-input"
+                        value={addressDraft}
+                        onChange={(e) => onAddressChange(e.target.value)}
+                        placeholder={t('student.profile.addressPlaceholder')}
+                        autoComplete="street-address"
+                      />
+                      {GEOAPIFY_API_KEY && addressSuggestions.length > 0 ? (
+                        <ul className="student-address-suggest">
+                          {addressSuggestions.map((s) => (
+                            <li key={s}>
+                              <button type="button" onClick={() => pickAddress(s)}>
+                                {s}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="student-summary-value">{student?.address || '—'}</span>
+                  )}
                   <button
                     type="button"
                     className="student-btn student-btn-primary student-btn-sm"
-                    disabled={addressDraft.trim() === (student?.address ?? '')}
-                    onClick={saveAddress}
+                    onClick={() => {
+                      if (addressEditing) void saveAddress()
+                      else {
+                        setAddressDraft('')
+                        setAddressEditing(true)
+                      }
+                    }}
                   >
-                    {t('common.save')}
+                    {addressEditing ? t('common.save') : t('common.edit')}
                   </button>
                 </div>
               </div>
