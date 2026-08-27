@@ -41,6 +41,30 @@
 - **游客（Public）**：可访问 `/`、`/courses`、`/g1`、`/login`、`/student/book`（公开课程目录，购买时先登录）。
   - 游客看到的数据来自 `GET /api/public/home`（**真实数据库**公开字段：教练、课程/车辆/视频、主页覆盖内容），**不再使用内置演示数据**（2025-08 需求：无任何演示数据）。
 
+### 3.1 业务管理逻辑（谁维护什么——硬性边界，改动前必查）
+
+> 职责分离原则：**管理员管"网站门面"（主页文字/图片/教练），教练管"业务经营"（时间/日程/课程/学员/支付/设置），学员管"自己的预约"。任何新需求先按此表定位归属，禁止越界实现。**
+
+| 事项 | 维护人 | 入口 | 数据位置 |
+| --- | --- | --- | --- |
+| 主页文字（29 字段中英） | 管理员 | `/admin` → 主页文字 | `home_content.overrides` |
+| 首页轮播图（6 张） | 管理员 | `/admin` → 主页图片 | `home_content.heroImages` |
+| 教练名单（多人展示用） | 管理员 | `/admin` → 教练 | `home_content.instructors` |
+| 教练个人资料（姓名/bio/车辆） | 教练 | `/instructor` → 设置 → 教练资料 | `users` / 车辆表 |
+| 工作时间（周规则+例外+休息） | 教练 | `/instructor` → 设置 | `weekly_rules` / `day_exceptions` |
+| 课程内容（CRUD/价格/上下架） | 教练 | `/instructor` → 课程 | `courses` |
+| 教学视频 | 教练 | `/instructor` → 设置 → 视频 | `videos` |
+| 车辆管理 | 教练 | `/instructor` → 设置 → 车辆 | `vehicles` |
+| 学员与预约 | 教练 | `/instructor` → 日程/学员 | `students` / `appointments` |
+| 支付确认/拒绝 | 教练 | `/instructor` → 支付 | `payments` |
+| 支付方式/收款设置 | 教练 | `/instructor` → 设置 | 设置表 |
+| 购买/预约/改期/取消 | 学员 | `/student*` | `appointments` / `payments` |
+
+**API 边界（代码层强制）**：
+- `/api/admin/*` 只读写 `admin_users`、`admin_sessions`、`home_content` 三张表；**禁止**触碰课程/车辆/视频/时间/学员/预约/支付。
+- `/api/student/*`、`/api/state`（教练全量写）只处理业务数据，**禁止**触碰 `home_content`。
+- 唯一交叉点：`GET /api/public/home` 把「教练业务数据（公开部分）+ 管理员主页内容」合并成游客视图——它是**只读合并**，两边都不写。
+
 ## 4. 页面与导航（详见 ROUTE_MAP.md）
 
 - 路由：`/` `/courses` `/g1` `/login` `/student` `/student/book` `/student/profile` `/student/notifications` `/instructor` `/admin`；未知路径重定向 `/`。
