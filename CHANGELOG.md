@@ -15,6 +15,21 @@
 
 ---
 
+---
+
+## Change 26 — 全站 UI 一致性与视觉精修（按钮/课程卡/Add Course 分组）
+
+- **用户要求**：全站按钮样式统一、删除所有按钮导航箭头、修复"新课程导致旧课程预约按钮变白"bug、推荐课程主题色边框、课程卡统一、Instructor Add Course 页面专业排版。**只改 UI/CSS，不动业务逻辑/数据库/API**。
+- **修复**：
+  - **删除全部按钮导航箭头**（LandingPage ×5、CoursesPage ×2、CourseCard、G1 ×3、Login submit、OverviewPage）——按钮纯文字（Book Now / View Course / Save 等），无 →/➜/chevron。
+  - **白色按钮 bug 根治**：课程卡 CTA 恒为 **primary（主题渐变）**——彻底消灭"非 popular 课程按钮是白色"；popular 判定（方案 C：每组第一个）只用于**边框/徽章**，不控制按钮颜色 → 添加/重排课程不再改变任何按钮颜色。
+  - **Secondary 按钮非纯白**：surface-2 底 + accent-soft hover（有设计感而非"未完成"）。
+  - **推荐课程卡**：2px 主题色边框（accent）+ 浅色光环 + 保持统一尺寸（不放大/不破坏 grid）。
+  - **课程卡按钮基线对齐**：CTA `margin-top: auto`（flex column），描述长短不影响按钮位置。
+  - **Add Course 表单分组**：5 个 section（Course Information / Description / Pricing & Discounts / Lesson Structure / Course Settings）——专业分层，字段与逻辑零改动。
+- **修改文件**：shared.css、LandingPage.css、LandingPage.tsx、CoursesPage.tsx、primitives.tsx、G1MockPage.tsx、LoginPage.tsx、OverviewPage.tsx、CoursesPage(instructor).tsx、InstructorDashboard.css、i18n ×2。
+- **测试**：UI 回归（所有课程卡按钮 primary、popular 边框 rgb(162,28,175)、无箭头）；方案 C 稳定性（加课不改按钮色）；Add Course 5 section 渲染；移动端（CTA 单行 48px、无溢出、Logo 回首页）；学员端 primary 渐变非白；Full Regression 22/22；课程表单套件全过。
+
 ## Change 25 — 业务逻辑与通知修复（重复购买/优惠取消/购买邮件/翻译/证书上传）
 
 - **用户反馈 9 项** + 审计（BUSINESS_LOGIC_AUDIT / DATA_RELATIONSHIP_AUDIT / COURSE_BOOKING_AUDIT / NOTIFICATION_MATRIX / EMAIL_TEMPLATE_PLAN）。
