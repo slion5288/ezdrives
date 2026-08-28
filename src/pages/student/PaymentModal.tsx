@@ -68,6 +68,48 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
   const [emtRef, setEmtRef] = useState('')
   const [processing, setProcessing] = useState(false)
   const [cardError, setCardError] = useState(false)
+  // —— Discount UI (§18/§22/§51/§52) ——
+  const [isStudent, setIsStudent] = useState<'yes' | 'no' | null>(null)
+  const [referralPhone, setReferralPhone] = useState('')
+  const [referralValid, setReferralValid] = useState<boolean | null>(null)
+
+  // Client-side price preview only — the server recomputes authoritatively (§54).
+  const pricePreview = useMemo(() => {
+    if (!course) return null
+    const original = course.price
+    const amountOf = (cfg: { type: string; value: number } | null | undefined): number => {
+      if (!cfg || !cfg.value || cfg.value <= 0) return 0
+      return cfg.type === 'PERCENTAGE' ? (original * cfg.value) / 100 : Math.min(cfg.value, original)
+    }
+    const candidates: { source: string; label: string; amount: number }[] = []
+    if (isStudent === 'yes' && course.studentDiscount) {
+      const amt = amountOf(course.studentDiscount)
+      if (amt > 0) candidates.push({ source: 'student', label: t('instructor.courses.studentDiscount'), amount: amt })
+    }
+    if (referralValid === true && course.referralDiscount) {
+      const amt = amountOf(course.referralDiscount)
+      if (amt > 0) candidates.push({ source: 'referral', label: t('instructor.courses.referralDiscount'), amount: amt })
+    }
+    const best = candidates.sort((a, b) => b.amount - a.amount)[0] ?? null
+    return {
+      original,
+      discountAmount: best ? best.amount : 0,
+      final: Math.max(0, original - (best ? best.amount : 0)),
+      bestSource: best ? best.source : null,
+      hasDiscount: candidates.length > 0,
+      candidates,
+    }
+  }, [course, isStudent, referralValid, t])
+
+  // Referral phone validation (debounced) — checks against known students.
+  const checkReferral = (phone: string): void => {
+    const p = phone.trim()
+    if (p.length < 7) { setReferralValid(null); return }
+    const myPhone = (state.students.find((s) => s.id === studentId)?.phone || '').replace(/\s/g, '')
+    if (p.replace(/\s/g, '') === myPhone) { setReferralValid(false); return }
+    const found = (state.students ?? []).some((s) => s.id !== studentId && s.phone && s.phone.replace(/\s/g, '') === p.replace(/\s/g, ''))
+    setReferralValid(found)
+  }
 
   // Payment methods the instructor enabled — the modal renders exactly these.
   const METHODS = enabledPaymentMethods(state)
@@ -117,7 +159,10 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
     setProcessing(true)
     // The payment record is created on the backend and stays pending until the
     // instructor confirms receipt (cash / transfer / wallet / card alike).
-    const result = await addPayment(studentId, (course as Course).id, method)
+    const result = await addPayment(studentId, (course as Course).id, method, {
+      studentStatus: isStudent === 'yes' ? 'yes' : 'no',
+      referralPhone: referralPhone.trim(),
+    })
     if (result.ok) {
       showToast('success', t('payment.submitted'))
       onSubmitted?.()
@@ -145,6 +190,54 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
         <div className="student-payment__course">
           <span className="student-payment__course-name">{locale === 'zh' ? course.name.zh : course.name.en}</span>
           <span className="student-payment__course-price tabular-nums">{formatPrice(course.price)}</span>
+        </div>
+
+        {/* §18-§22: Student discount + referral */}
+        <div className="student-payment__discounts">
+          <p className="student-field-label">{t('payment.studentQuestion')}</p>
+          <div className="ins-radio-row">
+            <label className="ins-radio">
+              <input type="radio" name="pay-is-student" checked={isStudent === 'yes'} onChange={() => setIsStudent('yes')} />
+              <span>{t('common.yes')}</span>
+            </label>
+            <label className="ins-radio">
+              <input type="radio" name="pay-is-student" checked={isStudent === 'no'} onChange={() => setIsStudent('no')} />
+              <span>{t('common.no')}</span>
+            </label>
+          </div>
+
+          <p className="student-field-label" style={{ marginTop: 10 }}>{t('payment.referralQuestion')}</p>
+          <input
+            className="student-address-input"
+            type="tel"
+            placeholder={t('payment.referralPlaceholder')}
+            value={referralPhone}
+            onChange={(e) => { setReferralPhone(e.target.value); checkReferral(e.target.value) }}
+          />
+          {referralValid === true ? (
+            <p className="student-payment__hint is-ok">✓ {t('payment.referralValid')}</p>
+          ) : referralValid === false ? (
+            <p className="student-payment__hint is-bad">{t('payment.referralInvalid')}</p>
+          ) : null}
+
+          {pricePreview && pricePreview.candidates.length > 0 ? (
+            <div className="student-payment__pricebox">
+              <div className="student-payment__priceline">
+                <span>{t('payment.originalPrice')}</span>
+                <span className="tabular-nums">{formatPrice(pricePreview.original)}</span>
+              </div>
+              {pricePreview.candidates.map((c) => (
+                <div key={c.source} className="student-payment__priceline is-discount">
+                  <span>{c.label}</span>
+                  <span className="tabular-nums">-{formatPrice(c.amount)}</span>
+                </div>
+              ))}
+              <div className="student-payment__priceline is-final">
+                <span>{t('payment.finalPrice')}</span>
+                <span className="tabular-nums">{formatPrice(pricePreview.final)}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {method === null ? (
