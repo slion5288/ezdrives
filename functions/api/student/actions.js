@@ -332,17 +332,38 @@ export async function onRequestPost({ env, request }) {
     const created = []
     const inserts = []
     const now = nowISO()
+    // §8: mark booked lessons in the enrollment snapshot (booked status).
+    const enrollment = (state.enrollments || []).find((e) => e.studentId === studentId && e.courseId === courseId)
+    const snapshotUpdates = []
     const apptIds = await nextSeq(env, 'appointments', 'a', slots.length)
     for (let si = 0; si < slots.length; si++) {
       const slot = slots[si]
       const apptId = apptIds[si]
+      const lessonSeq = slot.lessonIndex !== undefined ? slot.lessonIndex + 1 : undefined
+      const snapTitle = lessonSeq !== undefined && enrollment
+        ? enrollment.lessons.find((l) => l.sequence_number === lessonSeq)
+        : undefined
       const appt = {
         id: apptId, studentId, courseId, start: slot.start, end: slot.end, status: 'confirmed',
         history: [{ at: now, note: { en: 'Booked', zh: '已预约' } }], createdAt: now,
         lessonIndex: slot.lessonIndex, price: slot.price,
+        lessonSequence: lessonSeq,
+        lessonTitle: snapTitle ? { en: snapTitle.name.en, zh: snapTitle.name.zh } : undefined,
+        courseType: course.course_type || (course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON'),
+        licenseClass: course.license_class || 'NONE',
       }
       created.push(appt)
       inserts.push(guardedAppointmentInsert(env, appt, state.instructor.breakMin))
+      if (enrollment && lessonSeq) {
+        const snap = enrollment.lessons.find((l) => l.sequence_number === lessonSeq)
+        if (snap && snap.status === 'available') {
+          snap.status = 'booked'
+          snapshotUpdates.push(env.DB.prepare('UPDATE enrollments SET payload = ? WHERE id = ?').bind(JSON.stringify(enrollment), enrollment.id))
+        }
+      }
+    }
+    if (snapshotUpdates.length > 0) {
+      inserts.push(...snapshotUpdates)
     }
     // notifications
     const [nIdS, nIdI] = await nextSeq(env, 'notifications', 'n', 2)
@@ -428,6 +449,18 @@ export async function onRequestPost({ env, request }) {
     const course = state.courses.find((c) => c.id === appt.courseId)
     const d = fromLocal(appt.start)
     const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    // §62: cancelled booking → lesson returns to 'available' (never completed).
+    const restoreStmts = []
+    const enrollment = (state.enrollments || []).find((e) => e.studentId === appt.studentId && e.courseId === appt.courseId)
+    if (enrollment && appt.lessonSequence) {
+      const snap = enrollment.lessons.find((l) => l.sequence_number === appt.lessonSequence)
+      if (snap && snap.status === 'booked') {
+        snap.status = 'available'
+        restoreStmts.push(
+          env.DB.prepare('UPDATE enrollments SET payload = ? WHERE id = ?').bind(JSON.stringify(enrollment), enrollment.id),
+        )
+      }
+    }
     const notifs = []
     if (isInstructor) {
       const student = state.students.find((s) => s.id === appt.studentId)
@@ -441,6 +474,7 @@ export async function onRequestPost({ env, request }) {
       await env.DB.batch([
         env.DB.prepare('UPDATE appointments SET status = ?, payload = ? WHERE id = ?').bind('cancelled', JSON.stringify(updated), apptId),
         ...notifs,
+        ...restoreStmts,
       ])
       state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
       state.notifications.unshift({ id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_cancelled', title: { en: 'Lesson cancelled', zh: '课程已取消' }, body: { en: `Your ${course ? course.name.en : ''} lesson on ${when} was cancelled.`, zh: `您${when}的${course ? course.name.zh : ''}课程已被取消。` }, read: false, at: now })
@@ -457,11 +491,49 @@ export async function onRequestPost({ env, request }) {
     await env.DB.batch([
       env.DB.prepare('UPDATE appointments SET status = ?, payload = ? WHERE id = ?').bind('cancelled', JSON.stringify(updated), apptId),
       ...notifs,
+      ...restoreStmts,
     ])
     state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
     state.notifications.unshift({ id: nId, role: 'instructor', recipientId: 'instructor', type: 'booking_cancelled', title: { en: 'Booking cancelled', zh: '预约已取消' }, body: { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${when}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${when}）。` }, read: false, at: now })
     const cancStudent = state.students.find((s) => s.id === appt.studentId)
     await bestEffortEmail(env, state, 'INSTRUCTOR_BOOKING_CANCELLED', cancStudent, state.instructor, appt, course, 'cancelled')
+    return reply(state)
+  }
+
+  // ---- completeLesson (instructor only, §61: lesson completes only here) ----
+  if (action === 'completeLesson') {
+    if (!isInstructor) return fail('Instructor only.', 403)
+    const apptId = String(args.id || '')
+    const appt = state.appointments.find((a) => a.id === apptId)
+    if (!appt) return fail('Appointment not found.')
+    const enrollment = (state.enrollments || []).find((e) => e.studentId === appt.studentId && e.courseId === appt.courseId)
+    if (!enrollment || !appt.lessonSequence) return fail('Not a package lesson.')
+    const now = nowISO()
+    const snap = enrollment.lessons.find((l) => l.sequence_number === appt.lessonSequence)
+    if (!snap) return fail('Lesson snapshot not found.')
+    if (snap.status === 'completed') return reply(state) // idempotent
+    snap.status = 'completed'
+    enrollment.completedLessonCount = (enrollment.completedLessonCount || 0) + 1
+    const updated = {
+      ...appt,
+      lessonCompletion: { confirmedByInstructor: true, confirmedAt: now },
+      history: [...(appt.history || []), { at: now, note: { en: 'Lesson completed', zh: '课时已完成' } }],
+    }
+    const [nId] = await nextSeq(env, 'notifications', 'n')
+    await env.DB.batch([
+      env.DB.prepare('UPDATE enrollments SET payload = ? WHERE id = ?').bind(JSON.stringify(enrollment), enrollment.id),
+      env.DB.prepare('UPDATE appointments SET payload = ? WHERE id = ?').bind(JSON.stringify(updated), apptId),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nId, 'student', appt.studentId, JSON.stringify({
+          id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_confirmed',
+          title: { en: 'Lesson completed', zh: '课时已完成' },
+          body: { en: `Lesson ${appt.lessonSequence} (${snap.name.en}) is complete.`, zh: `第 ${appt.lessonSequence} 课（${snap.name.zh}）已完成。` },
+          read: false, at: now,
+        })),
+    ])
+    state.enrollments = state.enrollments.map((e) => (e.id === enrollment.id ? enrollment : e))
+    state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
+    state.notifications.unshift({ id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_confirmed', title: { en: 'Lesson completed', zh: '课时已完成' }, body: { en: `Lesson ${appt.lessonSequence} (${snap.name.en}) is complete.`, zh: `第 ${appt.lessonSequence} 课（${snap.name.zh}）已完成。` }, read: false, at: now })
     return reply(state)
   }
 

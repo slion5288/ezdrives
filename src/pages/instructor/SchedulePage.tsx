@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react'
 import type { AppState, Appointment } from '../../data/store'
-import { cancelAppointment, lessonLabel, rescheduleAppointment } from '../../data/store'
+import { cancelAppointment, completeLesson, lessonLabel, rescheduleAppointment } from '../../data/store'
 import {
   addDays,
   addMinutes,
@@ -21,7 +21,7 @@ import {
   toLocalISO,
 } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
-import { ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Download, X } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Download, X } from 'lucide-react'
 import { DayStrip } from '../../components/calendar/DayStrip'
 import { WeekCalendar } from '../../components/calendar/WeekCalendar'
 import { Badge, ConfirmDialog, Modal } from './ui'
@@ -439,6 +439,11 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
           onClose={() => setDetail(null)}
           footer={
             <>
+              {detail.lessonSequence !== undefined ? (
+                <Button variant="secondary" onClick={() => { void completeLesson(detail.id); setDetail(null) }}>
+                  <Check size={16} /> {t('instructor.schedule.completeLesson')}
+                </Button>
+              ) : null}
               <Button variant="dangerGhost" onClick={() => setShowCancel(true)}>
                 {t('student.dashboard.cancel')}
               </Button>

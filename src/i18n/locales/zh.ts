@@ -235,6 +235,7 @@ export const messages: Record<MessageKey, string> = {
   'instructor.schedule.title': '日程',
   'instructor.schedule.newBooking': '新建预约',
   'instructor.schedule.reschedule': '改期',
+  'instructor.schedule.completeLesson': '完成课时',
   'instructor.schedule.batchMove': '批量移动',
   'instructor.schedule.selectAll': '全选',
   'instructor.schedule.exportCsv': '导出 CSV',

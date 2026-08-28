@@ -283,9 +283,31 @@ export function hasPendingPayment(source: AppState, studentId: string, courseId:
   )
 }
 
-/** 'free' | 'booked' (upcoming) | 'done' (attended) for one package lesson of a student. */
+/** 'free' | 'booked' (upcoming) | 'done' (attended) for one package lesson of a student.
+ *  §61: authoritative state comes from the enrollment lesson snapshot
+ *  (completed set by the instructor). Fallback for legacy data without an
+ *  enrollment: a past appointment marks the lesson 'done'. */
 function lessonState(source: AppState, studentId: string, courseId: string, lessonIndex: number): 'free' | 'booked' | 'done' {
   const now = new Date().getTime()
+  // 1) Enrollment snapshot is authoritative (§61).
+  const enrollments = source.enrollments ?? []
+  const enrollment = enrollments.find((e) => e.studentId === studentId && e.courseId === courseId)
+  if (enrollment) {
+    const snap = enrollment.lessons.find((l) => l.sequence_number === lessonIndex + 1)
+    if (snap) {
+      if (snap.status === 'completed') return 'done'
+      // booked state: any live appointment for this lesson
+      for (const a of source.appointments ?? []) {
+        if (a.courseId !== courseId || a.studentId !== studentId) continue
+        if ((a.lessonIndex === lessonIndex || a.lessonSequence === lessonIndex + 1) &&
+            (a.status === 'confirmed' || a.status === 'pending')) {
+          return 'booked'
+        }
+      }
+      return snap.status === 'booked' ? 'booked' : 'free'
+    }
+  }
+  // 2) Legacy fallback: past appointment → done.
   let booked = false
   for (const a of source.appointments ?? []) {
     if (a.courseId !== courseId || a.lessonIndex !== lessonIndex || a.studentId !== studentId) continue
@@ -369,6 +391,17 @@ export async function cancelAppointment(id: string): Promise<{ ok: true } | { ok
 export async function rescheduleAppointment(id: string, newStartISO: string): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!session.token) return { ok: false, error: 'not_authenticated' }
   const res = await apiAction(session.token, 'rescheduleAppointment', { id, newStartISO, clientNow: toLocalISO(new Date()) })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error || 'error' }
+}
+
+/** Instructor confirms a package lesson is complete (§61) — unlocks the next one. */
+export async function completeLesson(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!session.token) return { ok: false, error: 'not_authenticated' }
+  const res = await apiAction(session.token, 'completeLesson', { id })
   if (res.ok && res.state) {
     await applyServerState(res)
     return { ok: true }

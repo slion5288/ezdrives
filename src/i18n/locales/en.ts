@@ -233,6 +233,7 @@ export const messages = {
   'instructor.schedule.title': 'Schedule',
   'instructor.schedule.newBooking': 'New booking',
   'instructor.schedule.reschedule': 'Reschedule',
+  'instructor.schedule.completeLesson': 'Complete lesson',
   'instructor.schedule.batchMove': 'Move selected',
   'instructor.schedule.selectAll': 'Select all',
   'instructor.schedule.exportCsv': 'Export CSV',
