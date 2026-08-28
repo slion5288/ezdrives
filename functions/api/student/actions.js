@@ -185,8 +185,14 @@ export async function onRequestPost({ env, request }) {
     const referralPhone = String(args.referralPhone || '').trim()
     const course = state.courses.find((c) => c.id === courseId)
     if (!course) return fail('Course not found.')
-    if (isPurchased(state.payments, studentId, courseId)) return fail('Course already purchased.')
+    // §19-§21 (user decisions): INDIVIDUAL_LESSON & TEN_HOUR_PACKAGE allow
+    // repeat purchases (preferably after completion — advisory, not enforced);
+    // TRIAL_LESSON is limited to one purchase per student; ROAD_TEST_CAR and
+    // FULL_COURSE_CERTIFICATE follow one-per-course (default).
+    const courseType = course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')
+    const repeatAllowed = courseType === 'INDIVIDUAL_LESSON' || courseType === 'TEN_HOUR_PACKAGE'
     if (hasPending(state.payments, studentId, courseId)) return fail('Payment already pending.')
+    if (!repeatAllowed && isPurchased(state.payments, studentId, courseId)) return fail('Course already purchased.')
     if (!allowedMethods(state.instructor).includes(method)) return fail('Payment method not available.')
 
     // ---- Server-side discount & price (§54) ----
@@ -222,7 +228,7 @@ export async function onRequestPost({ env, request }) {
     const [notifId, notifId2] = await nextSeq(env, 'notifications', 'n', 2)
 
     // ---- Package: create Enrollment + Lesson Snapshot (§11/§12) ----
-    const courseType = course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')
+    // (courseType + licenseClass already resolved above for the purchase check.)
     const licenseClass = course.license_class || 'NONE'
     let enrollmentId
     let enrollment

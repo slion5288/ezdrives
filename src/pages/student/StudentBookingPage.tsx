@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { getSession, hasPendingPayment, isCoursePurchased, useAppState } from '../../data/store'
+import { courseRepeatable, getSession, hasPendingPayment, isCoursePurchased, useAppState } from '../../data/store'
 import type { Course } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { COURSE_IMAGES } from '../../data/assets'
@@ -175,7 +175,11 @@ function CatalogSection({
   const activeCourses = (state.courses ?? []).filter((c) => c.active)
   const list = activeCourses.filter((c) => {
     const owned = studentId !== null && isCoursePurchased(state, studentId, c.id)
-    return purchasedOnly ? owned : !owned
+    // Repeatable courses (Individual/Package) also appear in the buy view so
+    // the student can purchase additional hours (§18).
+    if (purchasedOnly) return owned
+    const repeatable = studentId !== null && courseRepeatable(c)
+    return !owned || repeatable
   })
   if (list.length === 0) return null
 
@@ -213,7 +217,12 @@ function CatalogSection({
                     : `${t('courses.duration', { duration: course.durationMin })} · ${formatPrice(course.price)}`}
                 </span>
                 <span className="student-course-card__action">
-                  {owned ? (
+                  {owned && courseRepeatable(course) ? (
+                    <>
+                      <BookOpen size={13} />
+                      {t('student.book.manage')}
+                    </>
+                  ) : owned ? (
                     <>
                       <BookOpen size={13} />
                       {t('student.book.manage')}

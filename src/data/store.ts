@@ -57,6 +57,12 @@ export function licenseOf(c: Course): LicenseClass {
   return 'NONE'
 }
 
+/** Whether a course may be purchased more than once (Individual + Package). */
+export function courseRepeatable(c: Course): boolean {
+  const t = courseTypeOf(c)
+  return t === 'INDIVIDUAL_LESSON' || t === 'TEN_HOUR_PACKAGE'
+}
+
 /** Trial price = instructor hourly rate × 50%. */
 export function trialPriceOf(c: Course, fallbackHourlyRate = 60): number {
   const base = c.hourlyRate || fallbackHourlyRate
