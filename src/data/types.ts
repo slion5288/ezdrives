@@ -286,6 +286,8 @@ export interface AppState {
   appointments: Appointment[]
   notifications: Notification[]
   payments: Payment[]
+  /** Package enrollments (lesson snapshots) — new in course refactor. */
+  enrollments?: Enrollment[]
   videos: TeachingVideo[]
   /** Admin-edited homepage content (served to public visitors + instructor). */
   homeContent?: HomeContent | null

@@ -169,39 +169,118 @@ export async function onRequestPost({ env, request }) {
     if (isInstructor) return fail('Students only.', 403)
     const courseId = String(args.courseId || '')
     const method = String(args.method || 'cash')
+    const studentStatus = String(args.studentStatus || 'no') // 'yes' | 'no'
+    const referralPhone = String(args.referralPhone || '').trim()
     const course = state.courses.find((c) => c.id === courseId)
     if (!course) return fail('Course not found.')
     if (isPurchased(state.payments, studentId, courseId)) return fail('Course already purchased.')
     if (hasPending(state.payments, studentId, courseId)) return fail('Payment already pending.')
     if (!allowedMethods(state.instructor).includes(method)) return fail('Payment method not available.')
+
+    // ---- Server-side discount & price (§54) ----
+    const { computeDiscount } = await import('../../lib/pricing.js')
+    const isStudent = studentStatus === 'yes'
+    let referral = null
+    if (referralPhone && referralPhone !== user.phone) {
+      const ref = await env.DB
+        .prepare("SELECT id FROM users WHERE phone = ? AND role = 'student'")
+        .bind(referralPhone)
+        .first()
+      referral = ref ? { valid: true, studentId: ref.id, phone: referralPhone } : { valid: false, studentId: null, phone: referralPhone }
+    }
+    const pricing = computeDiscount(course, { isStudent, referral })
+
     const [paymentId] = await nextSeq(env, 'payments', 'p')
     const now = nowISO()
-    const payment = { id: paymentId, studentId, courseId, method, amount: course.price, status: 'pending', createdAt: now }
+    const payment = {
+      id: paymentId, studentId, courseId, method,
+      amount: pricing.finalPrice, status: 'pending', createdAt: now,
+      // price snapshot (§30/§55)
+      original_price: pricing.originalPrice,
+      discount_type: pricing.discountType,
+      discount_source: pricing.discountSource,
+      discount_value: pricing.discountValue,
+      discount_amount: pricing.discountAmount,
+      final_price: pricing.finalPrice,
+      currency: 'CAD',
+      // referral (§31/§33)
+      referrer_student_id: referral && referral.valid ? referral.studentId : undefined,
+      referral_phone: referralPhone || undefined,
+    }
     const [notifId, notifId2] = await nextSeq(env, 'notifications', 'n', 2)
 
-    await env.DB.batch([
+    // ---- Package: create Enrollment + Lesson Snapshot (§11/§12) ----
+    const courseType = course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')
+    const licenseClass = course.license_class || 'NONE'
+    let enrollmentId
+    let enrollment
+    const inserts = [
       env.DB.prepare('INSERT INTO payments (id, student_id, status, payload) VALUES (?, ?, ?, ?)')
         .bind(paymentId, studentId, 'pending', JSON.stringify(payment)),
       env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
         .bind(notifId, 'student', studentId, JSON.stringify({
           id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending',
           title: { en: 'Payment submitted', zh: '支付已提交' },
-          body: { en: `Your ${course.name.en} payment awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付等待教练确认。` },
+          body: { en: `Your ${course.name.en} payment ($${pricing.finalPrice}) awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付（${pricing.finalPrice} 加元）等待教练确认。` },
           read: false, at: now, paymentId,
         })),
       env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
         .bind(notifId2, 'instructor', 'instructor', JSON.stringify({
           id: notifId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending',
           title: { en: 'New payment awaiting confirmation', zh: '新支付待确认' },
-          body: { en: `${user.name} requested to pay for ${course.name.en} ($${course.price}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${course.price} 加元）。点击查看并确认收款。` },
+          body: { en: `${user.name} requested to pay for ${course.name.en} ($${pricing.finalPrice}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${pricing.finalPrice} 加元）。点击查看并确认收款。` },
           read: false, at: now, paymentId,
         })),
-    ])
+    ]
+
+    if (courseType === 'TEN_HOUR_PACKAGE' && Array.isArray(course.lessons)) {
+      const [enrollSeq] = await nextSeq(env, 'enrollments', 'e')
+      enrollmentId = 'e' + enrollSeq
+      enrollment = {
+        id: enrollmentId,
+        studentId,
+        courseId,
+        courseName: { en: course.name.en, zh: course.name.zh },
+        courseType,
+        licenseClass,
+        originalPrice: pricing.originalPrice,
+        discount: {
+          type: pricing.discountType,
+          discountType: pricing.discountType === 'NONE' ? 'PERCENTAGE' : pricing.discountSource === 'student' ? course.studentDiscount?.type || 'PERCENTAGE' : course.referralDiscount?.type || 'PERCENTAGE',
+          discountValue: pricing.discountValue,
+          discountAmount: pricing.discountAmount,
+          finalPrice: pricing.finalPrice,
+          currency: 'CAD',
+        },
+        referrer: referral && referral.valid ? { referrerStudentId: referral.studentId, referralPhone } : null,
+        lessons: course.lessons.map((l, i) => ({
+          sequence_number: (l.sequence_number ?? i + 1),
+          name: { en: l.name.en, zh: l.name.zh },
+          description: { en: l.description.en, zh: l.description.zh },
+          is_free_mock_test: l.is_free_mock_test || i === course.lessons.length, // last lesson (11) is the free mock
+          status: 'available',
+        })),
+        createdAt: now,
+        completedLessonCount: 0,
+        status: 'active',
+      }
+      inserts.push(
+        env.DB.prepare('INSERT INTO enrollments (id, student_id, course_id, status, payload) VALUES (?, ?, ?, ?, ?)')
+          .bind(enrollmentId, studentId, courseId, 'active', JSON.stringify(enrollment)),
+      )
+      payment.enrollmentId = enrollmentId
+    }
+
+    await env.DB.batch(inserts)
     state.payments.push(payment)
     state.notifications.unshift(
-      { id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending', title: { en: 'Payment submitted', zh: '支付已提交' }, body: { en: `Your ${course.name.en} payment awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付等待教练确认。` }, read: false, at: now, paymentId },
-      { id: notifId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending', title: { en: 'New payment awaiting confirmation', zh: '新支付待确认' }, body: { en: `${user.name} requested to pay for ${course.name.en} ($${course.price}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${course.price} 加元）。点击查看并确认收款。` }, read: false, at: now, paymentId },
+      { id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending', title: { en: 'Payment submitted', zh: '支付已提交' }, body: { en: `Your ${course.name.en} payment ($${pricing.finalPrice}) awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付（${pricing.finalPrice} 加元）等待教练确认。` }, read: false, at: now, paymentId },
+      { id: notifId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending', title: { en: 'New payment awaiting confirmation', zh: '新支付待确认' }, body: { en: `${user.name} requested to pay for ${course.name.en} ($${pricing.finalPrice}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${pricing.finalPrice} 加元）。点击查看并确认收款。` }, read: false, at: now, paymentId },
     )
+    if (enrollment) {
+      state.enrollments = state.enrollments || []
+      state.enrollments.unshift(enrollment)
+    }
     return reply(state)
   }
 

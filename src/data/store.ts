@@ -632,9 +632,14 @@ export async function addPayment(
   studentId: string,
   courseId: string,
   method: PaymentMethod,
+  opts: { studentStatus?: 'yes' | 'no'; referralPhone?: string } = {},
 ): Promise<{ ok: true; payment: Payment } | { ok: false; error: string }> {
   if (!session.token) return { ok: false, error: 'not_authenticated' }
-  const res = await apiAction(session.token, 'addPayment', { studentId, courseId, method })
+  const res = await apiAction(session.token, 'addPayment', {
+    studentId, courseId, method,
+    studentStatus: opts.studentStatus || 'no',
+    referralPhone: opts.referralPhone || '',
+  })
   if (res.ok && res.state) {
     await applyServerState(res)
     const payments = (res.state as AppState).payments.filter((p) => p.studentId === studentId && p.courseId === courseId)

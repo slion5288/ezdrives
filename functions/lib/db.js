@@ -13,7 +13,7 @@ export function icsToken() {
 
 /** Full business state assembled from D1 (all tables). */
 export async function readFullState(env) {
-  const [instructor, rules, exceptions, courses, vehicles, videos, students, appointments, payments, notifications, homeContent] =
+  const [instructor, rules, exceptions, courses, vehicles, videos, students, appointments, payments, notifications, enrollments, homeContent] =
     await Promise.all([
       env.DB.prepare('SELECT payload FROM instructor WHERE id = 1').first(),
       env.DB.prepare('SELECT payload FROM weekly_rules ORDER BY id').all(),
@@ -25,6 +25,7 @@ export async function readFullState(env) {
       env.DB.prepare('SELECT payload FROM appointments ORDER BY rowid').all(),
       env.DB.prepare('SELECT payload FROM payments ORDER BY rowid').all(),
       env.DB.prepare('SELECT payload FROM notifications ORDER BY rowid').all(),
+      env.DB.prepare('SELECT payload FROM enrollments ORDER BY rowid').all(),
       env.DB.prepare('SELECT payload FROM home_content WHERE id = 1').first(),
     ])
 
@@ -56,6 +57,7 @@ export async function readFullState(env) {
     appointments: mapRows(appointments),
     notifications: mapRows(notifications),
     payments: mapRows(payments),
+    enrollments: mapRows(enrollments),
     videos: mapRows(videos),
     homeContent: homeContent ? JSON.parse(homeContent.payload) : null,
   }
@@ -165,5 +167,6 @@ export function studentView(state, studentId) {
     ),
     notifications: (state.notifications || []).filter((n) => n.role === 'student' && n.recipientId === studentId),
     payments: (state.payments || []).filter((p) => p.studentId === studentId),
+    enrollments: (state.enrollments || []).filter((e) => e.studentId === studentId),
   }
 }
