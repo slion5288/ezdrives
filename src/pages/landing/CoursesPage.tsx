@@ -42,6 +42,9 @@ export default function CoursesPage(): JSX.Element {
               <LandingButton variant="ghost" to="/" className="landing-sub-back">
                 <ArrowLeft size={16} /> {t('nav.home')}
               </LandingButton>
+              <span className="landing-sub-head__icon" aria-hidden="true">
+                <GraduationCap size={30} />
+              </span>
               <h1 className="landing-sub-title">{t('nav.courses')}</h1>
               <p className="landing-sub-sub">{t('landing.courses.subtitle')}</p>
             </div>

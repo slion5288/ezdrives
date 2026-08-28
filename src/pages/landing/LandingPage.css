@@ -1217,14 +1217,32 @@ html[data-theme='dark'] .landing-badge--info {
   padding-top: var(--space-8);
 }
 .landing-sub-head {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
   gap: var(--space-2);
   margin-bottom: var(--space-6);
+  padding-top: var(--space-5);
 }
 .landing-sub-back {
+  position: absolute;
+  left: 0;
+  top: 0;
   padding-left: 0;
+}
+.landing-sub-head__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-xl);
+  background: var(--gradient-brand);
+  color: var(--color-on-brand);
+  box-shadow: var(--shadow-pop);
+  margin-bottom: var(--space-2);
 }
 .landing-sub-title {
   font-size: var(--font-size-4xl);
@@ -1237,6 +1255,7 @@ html[data-theme='dark'] .landing-badge--info {
   color: var(--color-text-muted);
   max-width: 560px;
   margin: 0;
+  text-align: center;
 }
 .landing-courses__g1 {
   display: flex;

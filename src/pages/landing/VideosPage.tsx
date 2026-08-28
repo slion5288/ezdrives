@@ -43,6 +43,9 @@ export default function VideosPage(): JSX.Element {
               <LandingButton variant="ghost" to="/" className="landing-sub-back">
                 <ArrowLeft size={16} /> {t('nav.home')}
               </LandingButton>
+              <span className="landing-sub-head__icon" aria-hidden="true">
+                <Play size={30} fill="currentColor" />
+              </span>
               <h1 className="landing-sub-title">{t('landing.videos.title')}</h1>
               <p className="landing-sub-sub">{t('landing.videos.subtitle')}</p>
             </div>

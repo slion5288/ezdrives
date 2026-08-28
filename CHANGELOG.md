@@ -5,6 +5,16 @@
 
 ---
 
+## Change 18 — 二级页标题区统一：课程预约/教学视频标题居中 + 标题上方加图标（与 G1 一致）
+
+- **我的要求**：课程预约页标题仍不居中，标题上方没有像 G1 模拟题库那样的图标。
+- **修复**：/courses 与 /videos 的标题区（landing-sub-head）由「左对齐、无图标」改为与 /g1 一致：**标题上方渐变圆形图标**（课程=GraduationCap、视频=Play）+ **标题/副标题居中**；「← 返回首页」按钮绝对定位左上角（不破坏居中布局）。/g1 保持原样。
+- **修改文件**：`src/pages/landing/CoursesPage.tsx`、`src/pages/landing/VideosPage.tsx`（标题区加图标）、`src/pages/landing/LandingPage.css`（`.landing-sub-head` 居中 + `.landing-sub-head__icon` 渐变图标样式，与 g1-intro__icon 一致）。
+- **是否影响旧功能**：是——/courses、/videos 标题从左上角变为居中并增加图标（视觉统一）；返回按钮仍可点击返回首页。
+- **测试结果**：编译通过；端到端 6 项全过——/courses、/videos、/g1 三页标题上方均有图标且标题几何居中（偏差 <8px）。已部署。
+
+---
+
 ## Change 17 — 公开页 Logo 可点击返回主页 + 全站页头一致性确认
 
 - **我的要求**：① 课程预约二级页面头部与模拟题库设计不一样（没有 logo、主题不居中）；② 有些页面点击 logo 不能直接返回主页。
