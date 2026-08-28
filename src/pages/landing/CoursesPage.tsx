@@ -25,7 +25,7 @@ export default function CoursesPage(): JSX.Element {
     if (!getSession().token) initPublicHome().catch(() => undefined)
   }, [])
 
-  const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
+  const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' || !pair.en || !pair.en.trim() ? pair.zh : pair.en)
   // Never show the seed placeholder catalogue to visitors — real public data
   // only (empty until fetched, or forever when the fetch failed).
   const visitor = !getSession().token

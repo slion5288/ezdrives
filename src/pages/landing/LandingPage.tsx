@@ -124,7 +124,7 @@ export default function LandingPage(): JSX.Element {
   }, [])
 
   // Close the mobile menu on Esc.
-  const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
+  const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' || !pair.en || !pair.en.trim() ? pair.zh : pair.en)
 
   // Visitors: never show the seed placeholder — render empty until the real
   // public data has been fetched (isPublicReady), or forever if it failed.
