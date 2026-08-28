@@ -299,6 +299,39 @@ export async function onRequestPost({ env, request }) {
       state.enrollments = state.enrollments || []
       state.enrollments.unshift(enrollment)
     }
+    // Best-effort purchase emails (§5-§6): instructor gets NEW_PURCHASE.
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      const studentRow = state.students.find((s) => s.id === studentId)
+      const stInfo = studentRow
+        ? { id: studentRow.id, name: studentRow.name, phone: studentRow.phone, email: studentRow.email || '' }
+        : { id: studentId, name: user.name, phone: user.phone, email: user.email || '' }
+      const courseInfo = {
+        name: course.name.en,
+        courseType,
+        licenseClass: course.license_class || 'NONE',
+        price: pricing.finalPrice,
+      }
+      const pricingCtx = {
+        originalPrice: pricing.originalPrice,
+        discountAmount: pricing.discountAmount,
+        finalPrice: pricing.finalPrice,
+      }
+      if (state.instructor && state.instructor.email) {
+        await sendNotification(env, {
+          type: 'NEW_PURCHASE',
+          recipientEmail: state.instructor.email,
+          student: stInfo,
+          instructor: state.instructor,
+          booking: null,
+          course: courseInfo,
+          lesson: null,
+          pricing: pricingCtx,
+        })
+      }
+    } catch (e) {
+      // email is best-effort
+    }
     return reply(state)
   }
 
@@ -564,6 +597,26 @@ export async function onRequestPost({ env, request }) {
     state.enrollments = state.enrollments.map((e) => (e.id === enrollment.id ? enrollment : e))
     state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
     state.notifications.unshift({ id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_confirmed', title: { en: 'Lesson completed', zh: '课时已完成' }, body: { en: `Lesson ${appt.lessonSequence} (${snap.name.en}) is complete.`, zh: `第 ${appt.lessonSequence} 课（${snap.name.zh}）已完成。` }, read: false, at: now })
+    // Best-effort student email (§6): LESSON_COMPLETED.
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      const studentRow = state.students.find((s) => s.id === appt.studentId)
+      const stEmail = (studentRow && studentRow.email) || ''
+      if (stEmail) {
+        const courseObj = state.courses.find((c) => c.id === appt.courseId)
+        await sendNotification(env, {
+          type: 'LESSON_COMPLETED',
+          recipientEmail: stEmail,
+          student: studentRow ? { id: studentRow.id, name: studentRow.name, phone: studentRow.phone, email: stEmail } : null,
+          instructor: state.instructor,
+          booking: null,
+          course: courseObj ? { name: courseObj.name.en, courseType: courseObj.course_type || 'TEN_HOUR_PACKAGE', licenseClass: courseObj.license_class || 'G2', price: appt.price } : null,
+          lesson: { number: appt.lessonSequence, title: snap.name.en, content: snap.description.en },
+        })
+      }
+    } catch (e) {
+      // email is best-effort
+    }
     return reply(state)
   }
 
@@ -667,6 +720,31 @@ export async function onRequestPost({ env, request }) {
     ])
     state.payments = state.payments.map((p) => (p.id === paymentId ? updated : p))
     state.notifications.unshift({ id: nId, role: 'student', recipientId: payment.studentId, type: nType, title: nTitle, body: nBody, read: false, at: now, paymentId })
+    // Best-effort student email (§5-§6): PURCHASE_CONFIRMED / PAYMENT_REJECTED.
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      const stEmail = (student && student.email) || ''
+      if (stEmail) {
+        const ct = course ? (course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')) : ''
+        const pricingCtx = {
+          originalPrice: payment.original_price,
+          discountAmount: payment.discount_amount,
+          finalPrice: payment.final_price,
+        }
+        await sendNotification(env, {
+          type: status === 'confirmed' ? 'PURCHASE_CONFIRMED' : 'PAYMENT_REJECTED',
+          recipientEmail: stEmail,
+          student: student ? { id: student.id, name: student.name, phone: student.phone, email: stEmail } : null,
+          instructor: state.instructor,
+          booking: null,
+          course: course ? { name: course.name.en, courseType: ct, licenseClass: course.license_class || 'NONE', price: payment.final_price } : null,
+          lesson: null,
+          pricing: pricingCtx,
+        })
+      }
+    } catch (e) {
+      // email is best-effort
+    }
     return reply(state)
   }
 
