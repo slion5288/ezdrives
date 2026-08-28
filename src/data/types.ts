@@ -100,6 +100,8 @@ export interface Appointment {
   reminded?: boolean // optional — 2h-reminder flag (demo)
   /** Package courses: which lesson number of the package (0-based). */
   lessonIndex?: number
+  /** Individual purchase unit this appointment consumes (payment id). */
+  paymentId?: string
   /** 1-based lesson sequence (from enrollment snapshot) for calendar display. */
   lessonSequence?: number
   /** Lesson title snapshot (instructor calendar shows it). */

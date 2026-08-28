@@ -139,6 +139,7 @@ export const messages = {
 
   // --- student.dashboard ---
   'student.dashboard.title': 'Book a time',
+  'student.dashboard.units': 'Purchased: {count} hour(s)',
   'student.dashboard.greeting': 'Hi {name}',
   'student.dashboard.upcoming': 'Upcoming lessons',
   'student.dashboard.upcomingEmpty': 'No upcoming lessons',

@@ -282,6 +282,31 @@ export function isCoursePurchased(source: AppState, studentId: string, courseId:
   )
 }
 
+/** Confirmed purchase count (units) for a course — Individual may have many. */
+export function purchaseCount(source: AppState, studentId: string, courseId: string): number {
+  return (source.payments ?? []).filter(
+    (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'confirmed',
+  ).length
+}
+
+/** Status of one Individual purchase unit (matched to an appointment by index). */
+export function unitStatus(
+  source: AppState,
+  studentId: string,
+  courseId: string,
+  unitIndex: number,
+): 'not_scheduled' | 'scheduled' | 'completed' {
+  const appts = (source.appointments ?? [])
+    .filter((a) => a.studentId === studentId && a.courseId === courseId && a.paymentId === undefined)
+    .sort((a, b) => a.start.localeCompare(b.start))
+  const appt = appts[unitIndex]
+  if (!appt || appt.status === 'cancelled') return 'not_scheduled'
+  if (appt.status === 'confirmed' || appt.status === 'pending') {
+    return fromLocalISO(appt.start).getTime() < Date.now() ? 'completed' : 'scheduled'
+  }
+  return 'not_scheduled'
+}
+
 /** Whether the student has a payment still awaiting instructor confirmation. */
 export function hasPendingPayment(source: AppState, studentId: string, courseId: string): boolean {
   return (source.payments ?? []).some(

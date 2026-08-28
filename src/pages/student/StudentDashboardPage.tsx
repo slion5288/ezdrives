@@ -6,7 +6,7 @@
 // 1–2 consecutive). No notifications here — those live under 通知.
 // ============================================================================
 
-import { getSession, isCoursePurchased, useAppState } from '../../data/store'
+import { courseRepeatable, getSession, isCoursePurchased, purchaseCount, useAppState } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { CalendarPlus } from 'lucide-react'
 import { StudentShell } from './StudentShell'
@@ -59,7 +59,9 @@ export default function StudentDashboardPage(): JSX.Element {
                   <span className="student-card-subtitle">
                     {course.type === 'package'
                       ? t('courses.lessons', { count: course.lessons?.length ?? 10 })
-                      : t('courses.duration', { duration: course.durationMin })}
+                      : courseRepeatable(course)
+                        ? t('student.dashboard.units', { count: purchaseCount(state, studentId, course.id) })
+                        : t('courses.duration', { duration: course.durationMin })}
                   </span>
                 </div>
                 <CourseBookingPanel key={`panel-${course.id}`} course={course} />

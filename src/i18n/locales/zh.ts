@@ -141,6 +141,7 @@ export const messages: Record<MessageKey, string> = {
 
   // --- student.dashboard ---
   'student.dashboard.title': '预约时间',
+  'student.dashboard.units': '已购买 {count} 课时',
   'student.dashboard.greeting': '你好，{name}',
   'student.dashboard.upcoming': '即将开始的课程',
   'student.dashboard.upcomingEmpty': '暂无即将开始的课程',
