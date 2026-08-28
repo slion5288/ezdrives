@@ -51,7 +51,7 @@ export default function ProfileSettings({ state }: { state: AppState }): JSX.Ele
     })
     setBusy(false)
     setEditing(false)
-    toast({ tone: 'success', title: t('common.toast.saved') })
+    toast.push({ tone: 'success', title: t('common.toast.saved') })
   }
 
   return (

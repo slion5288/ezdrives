@@ -116,7 +116,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           onClick={() => {
                             void (async () => {
                               const result = await confirmPayment(p.id)
-                              toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.confirm') : t('common.toast.error') })
+                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.confirm') : t('common.toast.error') })
                             })()
                           }}
                         >
@@ -128,7 +128,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           onClick={() => {
                             void (async () => {
                               const result = await rejectPayment(p.id)
-                              toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
+                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
                             })()
                           }}
                         >

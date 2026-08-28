@@ -4,7 +4,6 @@
 // Built from tokens only; every label comes from useT().
 // ============================================================================
 
-import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { useT } from '../../i18n'

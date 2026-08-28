@@ -29,7 +29,7 @@ export default function PaymentMethodsManager(): JSX.Element {
     const current = new Set(enabledPaymentMethods(getState()))
     if (current.has(method)) {
       if (current.size <= 1) {
-        toast({ tone: 'error', title: t('instructor.settings.atLeastOne') })
+        toast.push({ tone: 'error', title: t('instructor.settings.atLeastOne') })
         return
       }
       setPaymentMethods(ALL_PAYMENT_METHODS.filter((m) => current.has(m) && m !== method))
@@ -37,7 +37,7 @@ export default function PaymentMethodsManager(): JSX.Element {
       setPaymentMethods(ALL_PAYMENT_METHODS.filter((m) => current.has(m) || m === method))
     }
     setDirty(true)
-    toast({ tone: 'success', title: t('instructor.settings.paymentsSaved') })
+    toast.push({ tone: 'success', title: t('instructor.settings.paymentsSaved') })
   }
 
   return (

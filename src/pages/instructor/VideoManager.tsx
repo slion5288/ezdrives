@@ -165,14 +165,14 @@ export default function VideoManager({ state }: { state: AppState }): JSX.Elemen
       active: form.active,
       addedAt: existing?.addedAt ?? toLocalISO(new Date()),
     })
-    toast({ tone: 'success', title: t('instructor.videos.saved') })
+    toast.push({ tone: 'success', title: t('instructor.videos.saved') })
     setForm(null)
   }
 
   const confirmDelete = (): void => {
     if (!deleteTarget) return
     deleteVideo(deleteTarget.id)
-    toast({ tone: 'success', title: t('instructor.videos.deleted') })
+    toast.push({ tone: 'success', title: t('instructor.videos.deleted') })
     setDeleteTarget(null)
   }
 

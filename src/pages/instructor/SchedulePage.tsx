@@ -225,7 +225,7 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
         }
       })
     downloadCSV(`appointments-${dateKey(new Date())}.csv`, appointmentsToCSV(rows))
-    toast({ tone: 'success', title: t('instructor.schedule.exportCsv') })
+    toast.push({ tone: 'success', title: t('instructor.schedule.exportCsv') })
   }
 
   const detailCourse = detail ? courseById(state, detail.courseId) : undefined
@@ -235,7 +235,7 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
     if (!detail) return
     const result = await rescheduleAppointment(detail.id, startISO)
     if (result.ok) {
-      toast({ tone: 'success', title: t('common.toast.saved') })
+      toast.push({ tone: 'success', title: t('common.toast.saved') })
       setShowReschedule(false)
       setDetail(null)
     } else {
@@ -247,7 +247,7 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
             : result.error === 'past'
               ? t('student.booking.past')
               : t('common.toast.error')
-      toast({ tone: 'error', title: message })
+      toast.push({ tone: 'error', title: message })
     }
   }
 
@@ -255,11 +255,11 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
     if (!detail) return
     const result = await cancelAppointment(detail.id)
     if (result.ok) {
-      toast({ tone: 'success', title: t('common.toast.deleted') })
+      toast.push({ tone: 'success', title: t('common.toast.deleted') })
       setShowCancel(false)
       setDetail(null)
     } else {
-      toast({ tone: 'error', title: result.error === 'past' ? t('student.booking.past') : t('common.toast.error') })
+      toast.push({ tone: 'error', title: result.error === 'past' ? t('student.booking.past') : t('common.toast.error') })
     }
   }
 
@@ -282,8 +282,8 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
       if (result.ok) moved.push(id)
       else failed.push({ id, error: result.error })
     }
-    if (moved.length > 0) toast({ tone: 'success', title: t('instructor.schedule.moved', { count: moved.length }) })
-    if (failed.length > 0) toast({ tone: 'error', title: t('instructor.schedule.failed', { count: failed.length }) })
+    if (moved.length > 0) toast.push({ tone: 'success', title: t('instructor.schedule.moved', { count: moved.length }) })
+    if (failed.length > 0) toast.push({ tone: 'error', title: t('instructor.schedule.failed', { count: failed.length }) })
     setShowBatch(false)
     setSelected(new Set())
     setBatchMode(false)

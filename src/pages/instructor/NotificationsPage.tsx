@@ -63,7 +63,7 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
     if (!linkedPayment) return
     void (async () => {
       const result = await confirmPayment(linkedPayment.id)
-      toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.confirm') : t('common.toast.error') })
+      toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.confirm') : t('common.toast.error') })
       if (result.ok) setDetail(null)
     })()
   }
@@ -72,7 +72,7 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
     if (!linkedPayment) return
     void (async () => {
       const result = await rejectPayment(linkedPayment.id)
-      toast({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
+      toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
       if (result.ok) setDetail(null)
     })()
   }

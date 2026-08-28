@@ -67,7 +67,7 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
     setWeeklyRules(rules)
     setBreakMin(breakMin)
     setEditing(false)
-    toast({ tone: 'success', title: t('instructor.workinghours.saved') })
+    toast.push({ tone: 'success', title: t('instructor.workinghours.saved') })
   }
 
   // --- Temporary adjustments (调休) ---
@@ -106,13 +106,13 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
       ? { date: selDate, closed: true }
       : { date: selDate, closed: false, startMin: minOf(exStart), endMin: minOf(exEnd) }
     addException(exception)
-    toast({ tone: 'success', title: t('common.toast.saved') })
+    toast.push({ tone: 'success', title: t('common.toast.saved') })
   }
 
   const handleRemoveException = (date: string): void => {
     removeException(date)
     if (selDate === date) setSelDate('')
-    toast({ tone: 'success', title: t('common.toast.deleted') })
+    toast.push({ tone: 'success', title: t('common.toast.deleted') })
   }
 
   return (

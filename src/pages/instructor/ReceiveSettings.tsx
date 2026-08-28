@@ -41,7 +41,7 @@ export default function ReceiveSettings(): JSX.Element {
       const dataUrl = String(reader.result ?? '')
       setWechatQr(dataUrl)
       setQr(dataUrl)
-      toast({ tone: 'success', title: t('common.toast.saved') })
+      toast.push({ tone: 'success', title: t('common.toast.saved') })
     }
     reader.readAsDataURL(file)
   }
@@ -56,7 +56,7 @@ export default function ReceiveSettings(): JSX.Element {
   const saveEmt = (): void => {
     setEmtEmail(emt.trim())
     setEditingEmt(false)
-    toast({ tone: 'success', title: t('common.toast.saved') })
+    toast.push({ tone: 'success', title: t('common.toast.saved') })
   }
 
   const startEditBank = (): void => {
@@ -75,7 +75,7 @@ export default function ReceiveSettings(): JSX.Element {
       account: bank.account?.trim() ?? '',
     })
     setEditingBank(false)
-    toast({ tone: 'success', title: t('common.toast.saved') })
+    toast.push({ tone: 'success', title: t('common.toast.saved') })
   }
 
   const startEditApi = (): void => {
@@ -93,7 +93,7 @@ export default function ReceiveSettings(): JSX.Element {
       paypalUrl: api.paypalUrl?.trim() ?? '',
     })
     setEditingApi(false)
-    toast({ tone: 'success', title: t('common.toast.saved') })
+    toast.push({ tone: 'success', title: t('common.toast.saved') })
   }
 
   const currentBank = state.instructor.bank ?? {}

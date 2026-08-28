@@ -105,7 +105,7 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
       photoUrl: form.photoUrl,
       active: form.active,
     })
-    toast({ tone: 'success', title: t('instructor.vehicles.saved') })
+    toast.push({ tone: 'success', title: t('instructor.vehicles.saved') })
     setForm(null)
   }
 
@@ -116,7 +116,7 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
   const confirmDelete = (): void => {
     if (!deleteTarget) return
     deleteVehicle(deleteTarget.id)
-    toast({ tone: 'success', title: t('common.toast.deleted') })
+    toast.push({ tone: 'success', title: t('common.toast.deleted') })
     setDeleteTarget(null)
   }
 

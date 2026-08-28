@@ -158,14 +158,14 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
       imageUrl: form.imageUrl || undefined,
       lessons,
     })
-    toast({ tone: 'success', title: t('instructor.courses.saved') })
+    toast.push({ tone: 'success', title: t('instructor.courses.saved') })
     setForm(null)
   }
 
   const confirmDelete = (): void => {
     if (!deleteTarget) return
     deleteCourse(deleteTarget.id)
-    toast({ tone: 'success', title: t('instructor.courses.deleted') })
+    toast.push({ tone: 'success', title: t('instructor.courses.deleted') })
     setDeleteTarget(null)
   }
 
