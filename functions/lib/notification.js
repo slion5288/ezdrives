@@ -25,7 +25,10 @@ const VARIABLES = [
   'student_first_name', 'student_last_name', 'student_name', 'student_email', 'student_phone',
   'instructor_name', 'instructor_email', 'instructor_phone',
   'booking_date', 'booking_time', 'booking_location', 'booking_status', 'booking_id',
-  'course_name', 'course_price',
+  'booking_start_time', 'booking_end_time',
+  'course_name', 'course_price', 'course_type', 'license_class',
+  'lesson_number', 'lesson_title', 'lesson_content',
+  'original_price', 'discount_amount', 'final_price',
   'company_name', 'company_email', 'company_phone', 'website_url',
 ]
 
@@ -50,8 +53,11 @@ export function buildContext(ctx) {
   const instructor = ctx.instructor || {}
   const booking = ctx.booking || {}
   const course = ctx.course || {}
+  const lesson = ctx.lesson || {}
+  const pricing = ctx.pricing || {}
   const fullName = student.name || ''
   const parts = fullName.split(/\s+/).filter(Boolean)
+  const money = (v) => (v != null && !isNaN(v) ? `$${Number(v)}` : '')
   return {
     student_first_name: parts[0] || fullName,
     student_last_name: parts.slice(1).join(' ') || '',
@@ -66,8 +72,18 @@ export function buildContext(ctx) {
     booking_location: booking.location || '',
     booking_status: booking.status || '',
     booking_id: booking.id || '',
+    booking_start_time: booking.startTime || '',
+    booking_end_time: booking.endTime || '',
     course_name: course.name || '',
-    course_price: course.price != null ? `$${course.price}` : '',
+    course_price: money(course.price),
+    course_type: course.courseType || '',
+    license_class: course.licenseClass || '',
+    lesson_number: lesson.number != null ? String(lesson.number) : '',
+    lesson_title: lesson.title || '',
+    lesson_content: lesson.content || '',
+    original_price: money(pricing.originalPrice),
+    discount_amount: money(pricing.discountAmount),
+    final_price: money(pricing.finalPrice),
     company_name: COMPANY.name,
     company_email: COMPANY.email,
     company_phone: COMPANY.phone,

@@ -119,26 +119,38 @@ async function bestEffortEmail(env, state, type, student, instructor, appt, cour
   try {
     const { sendNotification } = await import('../../lib/notification.js')
     const d = fromLocal(appt.start)
+    const end = fromLocal(appt.end)
     const booking = {
       id: appt.id,
       date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
       time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      startTime: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
       status,
       location: (student && student.address) || '',
     }
-    const courseInfo = { name: course ? course.name.en : '' }
+    const ct = course ? (course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')) : ''
+    const courseInfo = {
+      name: course ? course.name.en : '',
+      courseType: ct,
+      licenseClass: course ? course.license_class || (ct === 'INDIVIDUAL_LESSON' || ct === 'TEN_HOUR_PACKAGE' ? 'G2' : 'NONE') : '',
+    }
+    const lessonInfo = appt && appt.lessonSequence
+      ? { number: appt.lessonSequence, title: appt.lessonTitle ? appt.lessonTitle.en : '', content: '' }
+      : {}
     const stInfo = student
       ? { id: student.id, name: student.name, phone: student.phone, email: student.email || '' }
       : null
+    const event = { type, student: stInfo, instructor, booking, course: courseInfo, lesson: lessonInfo }
     if (type.endsWith('RESCHEDULED') || type === 'BOOKING_CANCELLED') {
       // to the student
       if (stInfo && stInfo.email) {
-        await sendNotification(env, { type, recipientEmail: stInfo.email, student: stInfo, instructor, booking, course: courseInfo })
+        await sendNotification(env, { ...event, recipientEmail: stInfo.email })
       }
     } else {
       // to the instructor (NEW_BOOKING / INSTRUCTOR_*)
       if (instructor && instructor.email) {
-        await sendNotification(env, { type, recipientEmail: instructor.email, student: stInfo, instructor, booking, course: courseInfo })
+        await sendNotification(env, { ...event, recipientEmail: instructor.email })
       }
     }
   } catch (e) {
@@ -413,17 +425,29 @@ export async function onRequestPost({ env, request }) {
       const studentRow = state.students.find((s) => s.id === studentId)
       const stEmail = (studentRow && studentRow.email) || user.email
       const d0 = fromLocal(first.start)
+      const d0end = fromLocal(first.end)
       const booking = {
         id: first.id,
         date: `${d0.getFullYear()}-${pad(d0.getMonth() + 1)}-${pad(d0.getDate())}`,
         time: `${pad(d0.getHours())}:${pad(d0.getMinutes())}`,
+        startTime: `${pad(d0.getHours())}:${pad(d0.getMinutes())}`,
+        endTime: `${pad(d0end.getHours())}:${pad(d0end.getMinutes())}`,
         status: 'confirmed',
         location: (studentRow && studentRow.address) || user.address || '',
       }
+      const ct = course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')
+      const courseInfo = {
+        name: courseName.en,
+        price: first.price,
+        courseType: ct,
+        licenseClass: course.license_class || (ct === 'INDIVIDUAL_LESSON' || ct === 'TEN_HOUR_PACKAGE' ? 'G2' : 'NONE'),
+      }
+      const lessonInfo = first.lessonSequence
+        ? { number: first.lessonSequence, title: first.lessonTitle ? first.lessonTitle.en : '', content: '' }
+        : {}
       const studentInfo = { id: studentId, name: user.name, phone: user.phone, email: stEmail || '' }
-      const courseInfo = { name: courseName.en, price: first.price }
       if (stEmail) {
-        await sendNotification(env, { type: 'BOOKING_CONFIRMED', recipientEmail: stEmail, student: studentInfo, instructor: state.instructor, booking, course: courseInfo })
+        await sendNotification(env, { type: 'BOOKING_CONFIRMED', recipientEmail: stEmail, student: studentInfo, instructor: state.instructor, booking, course: courseInfo, lesson: lessonInfo })
       }
       if (state.instructor && state.instructor.email) {
         await sendNotification(env, { type: 'NEW_BOOKING', recipientEmail: state.instructor.email, student: studentInfo, instructor: state.instructor, booking, course: courseInfo })
