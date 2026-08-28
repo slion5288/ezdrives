@@ -16,6 +16,7 @@ import type { InstructorBank, PayApiConfig } from '../../data/store'
 import { useT } from '../../i18n'
 import { Landmark, Mail, Pencil, QrCode, Settings2, Upload } from 'lucide-react'
 import { useToast } from '../../components/shared'
+import { Button } from '../../components/shared/Button'
 
 export default function ReceiveSettings(): JSX.Element {
   const t = useT()
@@ -121,9 +122,9 @@ export default function ReceiveSettings(): JSX.Element {
               className="visually-hidden"
               onChange={(e) => onUpload(e.target.files?.[0])}
             />
-            <button type="button" className="ins-btn ins-btn--secondary" onClick={() => fileRef.current?.click()}>
+            <Button variant="secondary" onClick={() => fileRef.current?.click()}>
               <Upload size={14} /> {t('instructor.wechatQrUpload')}
-            </button>
+            </Button>
           </div>
         </div>
       </section>
@@ -135,9 +136,9 @@ export default function ReceiveSettings(): JSX.Element {
             <Mail size={16} /> {t('instructor.settings.emtEmail')}
           </h2>
           {!editingEmt ? (
-            <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={startEditEmt}>
+            <Button variant="secondary" size="sm" onClick={startEditEmt}>
               <Pencil size={14} /> {t('common.edit')}
-            </button>
+            </Button>
           ) : null}
         </div>
         {editingEmt ? (
@@ -154,12 +155,12 @@ export default function ReceiveSettings(): JSX.Element {
               />
             </div>
             <div className="ins-settings-row">
-              <button type="button" className="ins-btn ins-btn--secondary" onClick={cancelEmt}>
+              <Button variant="secondary" onClick={cancelEmt}>
                 {t('common.cancel')}
-              </button>
-              <button type="button" className="ins-btn ins-btn--primary" onClick={saveEmt}>
+              </Button>
+              <Button variant="primary" onClick={saveEmt}>
                 {t('common.save')}
-              </button>
+              </Button>
             </div>
           </>
         ) : (
@@ -175,9 +176,9 @@ export default function ReceiveSettings(): JSX.Element {
             <Landmark size={16} /> {t('instructor.settings.bank')}
           </h2>
           {!editingBank ? (
-            <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={startEditBank}>
+            <Button variant="secondary" size="sm" onClick={startEditBank}>
               <Pencil size={14} /> {t('common.edit')}
-            </button>
+            </Button>
           ) : null}
         </div>
         {editingBank ? (
@@ -205,12 +206,12 @@ export default function ReceiveSettings(): JSX.Element {
               </div>
             </div>
             <div className="ins-settings-row">
-              <button type="button" className="ins-btn ins-btn--secondary" onClick={cancelBank}>
+              <Button variant="secondary" onClick={cancelBank}>
                 {t('common.cancel')}
-              </button>
-              <button type="button" className="ins-btn ins-btn--primary" onClick={saveBank}>
+              </Button>
+              <Button variant="primary" onClick={saveBank}>
                 {t('common.save')}
-              </button>
+              </Button>
             </div>
           </>
         ) : (
@@ -232,9 +233,9 @@ export default function ReceiveSettings(): JSX.Element {
             <Settings2 size={16} /> {t('instructor.settings.api')}
           </h2>
           {!editingApi ? (
-            <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={startEditApi}>
+            <Button variant="secondary" size="sm" onClick={startEditApi}>
               <Pencil size={14} /> {t('common.edit')}
-            </button>
+            </Button>
           ) : null}
         </div>
         {editingApi ? (
@@ -282,12 +283,12 @@ export default function ReceiveSettings(): JSX.Element {
               </div>
             </div>
             <div className="ins-settings-row">
-              <button type="button" className="ins-btn ins-btn--secondary" onClick={cancelApi}>
+              <Button variant="secondary" onClick={cancelApi}>
                 {t('common.cancel')}
-              </button>
-              <button type="button" className="ins-btn ins-btn--primary" onClick={saveApi}>
+              </Button>
+              <Button variant="primary" onClick={saveApi}>
                 {t('common.save')}
-              </button>
+              </Button>
             </div>
           </>
         ) : (

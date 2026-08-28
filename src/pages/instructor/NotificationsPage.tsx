@@ -27,6 +27,7 @@ import type { LucideIcon } from 'lucide-react'
 import { Badge, EmptyState, Modal } from './ui'
 import { useToast } from '../../components/shared'
 import { formatMoney } from './helpers'
+import { Button } from '../../components/shared/Button'
 
 const TYPE_ICONS: Record<Notification['type'], LucideIcon> = {
   new_booking: Sparkles,
@@ -80,14 +81,12 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
   return (
     <div className="ins-notifs">
       <div className="ins-page-actions">
-        <button
-          type="button"
-          className="ins-btn ins-btn--secondary"
+        <Button variant="secondary"
           disabled={unreadCount === 0}
           onClick={() => markAllRead()}
         >
           {t('instructor.notifications.markAllRead')}
-        </button>
+        </Button>
       </div>
 
       {notifications.length === 0 ? (
@@ -147,17 +146,17 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
           footer={
             isPendingPayment ? (
               <>
-                <button type="button" className="ins-btn ins-btn--danger-ghost" onClick={handleReject}>
+                <Button variant="dangerGhost" onClick={handleReject}>
                   {t('instructor.payments.reject')}
-                </button>
-                <button type="button" className="ins-btn ins-btn--primary" onClick={handleConfirm}>
+                </Button>
+                <Button variant="primary" onClick={handleConfirm}>
                   {t('instructor.notifications.confirm')}
-                </button>
+                </Button>
               </>
             ) : (
-              <button type="button" className="ins-btn ins-btn--secondary" onClick={() => setDetail(null)}>
+              <Button variant="secondary" onClick={() => setDetail(null)}>
                 {t('common.close')}
-              </button>
+              </Button>
             )
           }
         >

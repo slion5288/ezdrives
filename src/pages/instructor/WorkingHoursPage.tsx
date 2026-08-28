@@ -19,6 +19,7 @@ import { MiniCalendar } from '../../components/calendar/MiniCalendar'
 import { Badge } from './ui'
 import { useToast } from '../../components/shared'
 import { fmtMin, minuteOptions, minOf } from './helpers'
+import { Button } from '../../components/shared/Button'
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun
 const START_OPTS = minuteOptions(360, 1260, 60) // 06:00–21:00, hourly
@@ -129,9 +130,9 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
             <h2 className="ins-panel-title">{t('instructor.workinghours.weekly')}</h2>
             <span className="ins-panel-sub">{t('instructor.workinghours.weeklyBody')}</span>
             {!editing ? (
-              <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={startEdit}>
+              <Button variant="secondary" size="sm" onClick={startEdit}>
                 <Pencil size={14} /> {t('common.edit')}
-              </button>
+              </Button>
             ) : null}
           </div>
 
@@ -262,12 +263,12 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
           </div>
 
           <div className="ins-panel-foot">
-            <button type="button" className="ins-btn ins-btn--secondary" onClick={() => setEditing(false)}>
+            <Button variant="secondary" onClick={() => setEditing(false)}>
               {t('common.cancel')}
-            </button>
-            <button type="button" className="ins-btn ins-btn--primary" onClick={handleSave}>
+            </Button>
+            <Button variant="primary" onClick={handleSave}>
               {t('instructor.workinghours.save')}
-            </button>
+            </Button>
           </div>
             </>
           )}
@@ -327,13 +328,13 @@ export default function WorkingHoursPage({ state }: { state: AppState }): JSX.El
                 </div>
               ) : null}
               <div className="ins-exc-editor-actions">
-                <button type="button" className="ins-btn ins-btn--secondary" onClick={handleApplyException}>
+                <Button variant="secondary" onClick={handleApplyException}>
                   {t('instructor.workinghours.apply')}
-                </button>
+                </Button>
                 {selException ? (
-                  <button type="button" className="ins-btn ins-btn--ghost" onClick={() => handleRemoveException(selDate)}>
+                  <Button variant="ghost" onClick={() => handleRemoveException(selDate)}>
                     {t('instructor.workinghours.restore')}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </div>

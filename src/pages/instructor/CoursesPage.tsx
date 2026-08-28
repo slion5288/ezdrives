@@ -15,6 +15,7 @@ import { Camera, GraduationCap, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Badge, ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
 import { useToast } from '../../components/shared'
 import { formatMoney } from './helpers'
+import { Button } from '../../components/shared/Button'
 
 interface LessonForm {
   nameEn: string
@@ -172,9 +173,9 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
   return (
     <div className="ins-courses">
       <div className="ins-page-actions">
-        <button type="button" className="ins-btn ins-btn--primary" onClick={openAdd}>
+        <Button variant="primary" onClick={openAdd}>
           <Plus size={16} /> {t('instructor.courses.add')}
-        </button>
+        </Button>
       </div>
 
       {state.courses.length === 0 ? (
@@ -237,12 +238,12 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
           maxWidth={form.type === 'package' ? 820 : 480}
           footer={
             <>
-              <button type="button" className="ins-btn ins-btn--secondary" onClick={() => setForm(null)}>
+              <Button variant="secondary" onClick={() => setForm(null)}>
                 {t('common.cancel')}
-              </button>
-              <button type="button" className="ins-btn ins-btn--primary" onClick={submitForm}>
+              </Button>
+              <Button variant="primary" onClick={submitForm}>
                 {t('instructor.courses.save')}
-              </button>
+              </Button>
             </>
           }
         >

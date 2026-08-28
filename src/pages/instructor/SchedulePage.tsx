@@ -29,6 +29,7 @@ import { useToast } from '../../components/shared'
 import { appointmentsToCSV, downloadCSV } from '../../utils/csv'
 import type { AppointmentCSVRow } from '../../utils/csv'
 import { courseById, fmtMin, isLiveAppointment, overlappingIds, startOfWeek, statusLabel, studentById, weekDates } from './helpers'
+import { Button } from '../../components/shared/Button'
 
 // --- Precise time picker (single reschedule + batch move) -----------------
 
@@ -122,12 +123,12 @@ function TimePickerModal({
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="ins-btn ins-btn--secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
-          </button>
-          <button type="button" className="ins-btn ins-btn--primary" disabled={!canConfirm} onClick={() => onConfirm(dateOnly ? `${date}T00:00:00` : startISO)}>
+          </Button>
+          <Button variant="primary" disabled={!canConfirm} onClick={() => onConfirm(dateOnly ? `${date}T00:00:00` : startISO)}>
             {t('common.confirm')}
-          </button>
+          </Button>
         </>
       }
     >
@@ -299,16 +300,14 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
           <button type="button" className="ins-icon-btn" onClick={() => setWeekStart((w) => addDays(w, 7))} aria-label={t('calendar.week')}>
             <ChevronRight size={18} />
           </button>
-          <button
-            type="button"
-            className="ins-btn ins-btn--secondary ins-btn--sm"
+          <Button variant="secondary" size="sm"
             onClick={() => {
               setWeekStart(startOfWeek(new Date()))
               setSelectedDate(new Date())
             }}
           >
             {t('calendar.today')}
-          </button>
+          </Button>
           <span className="ins-toolbar-range tabular-nums">{rangeLabel}</span>
         </div>
         <div className="ins-toolbar-group">
@@ -335,17 +334,15 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
           {batchMode ? (
             <>
               <span className="ins-toolbar-chip">{t('instructor.schedule.selected', { count: selected.size })}</span>
-              <button type="button" className="ins-btn ins-btn--ghost ins-btn--sm" onClick={selectAllWeek}>
+              <Button variant="ghost" size="sm" onClick={selectAllWeek}>
                 {t('instructor.schedule.selectAll')}
-              </button>
-              <button
-                type="button"
-                className="ins-btn ins-btn--primary ins-btn--sm"
+              </Button>
+              <Button variant="primary" size="sm"
                 disabled={selected.size === 0}
                 onClick={() => setShowBatch(true)}
               >
                 {t('instructor.schedule.batchMove')}
-              </button>
+              </Button>
               <button
                 type="button"
                 className="ins-icon-btn"
@@ -359,13 +356,13 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
               </button>
             </>
           ) : (
-            <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={() => setBatchMode(true)}>
+            <Button variant="secondary" size="sm" onClick={() => setBatchMode(true)}>
               {t('instructor.schedule.batchMove')}
-            </button>
+            </Button>
           )}
-          <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={handleExport}>
+          <Button variant="secondary" size="sm" onClick={handleExport}>
             <Download size={14} /> {t('instructor.schedule.exportCsv')}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -442,12 +439,12 @@ export default function SchedulePage({ state }: { state: AppState }): JSX.Elemen
           onClose={() => setDetail(null)}
           footer={
             <>
-              <button type="button" className="ins-btn ins-btn--danger-ghost" onClick={() => setShowCancel(true)}>
+              <Button variant="dangerGhost" onClick={() => setShowCancel(true)}>
                 {t('student.dashboard.cancel')}
-              </button>
-              <button type="button" className="ins-btn ins-btn--primary" onClick={() => setShowReschedule(true)}>
+              </Button>
+              <Button variant="primary" onClick={() => setShowReschedule(true)}>
                 {t('instructor.schedule.reschedule')}
-              </button>
+              </Button>
             </>
           }
         >

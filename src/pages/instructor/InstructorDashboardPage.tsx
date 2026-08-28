@@ -38,6 +38,7 @@ import SettingsPage from './SettingsPage'
 import NotificationsPage from './NotificationsPage'
 import { LOGO_DATA_URL } from '../../data/assets'
 import './InstructorDashboard.css'
+import { Button } from '../../components/shared/Button'
 
 type Theme = 'light' | 'dark'
 
@@ -116,9 +117,9 @@ export default function InstructorDashboardPage(): JSX.Element {
         {loadError ? (
           <div className="ins-loading__error">
             <p>{t('common.toast.error')}</p>
-            <button type="button" className="ins-btn ins-btn--primary ins-btn--sm" onClick={retryLoad}>
+            <Button variant="primary" size="sm" onClick={retryLoad}>
               {t('common.retry')}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

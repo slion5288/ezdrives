@@ -13,6 +13,7 @@ import { useLocale, useT } from '../../i18n'
 import { Camera, Car, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
 import { useToast } from '../../components/shared'
+import { Button } from '../../components/shared/Button'
 
 interface VehicleForm {
   id: string
@@ -123,9 +124,9 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
   return (
     <div className="ins-vehicles">
       <div className="ins-page-actions">
-        <button type="button" className="ins-btn ins-btn--primary" onClick={openAdd}>
+        <Button variant="primary" onClick={openAdd}>
           <Plus size={16} /> {t('instructor.vehicles.add')}
-        </button>
+        </Button>
       </div>
 
       {state.vehicles.length === 0 ? (
@@ -189,12 +190,12 @@ export default function VehiclesPage({ state }: { state: AppState }): JSX.Elemen
           onClose={() => setForm(null)}
           footer={
             <>
-              <button type="button" className="ins-btn ins-btn--secondary" onClick={() => setForm(null)}>
+              <Button variant="secondary" onClick={() => setForm(null)}>
                 {t('common.cancel')}
-              </button>
-              <button type="button" className="ins-btn ins-btn--primary" onClick={submitForm}>
+              </Button>
+              <Button variant="primary" onClick={submitForm}>
                 {t('instructor.vehicles.save')}
-              </button>
+              </Button>
             </>
           }
         >

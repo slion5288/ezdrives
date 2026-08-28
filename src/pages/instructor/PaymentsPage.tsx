@@ -21,6 +21,7 @@ import { useToast } from '../../components/shared'
 import { formatMoney } from './helpers'
 import { formatDateEn, formatDateZh, fromServerISO } from '../../data/timeEngine'
 import type { InstructorTab } from './helpers'
+import { Button } from '../../components/shared/Button'
 
 interface PaymentsPageProps {
   onNavigate?: (tab: InstructorTab) => void
@@ -110,9 +111,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                   <td>
                     {p.status === 'pending' ? (
                       <div className="ins-pay-actions">
-                        <button
-                          type="button"
-                          className="ins-btn ins-btn--primary ins-btn--sm"
+                        <Button variant="primary" size="sm"
                           onClick={() => {
                             void (async () => {
                               const result = await confirmPayment(p.id)
@@ -121,10 +120,8 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           }}
                         >
                           {t('instructor.payments.confirm')}
-                        </button>
-                        <button
-                          type="button"
-                          className="ins-btn ins-btn--danger-ghost ins-btn--sm"
+                        </Button>
+                        <Button variant="dangerGhost" size="sm"
                           onClick={() => {
                             void (async () => {
                               const result = await rejectPayment(p.id)
@@ -133,7 +130,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           }}
                         >
                           {t('instructor.payments.reject')}
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <span className="ins-pay-done">—</span>

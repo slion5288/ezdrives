@@ -17,6 +17,7 @@ import { Badge, ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
 import { useToast } from '../../components/shared'
 import { toLocalISO } from '../../data/timeEngine'
 import { VideoPlayerModal } from '../../components/video/VideoPlayerModal'
+import { Button } from '../../components/shared/Button'
 
 /** Extract a YouTube video id from common URL shapes; null when not a YouTube link. */
 export function parseYouTubeId(url: string): string | null {
@@ -183,9 +184,9 @@ export default function VideoManager({ state }: { state: AppState }): JSX.Elemen
           <Play size={16} /> {t('instructor.videos.title')}
           <Badge tone="info">{t('landing.videos.title')}</Badge>
         </h2>
-        <button type="button" className="ins-btn ins-btn--primary ins-btn--sm" onClick={openAdd}>
+        <Button variant="primary" size="sm" onClick={openAdd}>
           <Plus size={14} /> {t('instructor.videos.add')}
-        </button>
+        </Button>
       </div>
 
       {videos.length === 0 ? (
@@ -193,9 +194,9 @@ export default function VideoManager({ state }: { state: AppState }): JSX.Elemen
           icon={<Youtube size={24} />}
           title={t('instructor.videos.empty')}
           action={
-            <button type="button" className="ins-btn ins-btn--secondary" onClick={openAdd}>
+            <Button variant="secondary" onClick={openAdd}>
               <Plus size={14} /> {t('instructor.videos.add')}
-            </button>
+            </Button>
           }
         />
       ) : (
@@ -285,12 +286,12 @@ export default function VideoManager({ state }: { state: AppState }): JSX.Elemen
           maxWidth={560}
           footer={
             <>
-              <button type="button" className="ins-btn ins-btn--secondary" onClick={() => setForm(null)}>
+              <Button variant="secondary" onClick={() => setForm(null)}>
                 {t('common.cancel')}
-              </button>
-              <button type="button" className="ins-btn ins-btn--primary" onClick={submit}>
+              </Button>
+              <Button variant="primary" onClick={submit}>
                 {t('instructor.videos.save')}
-              </button>
+              </Button>
             </>
           }
         >
@@ -359,9 +360,9 @@ export default function VideoManager({ state }: { state: AppState }): JSX.Elemen
                   onChange={(e) => onPickFile(e.target.files?.[0])}
                 />
                 <div className="ins-video-file-row">
-                  <button type="button" className="ins-btn ins-btn--secondary" onClick={() => fileRef.current?.click()}>
+                  <Button variant="secondary" onClick={() => fileRef.current?.click()}>
                     <Upload size={14} /> {t('instructor.videos.chooseFile')}
-                  </button>
+                  </Button>
                   <span className="ins-video-file-name">
                     {form.localName ? t('instructor.videos.fileSelected', { name: form.localName }) : t('instructor.videos.fileEmpty')}
                   </span>

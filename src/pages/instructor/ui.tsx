@@ -9,6 +9,7 @@ import { TrendingDown, TrendingUp } from 'lucide-react'
 import { useT } from '../../i18n'
 import { Badge as SharedBadge } from '../../components/shared/Badge'
 import { Modal as SharedModal } from '../../components/shared/Modal'
+import { Button } from '../../components/shared/Button'
 
 // --- Modal ----------------------------------------------------------------
 
@@ -56,12 +57,12 @@ export function ConfirmDialog({
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="ins-btn ins-btn--secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
-          </button>
-          <button type="button" className={`ins-btn ${danger ? 'ins-btn--danger' : 'ins-btn--primary'}`} onClick={onConfirm}>
+          </Button>
+          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </Button>
         </>
       }
     >

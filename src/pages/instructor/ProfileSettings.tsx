@@ -15,6 +15,7 @@ import { updateInstructorProfile } from '../../data/store'
 import { useT } from '../../i18n'
 import { useToast } from '../../components/shared'
 import { Pencil, User } from 'lucide-react'
+import { Button } from '../../components/shared/Button'
 
 export default function ProfileSettings({ state }: { state: AppState }): JSX.Element {
   const t = useT()
@@ -61,9 +62,9 @@ export default function ProfileSettings({ state }: { state: AppState }): JSX.Ele
           <User size={16} /> {t('instructor.settings.profile')}
         </h2>
         {!editing ? (
-          <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={startEdit}>
+          <Button variant="secondary" size="sm" onClick={startEdit}>
             <Pencil size={14} /> {t('common.edit')}
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -102,12 +103,12 @@ export default function ProfileSettings({ state }: { state: AppState }): JSX.Ele
             </div>
           </div>
           <div className="ins-settings-actions">
-            <button type="button" className="ins-btn ins-btn--secondary ins-btn--sm" onClick={cancel}>
+            <Button variant="secondary" size="sm" onClick={cancel}>
               {t('common.cancel')}
-            </button>
-            <button type="button" className="ins-btn ins-btn--primary ins-btn--sm" disabled={busy} onClick={save}>
+            </Button>
+            <Button variant="primary" size="sm" disabled={busy} onClick={save}>
               {t('common.save')}
-            </button>
+            </Button>
           </div>
         </>
       ) : (
