@@ -170,7 +170,7 @@ booking_confirmed / booking_cancelled / booking_rescheduled / reminder_2h（**�
 4. **生产业务数据**：首页课程区因后台暂无课程而显示「课程暂未开放」，需教练在教练后台录入课程后自动显示；视频/车辆已各 1 个。
 5. **管理员密码 `528830`**：⚠️ 上线前最后一项——请登录 /admin →「修改密码」改为强密码（功能已上线，Change 13）。
 6. 残留优化项（P3，上线后可做）：5 套平行组件体系合并（Toast/UI 基元）；断点系统统一（当前 8 个断点，文档留档）；课程图压缩（2–4.5MB）；`GET /api/ics/[studentId]` 端点无前端入口（删除或补订阅链接）；弹窗焦点陷阱。
-7. **邮件系统（Change 17）Cloudflare 侧待办（用户操作，代码已就绪）**：确认 Workers Paid 已生效；完成 Email Routing（创建 `notifications@ezdrives.net`，自动添加 MX/SPF/DKIM DNS 记录，可选 DMARC）；在 Pages 项目添加 Email Sending binding（或提供含 Email Service:Send 的新 API token 由我配置）；然后应用生产迁移 0005（`wrangler d1 execute ezdrives-db --remote --file migrations/0005_email_notifications.sql`，需 D1 Edit 权限）。在此之前生产环境发信会记 failed（not configured），业务不受影响。
+7. ~~邮件系统 Cloudflare 侧待办~~（**全部完成，Change 20 后续**）：Workers Paid 已升级；Email Routing 已开通（MX/SPF 生效）；**Email Sending 已开通**（cf-bounce MX/SPF/DMARC p=reject 记录齐全）；发信走 **REST API**（Pages 不支持 send_email binding，实测确认），Token 已存入 Pages secret（`CLOUDFLARE_EMAIL_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`）；**生产迁移 0005 已应用**（14 模板 + 日志表 + users.email 唯一索引）；测试邮件已真实送达用户邮箱。Email Routing 免费（$5/月 是 Workers Paid 发信前提，非 Routing 费用）。
 8. ~~存量学员邮箱补全~~（**已完成，Change 21**）：历史学员 `users.email` 为 NULL 时，可在**学员端个人中心**补填/修改通知邮箱（编辑-保存模式，唯一性校验 + ACCOUNT_UPDATED 确认邮件），通知即可送达。
 
 ## 13. 变更流程（必须遵守）

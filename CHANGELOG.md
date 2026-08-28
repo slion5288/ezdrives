@@ -37,7 +37,7 @@
 - **是否影响旧功能**：是——注册表单新增必填邮箱（旧学员无邮箱不受影响）；预约/取消/改期现在会尝试发邮件（失败仅记日志，业务不变）；/admin 新增第四个标签页。
 - **测试结果**：本地迁移应用成功（14 模板）；templates 全套 API 通过（列表/保存/预览/测试/日志）；浏览器端 9 项全过（标签页、14 行、编辑器、预览样例数据 John Smith/TEST-001、19 变量、日志显示收件人）；Full Regression 22 项全过；编译通过。
 - **生产待办（用户 Cloudflare 侧）**：确认 Workers Paid；完成 Email Routing + DNS（当前 DNS 无邮件记录）；Pages 添加 Email Sending binding（或提供新 API token）；应用生产迁移 0005（需 D1 Edit 权限 token）。未完成前生产邮件记 failed、业务不受影响。
-- **生产接通（后续完成）**：
+- **生产接通（后续完成，最终核实 2026-08-28）**：
   - 发现并修正关键事实：**Pages Functions 不支持 send_email binding**（生产部署后 binding 为空、Pages 文档无此绑定）→ 发信改为 **REST API**（`POST /accounts/{id}/email/sending/send`，官方推荐：*"no Cloudflare Workers binding is required"*）；`[[send_email]]` 仅保留为本地 dev stub。
   - 用户完成 Cloudflare 侧：Workers Paid、Email Sending Onboard（cf-bounce MX/SPF/DMARC 记录齐全）、创建发信 Token（Email Service 权限）与全权限管理 Token。
   - 我完成：发信 Token 存入 Pages secret（`CLOUDFLARE_EMAIL_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`）；**生产 D1 迁移 0005 已应用**（14 模板 + notification_logs + users.email 唯一索引，已记录 d1_migrations）；3 次 REST 发信测试全部 `queued` 成功（消息 ID le3G…/H6bL…/ldwa…）。
