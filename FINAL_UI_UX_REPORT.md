@@ -113,7 +113,7 @@
 
 ## 7. 尚未解决的问题（后续可选）
 
-1. **按钮组件化**：6 套按钮 CSS 已视觉一致（浏览器实测：登录页与 landing 页按钮均 40px/10px 圆角），但仍是各自类名。完全替换为共享 `<Button>` 组件（60+ 调用点，需映射 `to` prop/variant 命名差异）——**决定保留现状**：视觉目标（§5-§7 统一 height/padding/radius/font/hover/disabled）已达成，纯代码重构收益边际递减且风险高于收益。
+1. **按钮组件化**：已为共享 `<Button>` 增加 `to`（Link 渲染）能力并完成 **G1 端试点迁移（4 处）**，浏览器验证正常。学员/教练/管理端剩余 ~95 处（含 `<Link className>` 混合、ghost-danger 特殊变体）**决定保留 CSS 规格统一状态**——浏览器实测跨区域 40px/10px/gap8px 完全一致，全量替换为纯代码重构、零用户可见收益且有回归风险；共享 Button 已具备完整能力，作为后续技术债可随时清理。
 2. **Form 组件化**：admin/教练端自建 input 已**补齐共享规格**（40px 高度、14px 字号、placeholder 上色、aria-invalid 红框、focus ring 2px——Change 2f 完成），未做 JSX 级替换（180+ 调用点，风险高）。视觉已统一。
 3. **CourseCard 双份**：LandingPage 与 CoursesPage 的卡片结构重复，可提取共享组件（纯代码重构，视觉已一致）。
 4. **学员端 ModalFrame**：**已完成**——委托共享 Modal（Change 2d，保持 open-prop API）。
