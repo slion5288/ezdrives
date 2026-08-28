@@ -13,6 +13,22 @@
 
 ---
 
+---
+
+## Change 25 — 业务逻辑与通知修复（重复购买/优惠取消/购买邮件/翻译/证书上传）
+
+- **用户反馈 9 项** + 审计（BUSINESS_LOGIC_AUDIT / DATA_RELATIONSHIP_AUDIT / COURSE_BOOKING_AUDIT / NOTIFICATION_MATRIX / EMAIL_TEMPLATE_PLAN）。
+- **用户决策**：Individual+套餐可重复购买（建议完成后）；Trial 每人一次；证书上传通知对应教练（管理员只管内容）。
+- **修复**：
+  - 重复购买：addPayment 按 courseType——INDIVIDUAL/TEN_HOUR_PACKAGE 放行多次，TRIAL 限一次（服务端 + 前端 courseRepeatable）
+  - 优惠取消：Student 改 checkbox 可切换（§15）；Referral 加「移除」按钮（§16）
+  - 购买通知：新增 5 模板（NEW_PURCHASE/PURCHASE_CONFIRMED/PAYMENT_REJECTED/LESSON_COMPLETED/DOCUMENT_UPLOADED，共 19）+ addPayment/confirmPayment/rejectPayment/completeLesson/uploadCertificateDocs 邮件钩子
+  - 翻译：教练表单加浏览器直连 MyMemory 兜底（生产 Workers 出口限流时）；修复生产 c1 缺失英文
+  - 预约页：仪表盘显示「已购买 N 课时」（purchaseCount）
+  - 证书上传：uploadCertificateDocs（正反面 data URL → payment.certDocs，状态 partial/complete）+ 学员端上传卡 + 教练通知（邮件仅状态不含图 §46）
+- **迁移**：0007（5 新模板）本地+生产已应用。
+- **测试**：Individual 重复购买成功；Trial 二次购买拒绝；优惠 checkbox 取消；NEW_PURCHASE→教练/PURCHASE_CONFIRMED→学员邮件日志；证书上传 complete + DOCUMENT_UPLOADED→教练；Full Regression 22/22；模板测试全过。
+
 ## Change 24 — 课程系统重构（结构化类型 + 翻译 + 优惠 + 套餐快照 + 顺序预约）
 
 - **我的要求**：重构完整课程商业链——课程类型结构化（G2/G/Trial/RoadTest/Certificate）、教练中文创建自动翻译、学生/推荐优惠、套餐 Lesson Snapshot、顺序预约、教练确认课时完成。
