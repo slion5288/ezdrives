@@ -11,7 +11,7 @@
 
 import { useMemo, useState } from 'react'
 import { Check, CalendarClock, Coffee } from 'lucide-react'
-import { bookAppointment, bookPackageLessons, courseTypeOf, getSession, isCoursePurchased, lessonStatus, packageProgress, uploadCertificateDocs, useAppState } from '../../data/store'
+import { bookAppointment, bookPackageLessons, courseTypeOf, getSession, lessonStatus, packageProgress, paymentEligibility, uploadCertificateDocs, useAppState } from '../../data/store'
 import type { Course, Slot } from '../../data/store'
 import { formatHM, fromLocalISO, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
@@ -44,8 +44,17 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
   const isPackage = course.type === 'package'
   const duration = isPackage ? 60 : course.durationMin
 
-  // Purchase gate: only paid courses can be booked.
-  const purchased = studentId !== '' && isCoursePurchased(state, studentId, course.id)
+  // §28 Purchase gate: 'full' (paid) / 'first' (cash approved → Lesson 1 or
+  // first unit only) / 'none' (not purchased or request still pending).
+  const elig = studentId !== '' ? paymentEligibility(state, studentId, course.id) : 'none'
+  const purchased = elig !== 'none'
+  const cashApprovedOnly = elig === 'first'
+  const cashPending = studentId !== '' && (state.payments ?? []).some(
+    (p) => p.studentId === studentId && p.courseId === course.id && p.status === 'cash_pending',
+  )
+  const onlinePending = studentId !== '' && (state.payments ?? []).some(
+    (p) => p.studentId === studentId && p.courseId === course.id && p.status === 'pending',
+  )
 
   const lessonStatuses = useMemo(
     () => (isPackage && course.lessons ? course.lessons.map((_, i) => lessonStatus(state, studentId, course.id, i)) : []),
@@ -56,11 +65,24 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
     [isPackage, state, studentId, course.id],
   )
 
-  /** First undone lesson — sequential, cannot be chosen freely. */
-  const autoLesson = useMemo(() => Math.max(0, lessonStatuses.findIndex((s) => s === 'free')), [lessonStatuses])
+  /** First undone lesson — sequential, cannot be chosen freely.
+   *  CASH_APPROVED package: ONLY Lesson 1 (index 0) until the cash is received. */
+  const autoLesson = useMemo(
+    () => (cashApprovedOnly && isPackage ? 0 : Math.max(0, lessonStatuses.findIndex((s) => s === 'free'))),
+    [lessonStatuses, cashApprovedOnly, isPackage],
+  )
 
   /** Whether the second-next lesson is also free (allows selecting 2). */
-  const canTwo = useMemo(() => lessonStatuses[autoLesson + 1] === 'free', [lessonStatuses, autoLesson])
+  const canTwo = useMemo(
+    () => !cashApprovedOnly && lessonStatuses[autoLesson + 1] === 'free',
+    [lessonStatuses, autoLesson, cashApprovedOnly],
+  )
+
+  /** §28 CASH_APPROVED individual: only the first unit — no active appointment may exist. */
+  const individualFirstUsed = cashApprovedOnly && !isPackage &&
+    (state.appointments ?? []).some(
+      (a) => a.studentId === studentId && a.courseId === course.id && a.status !== 'cancelled',
+    )
 
   // Tap-in-list selection: 0 / 1 / 2 consecutive lessons from autoLesson.
   const [selCount, setSelCount] = useState(1)
@@ -97,9 +119,12 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
     selectedStart && isPackage && course.lessons
       ? course.lessons.slice(autoLesson, autoLesson + selCount).reduce((sum, l) => sum + l.price, 0)
       : course.price
-  const canBook = selectedStart !== null && (!isPackage || lessonStatuses.some((s) => s === 'free'))
+  const canBook = selectedStart !== null &&
+    (!isPackage ? !individualFirstUsed : lessonStatuses.some((s) => s === 'free'))
 
   const handleTapLesson = (offset: number): void => {
+    // CASH_APPROVED package: Lesson 1 only — never select a second lesson.
+    if (cashApprovedOnly && isPackage && offset !== 0) return
     // offset 0 = first undone lesson, offset 1 = second undone lesson.
     if (selCount === offset + 1) setSelCount(offset) // tapping the selected tail deselects it
     else setSelCount(offset + 1) // tapping further selects through it
@@ -115,6 +140,10 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
         return t('student.booking.past')
       case 'not_purchased':
         return t('payment.notPurchased')
+      case 'cash_approved_first_lesson':
+        return t('student.booking.cashFirstLesson')
+      case 'cash_approved_first_unit':
+        return t('student.booking.cashFirstUnit')
       default:
         return t('common.toast.error')
     }
@@ -163,10 +192,27 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
       ) : null}
       {!purchased ? (
         <div className="course-booking__locked">
-          <p>{t('payment.notPurchased')}</p>
+          <p>
+            {cashPending
+              ? t('payment.cashPendingNotice')
+              : onlinePending
+                ? t('payment.pendingNotice')
+                : t('payment.notPurchased')}
+          </p>
         </div>
       ) : (
         <>
+          {/* §28 CASH_APPROVED: first-lesson / first-unit only until the cash is received */}
+          {cashApprovedOnly && isPackage ? (
+            <div className="course-booking__notice">
+              <span>{t('student.booking.cashApprovedPackage')}</span>
+            </div>
+          ) : null}
+          {cashApprovedOnly && !isPackage && individualFirstUsed ? (
+            <div className="course-booking__notice">
+              <span>{t('student.booking.cashApprovedUnitUsed')}</span>
+            </div>
+          ) : null}
           {/* TOP: per-student sequential lesson progress — tap to select 1 or 2 consecutive */}
       {isPackage && course.lessons ? (
         <div className="course-booking__select">
@@ -230,7 +276,9 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
                 : t('student.booking.selectFirst')}
             </span>
           </p>
-          <p className="course-booking__hint">{t('student.booking.maxTwoHint')}</p>
+          <p className="course-booking__hint">
+            {cashApprovedOnly && isPackage ? t('student.booking.cashPackageHint') : t('student.booking.maxTwoHint')}
+          </p>
         </div>
       ) : null}
 

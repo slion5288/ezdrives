@@ -275,17 +275,29 @@ function bookingNote(en: string, zh: string): { en: string; zh: string } {
 // --- Booking validity (shared by book + reschedule) ---
 type BookingError = 'conflict' | 'closed' | 'past' | 'not_purchased'
 
-/** Whether the student has a CONFIRMED payment for the course (purchased). */
-export function isCoursePurchased(source: AppState, studentId: string, courseId: string): boolean {
-  return (source.payments ?? []).some(
-    (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'confirmed',
-  )
+/** §28 Booking eligibility from payment status.
+ *  'none'  → not purchased / unpaid request → cannot book
+ *  'first' → CASH_APPROVED → first lesson / first unit only
+ *  'full'  → confirmed (online paid) or paid (cash received) → full access   */
+export type PayEligibility = 'none' | 'first' | 'full'
+
+export function paymentEligibility(source: AppState, studentId: string, courseId: string): PayEligibility {
+  const mine = (source.payments ?? []).filter((p) => p.studentId === studentId && p.courseId === courseId)
+  if (mine.some((p) => p.status === 'confirmed' || p.status === 'paid')) return 'full'
+  if (mine.some((p) => p.status === 'cash_approved')) return 'first'
+  return 'none'
 }
 
-/** Confirmed purchase count (units) for a course — Individual may have many. */
+/** Whether the student owns the course (paid online, cash received, or cash approved). */
+export function isCoursePurchased(source: AppState, studentId: string, courseId: string): boolean {
+  return paymentEligibility(source, studentId, courseId) !== 'none'
+}
+
+/** Owned purchase count (units) for a course — Individual may have many. */
 export function purchaseCount(source: AppState, studentId: string, courseId: string): number {
   return (source.payments ?? []).filter(
-    (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'confirmed',
+    (p) => p.studentId === studentId && p.courseId === courseId &&
+      (p.status === 'confirmed' || p.status === 'paid' || p.status === 'cash_approved'),
   ).length
 }
 
@@ -307,10 +319,11 @@ export function unitStatus(
   return 'not_scheduled'
 }
 
-/** Whether the student has a payment still awaiting instructor confirmation. */
+/** Whether the student has a payment still awaiting instructor action (online confirm or cash approval). */
 export function hasPendingPayment(source: AppState, studentId: string, courseId: string): boolean {
   return (source.payments ?? []).some(
-    (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'pending',
+    (p) => p.studentId === studentId && p.courseId === courseId &&
+      (p.status === 'pending' || p.status === 'cash_pending'),
   )
 }
 
@@ -739,10 +752,43 @@ export async function confirmPayment(id: string): Promise<{ ok: boolean; error?:
   return { ok: false, error: res.error }
 }
 
-/** Instructor rejects the payment. */
+/** Instructor rejects the payment (online pending, cash pending, or cash approved). */
 export async function rejectPayment(id: string): Promise<{ ok: boolean; error?: string }> {
   if (!session.token) return { ok: false, error: 'Not authenticated' }
   const res = await apiAction(session.token, 'rejectPayment', { id })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error }
+}
+
+/** §28 Instructor approves a CASH payment → cash_approved (student may book Lesson 1 only). */
+export async function approveCashPayment(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
+  const res = await apiAction(session.token, 'approveCashPayment', { id })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error }
+}
+
+/** §28 Instructor marks cash as physically received → paid (FULL booking access). */
+export async function markPaymentReceived(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
+  const res = await apiAction(session.token, 'markPaymentReceived', { id })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error }
+}
+
+/** §28 Instructor re-sends the cash reminder email for an unpaid cash payment. */
+export async function sendCashReminder(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
+  const res = await apiAction(session.token, 'sendCashReminder', { id })
   if (res.ok && res.state) {
     await applyServerState(res)
     return { ok: true }

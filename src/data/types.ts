@@ -165,8 +165,15 @@ export interface Payment {
   studentId: string
   courseId: string
   method: PaymentMethod
+  /** ONLINE vs CASH — derived from the chosen method at creation, never from status. */
+  channel?: 'ONLINE' | 'CASH'
   amount: number // CAD (= final_price, kept for backward compat)
-  status: 'pending' | 'confirmed' | 'rejected'
+  /**
+   * ONLINE: pending → confirmed (= paid) / rejected
+   * CASH:   cash_pending → cash_approved → paid   (paid only by instructor's
+   *         "Mark Payment Received"; cash_approved NEVER auto-becomes paid)
+   */
+  status: 'pending' | 'confirmed' | 'rejected' | 'cash_pending' | 'cash_approved' | 'paid'
   createdAt: string // ISO local datetime
   confirmedAt?: string
   // —— Price snapshot (§30/§55): immune to later course/discount changes ——

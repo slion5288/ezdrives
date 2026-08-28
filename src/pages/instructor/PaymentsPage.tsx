@@ -8,9 +8,12 @@
 
 import { useMemo } from 'react'
 import {
+  approveCashPayment,
   confirmPayment,
+  markPaymentReceived,
   paymentMethodLabel,
   rejectPayment,
+  sendCashReminder,
   useAppState,
 } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
@@ -36,7 +39,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
   const payments = useMemo(
     () =>
       [...state.payments].sort((a, b) => {
-        const rank = { pending: 0, confirmed: 1, rejected: 2 } as const
+        const rank = { pending: 0, cash_pending: 0, cash_approved: 1, confirmed: 2, paid: 2, rejected: 3 } as const
         return rank[a.status] - rank[b.status] || b.createdAt.localeCompare(a.createdAt)
       }),
     [state.payments],
@@ -99,17 +102,89 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                   </td>
                   <td className="tabular-nums">{formatMoney(p.amount)}</td>
                   <td>
-                    <Badge tone={p.status === 'confirmed' ? 'success' : p.status === 'pending' ? 'warning' : 'neutral'}>
-                      {p.status === 'confirmed'
-                        ? t('payment.confirmed')
-                        : p.status === 'pending'
-                          ? t('payment.pending')
-                          : t('payment.rejected')}
+                    <Badge
+                      tone={
+                        p.status === 'paid' || p.status === 'confirmed'
+                          ? 'success'
+                          : p.status === 'cash_approved'
+                            ? 'info'
+                            : p.status === 'cash_pending' || p.status === 'pending'
+                              ? 'warning'
+                              : 'neutral'
+                      }
+                    >
+                      {p.status === 'paid'
+                        ? t('payment.paid')
+                        : p.status === 'confirmed'
+                          ? t('payment.confirmed')
+                          : p.status === 'cash_approved'
+                            ? t('payment.cashApproved')
+                            : p.status === 'cash_pending'
+                              ? t('payment.cashPending')
+                              : p.status === 'pending'
+                                ? t('payment.pending')
+                                : t('payment.rejected')}
                     </Badge>
                   </td>
                   <td className="tabular-nums">{locale === 'zh' ? formatDateZh(date) : formatDateEn(date)}</td>
                   <td>
-                    {p.status === 'pending' ? (
+                    {p.status === 'cash_pending' ? (
+                      <div className="ins-pay-actions">
+                        <Button variant="primary" size="sm"
+                          onClick={() => {
+                            void (async () => {
+                              const result = await approveCashPayment(p.id)
+                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.approveCash') : t('common.toast.error') })
+                            })()
+                          }}
+                        >
+                          {t('instructor.payments.approveCash')}
+                        </Button>
+                        <Button variant="dangerGhost" size="sm"
+                          onClick={() => {
+                            void (async () => {
+                              const result = await rejectPayment(p.id)
+                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
+                            })()
+                          }}
+                        >
+                          {t('instructor.payments.reject')}
+                        </Button>
+                      </div>
+                    ) : p.status === 'cash_approved' ? (
+                      <div className="ins-pay-actions">
+                        <Button variant="primary" size="sm"
+                          onClick={() => {
+                            void (async () => {
+                              const result = await markPaymentReceived(p.id)
+                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.markReceived') : t('common.toast.error') })
+                            })()
+                          }}
+                        >
+                          {t('instructor.payments.markReceived')}
+                        </Button>
+                        <Button variant="secondary" size="sm"
+                          onClick={() => {
+                            void (async () => {
+                              const result = await sendCashReminder(p.id)
+                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reminderSent') : t('common.toast.error') })
+                            })()
+                          }}
+                        >
+                          {t('instructor.payments.sendReminder')}
+                        </Button>
+                        <Button variant="dangerGhost" size="sm"
+                          onClick={() => {
+                            void (async () => {
+                              const result = await rejectPayment(p.id)
+                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reject') : t('common.toast.error') })
+                            })()
+                          }}
+                        >
+                          {t('instructor.payments.reject')}
+                        </Button>
+                      </div>
+                    ) : p.status === 'pending' ? (
                       <div className="ins-pay-actions">
                         <Button variant="primary" size="sm"
                           onClick={() => {

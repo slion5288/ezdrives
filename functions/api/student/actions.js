@@ -70,12 +70,32 @@ function minuteOf(iso) {
   return d.getHours() * 60 + d.getMinutes()
 }
 
-function isPurchased(payments, studentId, courseId) {
-  return payments.some((p) => p.studentId === studentId && p.courseId === courseId && p.status === 'confirmed')
+/**
+ * §28 Cash/eligibility model.
+ * - ONLINE: pending → confirmed (= paid) / rejected
+ * - CASH:   cash_pending → cash_approved → paid  (paid ONLY via instructor's
+ *           "Mark Payment Received"; cash_approved never auto-becomes paid)
+ * Booking eligibility is f(payment status, course type, progress):
+ *   confirmed|paid      → FULL access
+ *   cash_approved       → FIRST-LESSON-ONLY (package L1, individual first unit)
+ *   pending|cash_pending|rejected → none
+ */
+function payEligibility(payments, studentId, courseId) {
+  const mine = payments.filter((p) => p.studentId === studentId && p.courseId === courseId)
+  if (mine.some((p) => p.status === 'confirmed' || p.status === 'paid')) return 'full'
+  if (mine.some((p) => p.status === 'cash_approved')) return 'first'
+  return 'none'
+}
+
+/** Student owns the course (bought it) — blocks one-per-course repurchase at CASH_APPROVED too. */
+function ownsCourse(payments, studentId, courseId) {
+  return payments.some((p) => p.studentId === studentId && p.courseId === courseId &&
+    (p.status === 'confirmed' || p.status === 'paid' || p.status === 'cash_approved'))
 }
 
 function hasPending(payments, studentId, courseId) {
-  return payments.some((p) => p.studentId === studentId && p.courseId === courseId && p.status === 'pending')
+  return payments.some((p) => p.studentId === studentId && p.courseId === courseId &&
+    (p.status === 'pending' || p.status === 'cash_pending'))
 }
 
 /** All payment methods a student may choose (instructor's enabled list). */
@@ -191,8 +211,10 @@ export async function onRequestPost({ env, request }) {
     // FULL_COURSE_CERTIFICATE follow one-per-course (default).
     const courseType = course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')
     const repeatAllowed = courseType === 'INDIVIDUAL_LESSON' || courseType === 'TEN_HOUR_PACKAGE'
+    // §28: cash is a request to pay later → CASH_PENDING, not paid.
+    const isCash = method === 'cash'
     if (hasPending(state.payments, studentId, courseId)) return fail('Payment already pending.')
-    if (!repeatAllowed && isPurchased(state.payments, studentId, courseId)) return fail('Course already purchased.')
+    if (!repeatAllowed && ownsCourse(state.payments, studentId, courseId)) return fail('Course already purchased.')
     if (!allowedMethods(state.instructor).includes(method)) return fail('Payment method not available.')
 
     // ---- Server-side discount & price (§54) ----
@@ -212,7 +234,10 @@ export async function onRequestPost({ env, request }) {
     const now = nowISO()
     const payment = {
       id: paymentId, studentId, courseId, method,
-      amount: pricing.finalPrice, status: 'pending', createdAt: now,
+      channel: isCash ? 'CASH' : 'ONLINE',
+      amount: pricing.finalPrice,
+      status: isCash ? 'cash_pending' : 'pending', // §28: cash request ≠ paid
+      createdAt: now,
       // price snapshot (§30/§55)
       original_price: pricing.originalPrice,
       discount_type: pricing.discountType,
@@ -234,19 +259,23 @@ export async function onRequestPost({ env, request }) {
     let enrollment
     const inserts = [
       env.DB.prepare('INSERT INTO payments (id, student_id, status, payload) VALUES (?, ?, ?, ?)')
-        .bind(paymentId, studentId, 'pending', JSON.stringify(payment)),
+        .bind(paymentId, studentId, isCash ? 'cash_pending' : 'pending', JSON.stringify(payment)),
       env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
         .bind(notifId, 'student', studentId, JSON.stringify({
           id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending',
-          title: { en: 'Payment submitted', zh: '支付已提交' },
-          body: { en: `Your ${course.name.en} payment ($${pricing.finalPrice}) awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付（${pricing.finalPrice} 加元）等待教练确认。` },
+          title: isCash ? { en: 'Cash payment requested', zh: '现金支付已申请' } : { en: 'Payment submitted', zh: '支付已提交' },
+          body: isCash
+            ? { en: `Your ${course.name.en} cash payment ($${pricing.finalPrice}) awaits the instructor's approval.`, zh: `您对${course.name.zh}的现金支付（${pricing.finalPrice} 加元）等待教练批准。` }
+            : { en: `Your ${course.name.en} payment ($${pricing.finalPrice}) awaits instructor confirmation.`, zh: `您对${course.name.zh}的支付（${pricing.finalPrice} 加元）等待教练确认。` },
           read: false, at: now, paymentId,
         })),
       env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
         .bind(notifId2, 'instructor', 'instructor', JSON.stringify({
           id: notifId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending',
-          title: { en: 'New payment awaiting confirmation', zh: '新支付待确认' },
-          body: { en: `${user.name} requested to pay for ${course.name.en} ($${pricing.finalPrice}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${pricing.finalPrice} 加元）。点击查看并确认收款。` },
+          title: isCash ? { en: 'New cash payment request', zh: '新的现金支付申请' } : { en: 'New payment awaiting confirmation', zh: '新支付待确认' },
+          body: isCash
+            ? { en: `${user.name} requested to pay ${course.name.en} in cash ($${pricing.finalPrice}). Approve or reject.`, zh: `${user.name} 请求以现金支付${course.name.zh}（${pricing.finalPrice} 加元）。请批准或拒绝。` }
+            : { en: `${user.name} requested to pay for ${course.name.en} ($${pricing.finalPrice}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${pricing.finalPrice} 加元）。点击查看并确认收款。` },
           read: false, at: now, paymentId,
         })),
     ]
@@ -319,11 +348,12 @@ export async function onRequestPost({ env, request }) {
       }
       if (state.instructor && state.instructor.email) {
         await sendNotification(env, {
-          type: 'NEW_PURCHASE',
+          // §28: cash requests get the CASH_REQUEST email; online keeps NEW_PURCHASE.
+          type: isCash ? 'CASH_REQUEST' : 'NEW_PURCHASE',
           recipientEmail: state.instructor.email,
           student: stInfo,
           instructor: state.instructor,
-          booking: null,
+          booking: isCash ? { id: `cash-request-${paymentId}` } : null,
           course: courseInfo,
           lesson: null,
           pricing: pricingCtx,
@@ -343,7 +373,9 @@ export async function onRequestPost({ env, request }) {
     const clientNow = String(args.clientNow || '')
     const course = state.courses.find((c) => c.id === courseId)
     if (!course) return fail('Course not found.')
-    if (!isPurchased(state.payments, studentId, courseId)) return fail('not_purchased')
+    // §28 eligibility: paid → full; cash approved → first lesson / first unit only.
+    const eligibility = payEligibility(state.payments, studentId, courseId)
+    if (eligibility === 'none') return fail('not_purchased')
 
     const isPackage = course.type === 'package'
     const lessonCount = course.lessons ? course.lessons.length : 0
@@ -354,6 +386,20 @@ export async function onRequestPost({ env, request }) {
         return fail('Invalid lesson selection.')
       }
       if (firstLessonIndex + count > lessonCount) return fail('Not enough lessons in this package.')
+    }
+    const courseType = course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')
+    if (eligibility === 'first') {
+      if (course.type === 'package') {
+        // CASH_APPROVED package: ONLY Lesson 1, single slot (no 2-consecutive).
+        if (firstLessonIndex !== 0 || count !== 1) return fail('cash_approved_first_lesson')
+      } else if (courseType === 'INDIVIDUAL_LESSON') {
+        // CASH_APPROVED individual: only the first unused unit (= first appointment).
+        const active = (state.appointments || []).some(
+          (a) => a.studentId === studentId && a.courseId === courseId && a.status !== 'cancelled',
+        )
+        if (active) return fail('cash_approved_first_unit')
+      }
+      // TRIAL_LESSON / ROAD_TEST_CAR: single unit — the first lesson rule allows it.
     }
 
     const durationMin = isPackage ? 60 : course.durationMin
@@ -693,51 +739,112 @@ export async function onRequestPost({ env, request }) {
     return reply(state)
   }
 
-  // ---- confirmPayment / rejectPayment (instructor only, idempotent) ----
-  if (action === 'confirmPayment' || action === 'rejectPayment') {
+  // ---- Instructor payment actions (instructor only, idempotent) ----
+  // confirmPayment   : ONLINE pending → confirmed (money received online) = paid
+  // approveCashPayment : CASH cash_pending → cash_approved (student may book Lesson 1 only)
+  // markPaymentReceived: CASH cash_approved → paid (cash physically received → FULL access)
+  // rejectPayment    : pending / cash_pending / cash_approved → rejected
+  // sendCashReminder : re-send the CASH_REMINDER email for an unpaid cash payment
+  if (action === 'confirmPayment' || action === 'rejectPayment' ||
+      action === 'approveCashPayment' || action === 'markPaymentReceived' ||
+      action === 'sendCashReminder') {
     if (!isInstructor) return fail('Instructor only.', 403)
     const paymentId = String(args.id || '')
     const payment = state.payments.find((p) => p.id === paymentId)
     if (!payment) return fail('Payment not found.')
-    const status = action === 'confirmPayment' ? 'confirmed' : 'rejected'
-    if (payment.status === status) return reply(state) // idempotent no-op
+    const isCash = payment.method === 'cash'
     const now = nowISO()
-    const updated = { ...payment, status, confirmedAt: now }
-    const [nId] = await nextSeq(env, 'notifications', 'n')
     const course = state.courses.find((c) => c.id === payment.courseId)
     const student = state.students.find((s) => s.id === payment.studentId)
-    const nType = status === 'confirmed' ? 'payment_confirmed' : 'payment_rejected'
-    const nTitle = status === 'confirmed' ? { en: 'Payment confirmed', zh: '支付已确认' } : { en: 'Payment rejected', zh: '支付已拒绝' }
-    const nBody = status === 'confirmed'
-      ? { en: `Your purchase of ${course ? course.name.en : ''} is confirmed. You can now book a time.`, zh: `您购买的${course ? course.name.zh : ''}已确认，现在可以预约时间了。` }
-      : { en: `Your payment for ${course ? course.name.en : ''} was rejected. Please contact the instructor.`, zh: `您对${course ? course.name.zh : ''}的支付被拒绝，请联系教练。` }
-    await env.DB.batch([
-      env.DB.prepare('UPDATE payments SET status = ?, payload = ? WHERE id = ?').bind(status, JSON.stringify(updated), paymentId),
-      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
-        .bind(nId, 'student', payment.studentId, JSON.stringify({
-          id: nId, role: 'student', recipientId: payment.studentId, type: nType, title: nTitle, body: nBody, read: false, at: now, paymentId,
-        })),
-    ])
-    state.payments = state.payments.map((p) => (p.id === paymentId ? updated : p))
-    state.notifications.unshift({ id: nId, role: 'student', recipientId: payment.studentId, type: nType, title: nTitle, body: nBody, read: false, at: now, paymentId })
-    // Best-effort student email (§5-§6): PURCHASE_CONFIRMED / PAYMENT_REJECTED.
-    try {
-      const { sendNotification } = await import('../../lib/notification.js')
-      const stEmail = (student && student.email) || ''
-      if (stEmail) {
-        const ct = course ? (course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')) : ''
-        const pricingCtx = {
-          originalPrice: payment.original_price,
-          discountAmount: payment.discount_amount,
-          finalPrice: payment.final_price,
-        }
+    const courseType = course ? (course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')) : ''
+    const stEmail = (student && student.email) || ''
+    const pricingCtx = {
+      originalPrice: payment.original_price,
+      discountAmount: payment.discount_amount,
+      finalPrice: payment.final_price,
+    }
+    const courseInfo = course
+      ? { name: course.name.en, courseType, licenseClass: course.license_class || 'NONE', price: payment.final_price }
+      : null
+
+    // ---- sendCashReminder: no state change, just (re)send the email ----
+    if (action === 'sendCashReminder') {
+      if (!isCash || (payment.status !== 'cash_pending' && payment.status !== 'cash_approved')) {
+        return fail('Only unpaid cash payments can be reminded.')
+      }
+      if (!stEmail) return fail('Student has no email address.')
+      try {
+        const { sendNotification } = await import('../../lib/notification.js')
         await sendNotification(env, {
-          type: status === 'confirmed' ? 'PURCHASE_CONFIRMED' : 'PAYMENT_REJECTED',
+          type: 'CASH_REMINDER',
           recipientEmail: stEmail,
           student: student ? { id: student.id, name: student.name, phone: student.phone, email: stEmail } : null,
           instructor: state.instructor,
-          booking: null,
-          course: course ? { name: course.name.en, courseType: ct, licenseClass: course.license_class || 'NONE', price: payment.final_price } : null,
+          // Unique id so repeated clicks actually re-send (idempotency key).
+          booking: { id: `cash-reminder-${paymentId}-${now.replace(/[^0-9]/g, '')}` },
+          course: courseInfo,
+          lesson: null,
+          pricing: pricingCtx,
+        })
+      } catch (e) {
+        // email is best-effort
+      }
+      return reply(state)
+    }
+
+    // ---- Which transition? ----
+    let next
+    if (action === 'confirmPayment') {
+      if (isCash) return fail('Cash payments use approveCashPayment / markPaymentReceived.')
+      if (payment.status !== 'pending') return reply(state) // idempotent
+      next = { status: 'confirmed', emailType: 'PURCHASE_CONFIRMED', notifType: 'payment_confirmed',
+        title: { en: 'Payment confirmed', zh: '支付已确认' },
+        body: { en: `Your purchase of ${course ? course.name.en : ''} is confirmed. You can now book a time.`, zh: `您购买的${course ? course.name.zh : ''}已确认，现在可以预约时间了。` } }
+    } else if (action === 'approveCashPayment') {
+      if (!isCash) return fail('Only cash payments can be approved.')
+      if (payment.status === 'cash_approved' || payment.status === 'paid') return reply(state) // idempotent
+      if (payment.status !== 'cash_pending') return fail('Cash payment cannot be approved in this state.')
+      next = { status: 'cash_approved', emailType: 'CASH_APPROVED', notifType: 'payment_cash_approved',
+        title: { en: 'Cash payment approved', zh: '现金支付已批准' },
+        body: { en: `The instructor approved your cash payment for ${course ? course.name.en : ''}. You can book your first lesson now; the rest unlock after the instructor receives the cash.`, zh: `教练已批准您对${course ? course.name.zh : ''}的现金支付。您现在可以预约第一节课；教练收到现金后其余课程将解锁。` } }
+    } else if (action === 'markPaymentReceived') {
+      if (!isCash) return fail('Only cash payments can be marked received.')
+      if (payment.status === 'paid') return reply(state) // idempotent
+      if (payment.status !== 'cash_approved') return fail('Approve the cash payment first.')
+      next = { status: 'paid', emailType: 'CASH_RECEIVED', notifType: 'payment_cash_received',
+        title: { en: 'Cash payment received', zh: '已收到现金支付' },
+        body: { en: `The instructor received your cash payment for ${course ? course.name.en : ''}. All lessons are now unlocked.`, zh: `教练已收到您对${course ? course.name.zh : ''}的现金支付。所有课程现已解锁。` } }
+    } else { // rejectPayment
+      if (payment.status !== 'pending' && payment.status !== 'cash_pending' && payment.status !== 'cash_approved') {
+        return reply(state) // idempotent
+      }
+      next = { status: 'rejected', emailType: 'PAYMENT_REJECTED', notifType: 'payment_rejected',
+        title: { en: 'Payment rejected', zh: '支付已拒绝' },
+        body: { en: `Your payment for ${course ? course.name.en : ''} was rejected. Please contact the instructor.`, zh: `您对${course ? course.name.zh : ''}的支付被拒绝，请联系教练。` } }
+    }
+
+    const updated = { ...payment, status: next.status, confirmedAt: now }
+    const [nId] = await nextSeq(env, 'notifications', 'n')
+    await env.DB.batch([
+      env.DB.prepare('UPDATE payments SET status = ?, payload = ? WHERE id = ?').bind(next.status, JSON.stringify(updated), paymentId),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nId, 'student', payment.studentId, JSON.stringify({
+          id: nId, role: 'student', recipientId: payment.studentId, type: next.notifType, title: next.title, body: next.body, read: false, at: now, paymentId,
+        })),
+    ])
+    state.payments = state.payments.map((p) => (p.id === paymentId ? updated : p))
+    state.notifications.unshift({ id: nId, role: 'student', recipientId: payment.studentId, type: next.notifType, title: next.title, body: next.body, read: false, at: now, paymentId })
+    // Best-effort student email: PURCHASE_CONFIRMED / PAYMENT_REJECTED / CASH_APPROVED / CASH_RECEIVED.
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      if (stEmail) {
+        await sendNotification(env, {
+          type: next.emailType,
+          recipientEmail: stEmail,
+          student: student ? { id: student.id, name: student.name, phone: student.phone, email: stEmail } : null,
+          instructor: state.instructor,
+          booking: { id: paymentId },
+          course: courseInfo,
           lesson: null,
           pricing: pricingCtx,
         })

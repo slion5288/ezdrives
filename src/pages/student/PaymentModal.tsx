@@ -157,14 +157,14 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
       return
     }
     setProcessing(true)
-    // The payment record is created on the backend and stays pending until the
-    // instructor confirms receipt (cash / transfer / wallet / card alike).
+    // §28: cash creates a cash_pending REQUEST (approved by the instructor),
+    // then paid after the cash is actually received. Online stays pending → confirmed.
     const result = await addPayment(studentId, (course as Course).id, method, {
       studentStatus: isStudent === 'yes' ? 'yes' : 'no',
       referralPhone: referralPhone.trim(),
     })
     if (result.ok) {
-      showToast('success', t('payment.submitted'))
+      showToast('success', method === 'cash' ? t('payment.cashSubmitted') : t('payment.submitted'))
       onSubmitted?.()
       onClose()
       reset()
@@ -303,6 +303,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
                 <PaymentMethodBrand method="cash" size={24} />
                 <p>
                   {t('payment.cashFlow', { total: formatPrice(course.price) })}
+                  <span className="student-payment__hint">{t('payment.cashSteps')}</span>
                   {bankConfigured ? (
                     <span className="student-payment__bank">
                       <span className="student-payment__bank-label">{t('payment.bankTo')}</span>
