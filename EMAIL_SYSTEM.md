@@ -1,6 +1,6 @@
 # EMAIL_SYSTEM.md — EZDRIVES 邮件 / 通知系统实施规格
 
-> 状态：**设计完成，待用户确认后实施**。配套：`FINAL_EMAIL_ARCHITECTURE.md`（选型与决策依据）、`PROJECT_SPEC.md` / `API_SPEC.md` / `DATABASE_SPEC.md` / `USER_FLOW.md`（实施后同步）。
+> 状态：**已实施并部署（Change 20）**。配套：`FINAL_EMAIL_ARCHITECTURE.md`（选型与决策依据）、`CLOUDFLARE_EMAIL_SETUP.md`（你需要在 Dashboard 完成的操作）、`PROJECT_SPEC.md` / `API_SPEC.md` / `DATABASE_SPEC.md` / `USER_FLOW.md`（已同步）。
 > 域名：`ezdrives.net`（需求文档中 `ezfdrives.net` 为笔误，统一为实际域名）。
 
 ---
@@ -8,7 +8,9 @@
 ## 1. 邮件提供方（Email Provider）
 
 - **选用：Cloudflare Email Service（用户决定，否决第三方 Provider）**
-- 出站发送接入：**Pages Functions `send_email` binding**（首选，官方原生；备选 REST API）。
+- 出站发送接入：**REST API（生产，Pages 兼容——实测 Pages Functions 不支持 send_email binding）**；`send_email` binding 仅作为本地 `wrangler pages dev` 的 stub。
+  - REST：`POST /accounts/{account_id}/email/sending/send`，凭据 `CLOUDFLARE_EMAIL_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`（Pages secret）。
+  - 官方文档：*"Use it from any backend, serverless function, or CI/CD pipeline — no Cloudflare Workers binding is required."*
 - **⚠️ 硬性前提：Cloudflare 账户需为 Workers Paid 计划（$5/月）**——Workers Free 不能向任意收件人发送；Workers Paid 含 **3,000 封/月**（超出 $0.35/千封）。
 - Email Routing（接收）免费无限；Email Sending 为 Public Beta。
 - 详见 FINAL_EMAIL_ARCHITECTURE.md §2、CLOUDFLARE_EMAIL_SETUP.md。
@@ -29,7 +31,7 @@
 ## 4. 环境变量（Cloudflare Pages secret_text）
 
 ```
-（binding 方式无需 key；REST 备选：CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_EMAIL_API_TOKEN）          # 仅后端，严禁进前端/GitHub
+（生产必需：REST 方式）CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_EMAIL_API_TOKEN      # 仅后端 secret，严禁进前端/GitHub
 EMAIL_FROM=EZDRIVES <notifications@ezdrives.net>
 EMAIL_REPLY_TO=booking@ezdrives.net
 EMAIL_FROM_DOMAIN=ezdrives.net

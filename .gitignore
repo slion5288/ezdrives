@@ -8,3 +8,4 @@ npm-debug.log*
 
 # make-preview temp build (single-chunk offline variant)
 .preview-dist
+.dev.vars

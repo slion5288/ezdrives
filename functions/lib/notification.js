@@ -9,7 +9,8 @@
 //     → validate {{variables}} against the whitelist
 //     → render subject / html / text
 //     → idempotency check (one event → one email)
-//     → Cloudflare Email Sending (env.EMAIL.send_email binding) or REST
+//     → Cloudflare Email Sending — REST API (Pages-compatible, primary) or
+//       send_email binding (local dev stub / future Pages support)
 //     → write notification_logs (pending|sent|failed)
 //
 // Failure isolation: an email failure NEVER fails the business operation
@@ -118,21 +119,56 @@ async function writeLog(env, log) {
 
 /**
  * Send one email via Cloudflare Email Sending.
- * env.EMAIL is the send_email binding ({ send({ from, to, subject, html, text }) }).
- * When the binding is missing, we log FAILED("email service not configured")
+ *
+ * Transport strategy (in order):
+ *  1. REST API  — POST /accounts/{id}/email/sending/send with
+ *                 CLOUDFLARE_EMAIL_API_TOKEN (works on Cloudflare Pages;
+ *                 Pages does NOT support the send_email Workers binding).
+ *  2. Binding   — env.EMAIL.send({ from, to:[{email}], ... }) — used by
+ *                 `wrangler pages dev` (local stub reports success, no real
+ *                 delivery) and future-proofing if Pages ever adds the binding.
+ *
+ * When neither is configured we log FAILED("email service not configured")
  * — business flow is never blocked.
  */
 async function dispatch(env, { from, to, subject, html, text }) {
+  // 1) REST API (production path — Pages compatible).
+  const token = env.CLOUDFLARE_EMAIL_API_TOKEN
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID
+  if (token && accountId) {
+    try {
+      const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: to,
+          from: from.email,
+          subject,
+          html,
+          text,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (res.ok && data && data.success) return { ok: true }
+      const err = (data && data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${res.status}`
+      return { ok: false, error: `Cloudflare Email REST: ${err}` }
+    } catch (e) {
+      return { ok: false, error: `Cloudflare Email REST: ${(e && e.message) ? e.message : String(e)}` }
+    }
+  }
+
+  // 2) send_email binding (local dev / future Pages support).
   const email = env.EMAIL
-  if (!email || typeof email.send !== 'function') {
-    return { ok: false, error: 'Email service not configured (send_email binding missing)' }
+  if (email && typeof email.send === 'function') {
+    try {
+      await email.send({ from, to: [{ email: to }], subject, html, text })
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: (e && e.message) ? e.message : String(e) }
+    }
   }
-  try {
-    await email.send({ from, to: [{ email: to }], subject, html, text })
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, error: (e && e.message) ? e.message : String(e) }
-  }
+
+  return { ok: false, error: 'Email service not configured (set CLOUDFLARE_EMAIL_API_TOKEN + CLOUDFLARE_ACCOUNT_ID, or add the send_email binding)' }
 }
 
 /**

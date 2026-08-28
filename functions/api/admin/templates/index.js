@@ -8,13 +8,13 @@ const SECURE_TYPES = new Set(['PASSWORD_RESET', 'IMPORTANT_ACCOUNT'])
 export async function onRequestGet({ env, request }) {
   if (!(await authAdmin(env, request))) return fail('Not authenticated', 401)
   const rows = await env.DB.prepare('SELECT id, type, name, subject, html_body, text_body, enabled, is_system, updated_at FROM notification_templates ORDER BY type').all()
-  const configured = !!(env.EMAIL && typeof env.EMAIL.send === 'function')
+  const configured = !!((env.CLOUDFLARE_EMAIL_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) || (env.EMAIL && typeof env.EMAIL.send === 'function'))
   return json({
     ok: true,
     templates: (rows.results || []).map((r) => ({ ...r, enabled: !!r.enabled, is_system: !!r.is_system })),
     variables: VARIABLES,
     emailStatus: {
-      provider: 'Cloudflare Email Service',
+      provider: 'Cloudflare Email Service (REST API)',
       domain: env.EMAIL_FROM_DOMAIN || 'ezdrives.net',
       from: `notifications@${env.EMAIL_FROM_DOMAIN || 'ezdrives.net'}`,
       configured,
