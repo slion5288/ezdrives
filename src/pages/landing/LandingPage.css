@@ -1061,10 +1061,10 @@ html[data-theme='dark'] .landing-badge--info {
 
 .landing-courses__card--popular {
   margin-top: var(--space-3);
-  border-color: var(--color-accent);
+  border: 2px solid var(--color-accent);
   background: var(--color-surface);
   background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 35%, var(--color-surface)), var(--color-surface));
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent), var(--shadow-pop);
   transform: translateY(-4px);
 }
 
@@ -1141,7 +1141,8 @@ html[data-theme='dark'] .landing-badge--info {
 }
 
 .landing-courses__cta {
-  margin-top: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-3);
   width: 100%;
 }
 

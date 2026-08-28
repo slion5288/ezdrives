@@ -6,7 +6,7 @@
 // All strings through useT().
 // ============================================================================
 
-import { ArrowLeft, ArrowRight, KeyRound, Send } from 'lucide-react'
+import {ArrowLeft,KeyRound,Send} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
@@ -206,7 +206,7 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
               placeholder="••••••••"
             />
           </Field>
-          <Button type="submit" className="login__submit" disabled={busy} icon={<ArrowRight size={16} aria-hidden="true" />}>
+          <Button type="submit" className="login__submit" disabled={busy}>
             {busy ? t('auth.login.loading') : t('auth.login.submit')}
           </Button>
           <button type="button" className="login__switch" onClick={() => setMode('register')}>

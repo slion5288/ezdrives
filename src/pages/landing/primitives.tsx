@@ -8,7 +8,7 @@
 
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Car, Check, Clock, Star } from 'lucide-react'
+import {Car,Check,Clock,Star} from 'lucide-react'
 import { useT } from '../../i18n'
 import { COURSE_IMAGES, LOGO_DATA_URL } from '../../data/assets'
 import { Button } from '../../components/shared/Button'
@@ -174,7 +174,7 @@ export function CourseCard({
           {t('vehicles.thisVehicle')}
         </li>
       </ul>
-      <Button variant={popular ? 'primary' : 'secondary'} to={to} className="landing-courses__cta" icon={<ArrowRight size={16} />}>
+      <Button variant="primary" to={to} className="landing-courses__cta">
         {t('courses.book')}
       </Button>
     </div>

@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {ArrowRight, Calendar, CalendarCheck, Car, CheckCircle2, ChevronDown, GraduationCap, Mail, MapPin, Phone, Pause, Play, Quote, ShieldCheck, Star, Users, Zap, } from 'lucide-react'
+import {Calendar, CalendarCheck, Car, CheckCircle2, ChevronDown, GraduationCap, Mail, MapPin, Phone, Pause, Play, Quote, ShieldCheck, Star, Users, Zap, } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, maskPhone, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
@@ -159,7 +159,16 @@ export default function LandingPage(): JSX.Element {
   const allCourses = visitor && !publicReady ? [] : state.courses.filter((c) => c.active)
   /** Mobile shows a few cards + a "view all" entry to the /courses page. */
   const shownCourses = isMobile ? allCourses.slice(0, 3) : allCourses
-  const popularIndex = shownCourses.length > 1 ? 1 : 0
+  // §C: primary button = first course of each (courseType+license) group —
+  // never positional, so adding/reordering courses can't change button colors.
+  const firstOfGroup = (c: { id: string; course_type?: string; type?: string; license_class?: string; examCar?: boolean }): boolean => {
+    const key = `${c.course_type ?? (c.examCar ? 'ROAD_TEST_CAR' : c.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${c.license_class ?? (c.examCar ? 'NONE' : c.type === 'package' ? 'G2' : 'G2')}`
+    const idx = shownCourses.findIndex((x) => {
+      const kx = `${x.course_type ?? (x.examCar ? 'ROAD_TEST_CAR' : x.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${x.license_class ?? (x.examCar ? 'NONE' : x.type === 'package' ? 'G2' : 'G2')}`
+      return kx === key
+    })
+    return idx === shownCourses.findIndex((x) => x.id === c.id)
+  }
   /** Videos with the homepage toggle on, ordered by the instructor. */
   const homeVideos = (visitor && !publicReady ? [] : state.videos)
     .filter((v) => v.active)
@@ -183,7 +192,6 @@ export default function LandingPage(): JSX.Element {
             <div className="landing-hero__ctas">
               <Button size="lg" to="/student/book">
                 {t('landing.cta.book')}
-                <ArrowRight size={18} className="landing-btn__icon" />
               </Button>
             </div>
             <div className="landing-hero__trust">
@@ -243,11 +251,11 @@ export default function LandingPage(): JSX.Element {
               <p className="landing-section__empty">{t('courses.unavailable')}</p>
             ) : (
               <div className="landing-courses landing-courses--rail">
-                {shownCourses.map((course, index) => (
+                {shownCourses.map((course) => (
                   <CourseCard
                     key={course.id}
                     course={course}
-                    popular={index === popularIndex}
+                    popular={firstOfGroup(course)}
                     to={`/student/book?course=${course.id}`}
                     t={t}
                     pick={pick}
@@ -260,7 +268,6 @@ export default function LandingPage(): JSX.Element {
             <div className="landing-courses__viewall-row">
               <Button variant="primary" to="/courses">
                 {t('landing.courses.viewAll')}
-                <ArrowRight size={16} className="landing-btn__icon" />
               </Button>
             </div>
           </div>
@@ -321,7 +328,6 @@ export default function LandingPage(): JSX.Element {
             <div className="landing-courses__viewall-row">
               <Button variant="secondary" to="/videos">
                 {t('landing.videos.viewAll')}
-                <ArrowRight size={16} className="landing-btn__icon" />
               </Button>
             </div>
           </div>
@@ -348,7 +354,6 @@ export default function LandingPage(): JSX.Element {
                 <div className="landing-g1__cta">
                   <Button to="/g1" size="lg">
                     {t('landing.g1.cta')}
-                    <ArrowRight size={18} className="landing-btn__icon" />
                   </Button>
                 </div>
               </div>
@@ -500,7 +505,6 @@ export default function LandingPage(): JSX.Element {
               <div className="landing-band__actions">
                 <Button size="lg" to="/student/book">
                   {t('landing.cta.book')}
-                  <ArrowRight size={18} className="landing-btn__icon" />
                 </Button>
               </div>
             </div>

@@ -435,6 +435,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
           }
         >
           <div className="ins-form-grid">
+            <div className="ins-form-section">{t('instructor.courses.secInfo')}</div>
             {/* Course type + license */}
             <div className="ins-field ins-field--wide">
               <span className="ins-field-label">{t('instructor.courses.type')}</span>
@@ -478,6 +479,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
               </div>
             ) : null}
 
+            <div className="ins-form-section">{t('instructor.courses.secDesc')}</div>
             {/* Name + description: Chinese primary, English auto */}
             <div className="ins-field">
               <label className="ins-field-label" htmlFor="course-name-zh">{t('instructor.courses.nameZh')}</label>
@@ -498,6 +500,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
             </div>
             <p className="ins-field-hint ins-field--wide">{t('instructor.courses.autoTranslate')}</p>
 
+            <div className="ins-form-section">{t('instructor.courses.secPricing')}</div>
             {/* Pricing — always shown; package label differs */}
             <div className="ins-field">
               <label className="ins-field-label" htmlFor="course-price">
@@ -562,6 +565,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
               <p className="ins-field-hint ins-field--wide">{t('instructor.courses.certificateHint')}</p>
             ) : null}
 
+            <div className="ins-form-section">{t('instructor.courses.secLessons')}</div>
             {/* Package lessons 1-10 + 11 mock test */}
             {isPackageType ? (
               <div className="ins-field ins-field--wide">
@@ -671,6 +675,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
               </>
             ) : null}
 
+            <div className="ins-form-section">{t('instructor.courses.secSettings')}</div>
             {/* Image */}
             <div className="ins-field ins-field--wide">
               <span className="ins-field-label">{t('instructor.courses.image')}</span>

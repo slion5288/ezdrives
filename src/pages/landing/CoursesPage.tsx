@@ -5,7 +5,7 @@
 // each card books straight into the student flow.
 // ============================================================================
 
-import { ArrowLeft, ArrowRight, BookOpen, GraduationCap } from 'lucide-react'
+import {ArrowLeft,BookOpen,GraduationCap} from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
@@ -30,7 +30,15 @@ export default function CoursesPage(): JSX.Element {
   // only (empty until fetched, or forever when the fetch failed).
   const visitor = !getSession().token
   const courses = visitor && !isPublicReady() ? [] : state.courses.filter((c) => c.active)
-  const popularIndex = courses.length > 1 ? 1 : 0
+  // §C: primary button = first course of each (courseType+license) group.
+  const firstOfGroup = (c: { id: string; course_type?: string; type?: string; license_class?: string; examCar?: boolean }): boolean => {
+    const key = `${c.course_type ?? (c.examCar ? 'ROAD_TEST_CAR' : c.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${c.license_class ?? (c.examCar ? 'NONE' : c.type === 'package' ? 'G2' : 'G2')}`
+    const idx = courses.findIndex((x) => {
+      const kx = `${x.course_type ?? (x.examCar ? 'ROAD_TEST_CAR' : x.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${x.license_class ?? (x.examCar ? 'NONE' : x.type === 'package' ? 'G2' : 'G2')}`
+      return kx === key
+    })
+    return idx === courses.findIndex((x) => x.id === c.id)
+  }
 
   return (
     <div className="landing-page landing-page--sub">
@@ -54,11 +62,11 @@ export default function CoursesPage(): JSX.Element {
               <p className="landing-section__empty">{t('courses.unavailable')}</p>
             ) : (
               <div className="landing-courses landing-courses--grid">
-                {courses.map((course, index) => (
+                {courses.map((course) => (
                   <CourseCard
                     key={course.id}
                     course={course}
-                    popular={index === popularIndex}
+                    popular={firstOfGroup(course)}
                     to={`/student/book?course=${course.id}`}
                     t={t}
                     pick={pick}
@@ -75,7 +83,6 @@ export default function CoursesPage(): JSX.Element {
               <p>{t('g1.subtitle')}</p>
               <Button variant="secondary" to="/g1">
                 {t('landing.g1.cta')}
-                <ArrowRight size={16} className="landing-btn__icon" />
               </Button>
             </div>
           </div>
@@ -91,7 +98,6 @@ export default function CoursesPage(): JSX.Element {
               <div className="landing-band__actions">
                 <Button size="lg" to="/student/book">
                   {t('landing.cta.book')}
-                  <ArrowRight size={18} className="landing-btn__icon" />
                 </Button>
               </div>
             </div>

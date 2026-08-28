@@ -504,6 +504,11 @@ export const messages = {
   'instructor.courses.typeSingle': 'Single hour',
 
   'instructor.courses.typeIndividual': 'Individual lesson',
+  'instructor.courses.secInfo': 'Course Information',
+  'instructor.courses.secDesc': 'Description',
+  'instructor.courses.secPricing': 'Pricing & Discounts',
+  'instructor.courses.secLessons': 'Lesson Structure',
+  'instructor.courses.secSettings': 'Course Settings',
   'instructor.courses.typePackage': '10-hour package',
   'instructor.courses.typeTrial': 'Trial lesson',
   'instructor.courses.typeRoadTest': 'Road test car (4h)',

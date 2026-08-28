@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import { Button } from '../../components/shared/Button'
-import { ArrowLeft, BookOpen, Check, ChevronRight, GraduationCap, RotateCcw, X } from 'lucide-react'
+import {ArrowLeft,BookOpen,Check,GraduationCap,RotateCcw,X} from 'lucide-react'
 import { G1_BANK_EN, G1_BANK_ZH, G1_IMAGES } from '../../data/g1-bank'
 import type { G1Question } from '../../data/g1-bank'
 import { useT } from '../../i18n'
@@ -108,14 +108,14 @@ export default function G1MockPage(): JSX.Element {
                 <span className="g1-bank__name">{t('g1.zh')}</span>
                 <span className="g1-bank__desc">{t('g1.zhBody', { count: G1_BANK_ZH.length })}</span>
                 <span className="g1-bank__cta">
-                  {t('g1.start')} <ChevronRight size={16} />
+                  {t('g1.start')}
                 </span>
               </button>
               <button type="button" className="g1-bank g1-bank--en" onClick={() => start('en')}>
                 <span className="g1-bank__name">{t('g1.en')}</span>
                 <span className="g1-bank__desc">{t('g1.enBody', { count: G1_BANK_EN.length })}</span>
                 <span className="g1-bank__cta">
-                  {t('g1.start')} <ChevronRight size={16} />
+                  {t('g1.start')}
                 </span>
               </button>
             </div>
@@ -185,7 +185,7 @@ export default function G1MockPage(): JSX.Element {
             </div>
 
             <div className="g1-quiz__foot">
-              <Button variant="primary" onClick={next} disabled={!answered} icon={<ChevronRight size={16} />}>
+              <Button variant="primary" onClick={next} disabled={!answered}>
                 {idx >= total - 1 ? t('g1.result') : t('g1.next')}
               </Button>
               <Button variant="ghost" onClick={() => setScreen('intro')} icon={<RotateCcw size={14} />}>

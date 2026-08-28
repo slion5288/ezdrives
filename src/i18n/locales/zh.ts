@@ -506,6 +506,11 @@ export const messages: Record<MessageKey, string> = {
   'instructor.courses.typeSingle': '单小时',
 
   'instructor.courses.typeIndividual': '单课时课程',
+  'instructor.courses.secInfo': '课程信息',
+  'instructor.courses.secDesc': '课程描述',
+  'instructor.courses.secPricing': '价格与优惠',
+  'instructor.courses.secLessons': '课时结构',
+  'instructor.courses.secSettings': '课程设置',
   'instructor.courses.typePackage': '10 小时套餐',
   'instructor.courses.typeTrial': '体验课',
   'instructor.courses.typeRoadTest': '考试用车（4 小时）',
