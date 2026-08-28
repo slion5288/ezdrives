@@ -195,25 +195,46 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
         {/* §18-§22: Student discount + referral */}
         <div className="student-payment__discounts">
           <p className="student-field-label">{t('payment.studentQuestion')}</p>
-          <div className="ins-radio-row">
-            <label className="ins-radio">
-              <input type="radio" name="pay-is-student" checked={isStudent === 'yes'} onChange={() => setIsStudent('yes')} />
-              <span>{t('common.yes')}</span>
-            </label>
-            <label className="ins-radio">
-              <input type="radio" name="pay-is-student" checked={isStudent === 'no'} onChange={() => setIsStudent('no')} />
-              <span>{t('common.no')}</span>
-            </label>
-          </div>
+          {/* §15: checkbox toggles — click Yes to enable, click again to cancel. */}
+          <label className="ins-checkbox">
+            <input
+              type="checkbox"
+              checked={isStudent === 'yes'}
+              onChange={() => setIsStudent(isStudent === 'yes' ? null : 'yes')}
+            />
+            <span>{t('common.yes')}</span>
+          </label>
+          {course?.studentDiscount ? (
+            <p className="student-payment__hint">
+              {t('payment.studentDiscountInfo', {
+                value: course.studentDiscount.type === 'PERCENTAGE'
+                  ? `${course.studentDiscount.value}%`
+                  : formatPrice(course.studentDiscount.value),
+              })}
+            </p>
+          ) : null}
 
           <p className="student-field-label" style={{ marginTop: 10 }}>{t('payment.referralQuestion')}</p>
-          <input
-            className="student-address-input"
-            type="tel"
-            placeholder={t('payment.referralPlaceholder')}
-            value={referralPhone}
-            onChange={(e) => { setReferralPhone(e.target.value); checkReferral(e.target.value) }}
-          />
+          <div className="student-payment__referral-row">
+            <input
+              className="student-address-input"
+              type="tel"
+              placeholder={t('payment.referralPlaceholder')}
+              value={referralPhone}
+              disabled={referralValid === true}
+              onChange={(e) => { setReferralPhone(e.target.value); checkReferral(e.target.value) }}
+            />
+            {/* §16: Remove Referral — clears eligibility and restores price. */}
+            {referralValid === true ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setReferralPhone(''); setReferralValid(null) }}
+              >
+                {t('payment.removeReferral')}
+              </Button>
+            ) : null}
+          </div>
           {referralValid === true ? (
             <p className="student-payment__hint is-ok">✓ {t('payment.referralValid')}</p>
           ) : referralValid === false ? (

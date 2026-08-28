@@ -594,6 +594,8 @@ export const messages = {
   'payment.referralValid': 'Referral verified',
   'payment.referralInvalid': 'Referral student not found.',
   'payment.originalPrice': 'Original price',
+  'payment.studentDiscountInfo': 'Student discount: {value} off',
+  'payment.removeReferral': 'Remove referral',
   'payment.finalPrice': 'Final price',
   'payment.instructorConfirm': 'The instructor confirms the payment before you can book a time.',
   'payment.pending': 'Awaiting confirmation',

@@ -2461,3 +2461,25 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text);
 }
+
+/* Payment discount: toggleable student checkbox + referral remove row */
+.student-payment__referral-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.student-payment__referral-row .student-address-input {
+  flex: 1;
+}
+.ins-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+}
+.ins-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}

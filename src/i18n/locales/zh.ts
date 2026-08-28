@@ -596,6 +596,8 @@ export const messages: Record<MessageKey, string> = {
   'payment.referralValid': '推荐验证成功',
   'payment.referralInvalid': '未找到推荐学员。',
   'payment.originalPrice': '原价',
+  'payment.studentDiscountInfo': '学生优惠：减免 {value}',
+  'payment.removeReferral': '移除推荐',
   'payment.finalPrice': '最终价格',
   'payment.instructorConfirm': '教练确认收款后即可预约时间。',
   'payment.pending': '待教练确认',
