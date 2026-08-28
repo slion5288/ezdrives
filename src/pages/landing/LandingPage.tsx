@@ -606,7 +606,9 @@ export default function LandingPage(): JSX.Element {
         <div className="container">
           <div className="landing-footer__grid">
             <div className="landing-footer__brand">
-              <Logo />
+              <Link to="/" aria-label={t('nav.home')} style={{ display: 'inline-flex' }}>
+                <Logo />
+              </Link>
               <p className="landing-footer__tagline">{c('landing.footer.tagline')}</p>
               <p className="landing-footer__lang">{t('landing.footer.language')}</p>
             </div>

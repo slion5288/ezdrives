@@ -1925,6 +1925,16 @@ html[data-theme='dark'] .landing-badge--info {
   box-shadow: var(--shadow-pop);
 }
 
+/* Brand logo in the shared header — clicking returns home */
+.landing-header__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.landing-header__brand:hover {
+  opacity: 0.85;
+}
+
 /* --- Landing mobile menu (hamburger) --- */
 .landing-menu-btn {
   display: none;

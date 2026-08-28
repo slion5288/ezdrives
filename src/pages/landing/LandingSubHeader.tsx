@@ -94,7 +94,9 @@ export default function LandingSubHeader(): JSX.Element {
   return (
     <header className="landing-header">
       <div className="landing-header__inner container">
-        <Logo />
+        <Link to="/" className="landing-header__brand" aria-label={t('nav.home')}>
+          <Logo />
+        </Link>
         <nav className="landing-nav" aria-label={t('nav.menu')}>
           {navItems.map((item) =>
             item.kind === 'page' ? (
