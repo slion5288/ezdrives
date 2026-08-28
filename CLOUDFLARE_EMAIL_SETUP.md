@@ -16,9 +16,11 @@
 | 域 ezdrives.net 在 Cloudflare | ✅ 已在 |
 | 网站部署在 Cloudflare Pages | ✅ 已在 |
 | **Email Routing（收信）** | ✅ **已开通**（公共 DNS 可见 MX: route1/2/3.mx.cloudflare.net + SPF TXT 均已生效） |
-| **Email Sending（发信）** | ❌ **未开通**（`cf-bounce.ezdrives.net` 子域无任何记录）→ **需要你完成 Step 2** |
-| Workers Paid | ❓ 待你确认（之前口头同意 $5/月） |
+| **Email Sending（发信）** | ✅ **已开通**（`cf-bounce.ezdrives.net` 子域 MX + SPF + DMARC `p=reject` 记录齐全） |
+| Workers Paid | ✅ 已升级（发信测试 queued 成功） |
+| 发信 API Token | ✅ 已配置（Email Service 权限，已存入 Pages secret） |
 | Pages 项目 send_email 绑定 | ❌ 不需要（Pages 不支持；生产走 REST API） |
+| **生产 D1 迁移 0005** | ✅ **已应用**（14 模板 + notification_logs + users.email 唯一索引） |
 
 ---
 
@@ -103,8 +105,10 @@
 
 ## 6. 你需要在 Dashboard 完成的操作清单（汇总）
 
-- [x] Email Routing（收信）——**你已开通**（MX/SPF 已验证 ✅）
-- [ ] 确认 Workers Paid（Step 1）
-- [ ] Onboard Email Sending 域名 `ezdrives.net`（Step 2）——**当前未开通，这是关键一步**
-- [ ] 创建 API Token（Step 3，Email Service + D1 + Pages 权限）并把令牌发给我
-- [ ] （可选）确认后我配置环境变量、应用生产迁移 0005、测试发送并给你结果
+- [x] Email Routing（收信）——已开通（MX/SPF 已验证 ✅）
+- [x] Workers Paid——已升级
+- [x] Onboard Email Sending 域名 `ezdrives.net`——已开通（cf-bounce MX/SPF/DMARC 记录齐全 ✅）
+- [x] 创建 API Token（Email Service 发信）——已配置并存入 Pages secret ✅
+- [x] 创建 API Token（D1/Pages 管理）——已用于应用生产迁移 0005 ✅
+- [x] 生产 D1 迁移 0005——已应用（14 模板 + 日志表 + 邮箱唯一索引）✅
+- [ ] 最终真实送达验证——由开发侧完成（见报告）
