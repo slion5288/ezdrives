@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ImagePlus, KeyRound, LogOut, Plus, Save, Trash2, Type, Users } from 'lucide-react'
+import { ImagePlus, KeyRound, LogOut, Mail, Plus, Save, Trash2, Type, Users } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { apiAdminChangePassword, apiAdminGetContent, apiAdminLogin, apiAdminPutContent, apiAdminTranslate, apiPublicHome } from '../../data/api'
 import { getAdminToken, setAdminToken } from '../../data/store'
@@ -26,9 +26,10 @@ import { messages as enMessages } from '../../i18n/locales/en'
 import { ThemeToggle } from '../../components/shared/ThemeToggle'
 import { Logo } from '../../components/shared/Logo'
 import { useToast } from '../../components/shared'
+import AdminTemplates from './AdminTemplates'
 import './admin.css'
 
-type Tab = 'text' | 'images' | 'instructors'
+type Tab = 'text' | 'images' | 'instructors' | 'templates'
 
 /** Fixed Chinese admin UI labels (interpolation for {var}). */
 function zh(key: string, vars?: Record<string, string | number>): string {
@@ -438,6 +439,9 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
           <button type="button" className={`admin-tab${tab === 'instructors' ? ' is-active' : ''}`} onClick={() => setTab('instructors')}>
             <Users size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{zh('admin.tab.instructors')}
           </button>
+          <button type="button" className={`admin-tab${tab === 'templates' ? ' is-active' : ''}`} onClick={() => setTab('templates')}>
+            <Mail size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{zh('admin.tab.templates')}
+          </button>
         </nav>
       </header>
 
@@ -629,6 +633,8 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
             ) : null}
           </div>
         ) : null}
+
+        {tab === 'templates' ? <AdminTemplates token={token} /> : null}
       </main>
     </div>
   )

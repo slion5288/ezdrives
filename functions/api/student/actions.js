@@ -114,6 +114,38 @@ function guardedAppointmentInsert(env, appt, breakMin) {
   ).bind(appt.id, appt.studentId, appt.start, appt.end, appt.status, JSON.stringify(appt), appt.id, appt.studentId, br)
 }
 
+/** Best-effort booking email (student or instructor). Never throws. */
+async function bestEffortEmail(env, state, type, student, instructor, appt, course, status) {
+  try {
+    const { sendNotification } = await import('../../lib/notification.js')
+    const d = fromLocal(appt.start)
+    const booking = {
+      id: appt.id,
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      status,
+      location: (student && student.address) || '',
+    }
+    const courseInfo = { name: course ? course.name.en : '' }
+    const stInfo = student
+      ? { id: student.id, name: student.name, phone: student.phone, email: student.email || '' }
+      : null
+    if (type.endsWith('RESCHEDULED') || type === 'BOOKING_CANCELLED') {
+      // to the student
+      if (stInfo && stInfo.email) {
+        await sendNotification(env, { type, recipientEmail: stInfo.email, student: stInfo, instructor, booking, course: courseInfo })
+      }
+    } else {
+      // to the instructor (NEW_BOOKING / INSTRUCTOR_*)
+      if (instructor && instructor.email) {
+        await sendNotification(env, { type, recipientEmail: instructor.email, student: stInfo, instructor, booking, course: courseInfo })
+      }
+    }
+  } catch (e) {
+    // email is best-effort
+  }
+}
+
 export async function onRequestPost({ env, request }) {
   const user = await authUser(env, request)
   if (!user) return fail('Not authenticated', 401)
@@ -274,6 +306,32 @@ export async function onRequestPost({ env, request }) {
 
     state.appointments.push(...created)
     state.notifications.unshift(nS, nI)
+
+    // Best-effort email notifications (never fail the booking on email errors).
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      const studentRow = state.students.find((s) => s.id === studentId)
+      const stEmail = (studentRow && studentRow.email) || user.email
+      const d0 = fromLocal(first.start)
+      const booking = {
+        id: first.id,
+        date: `${d0.getFullYear()}-${pad(d0.getMonth() + 1)}-${pad(d0.getDate())}`,
+        time: `${pad(d0.getHours())}:${pad(d0.getMinutes())}`,
+        status: 'confirmed',
+        location: (studentRow && studentRow.address) || user.address || '',
+      }
+      const studentInfo = { id: studentId, name: user.name, phone: user.phone, email: stEmail || '' }
+      const courseInfo = { name: courseName.en, price: first.price }
+      if (stEmail) {
+        await sendNotification(env, { type: 'BOOKING_CONFIRMED', recipientEmail: stEmail, student: studentInfo, instructor: state.instructor, booking, course: courseInfo })
+      }
+      if (state.instructor && state.instructor.email) {
+        await sendNotification(env, { type: 'NEW_BOOKING', recipientEmail: state.instructor.email, student: studentInfo, instructor: state.instructor, booking, course: courseInfo })
+      }
+    } catch (e) {
+      // email is best-effort
+    }
+
     return reply(state)
   }
 
@@ -307,6 +365,7 @@ export async function onRequestPost({ env, request }) {
       ])
       state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
       state.notifications.unshift({ id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_cancelled', title: { en: 'Lesson cancelled', zh: '课程已取消' }, body: { en: `Your ${course ? course.name.en : ''} lesson on ${when} was cancelled.`, zh: `您${when}的${course ? course.name.zh : ''}课程已被取消。` }, read: false, at: now })
+      await bestEffortEmail(env, state, 'BOOKING_CANCELLED', student, state.instructor, appt, course, 'cancelled')
       return reply(state)
     }
     notifs.push(env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
@@ -322,6 +381,8 @@ export async function onRequestPost({ env, request }) {
     ])
     state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
     state.notifications.unshift({ id: nId, role: 'instructor', recipientId: 'instructor', type: 'booking_cancelled', title: { en: 'Booking cancelled', zh: '预约已取消' }, body: { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${when}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${when}）。` }, read: false, at: now })
+    const cancStudent = state.students.find((s) => s.id === appt.studentId)
+    await bestEffortEmail(env, state, 'INSTRUCTOR_BOOKING_CANCELLED', cancStudent, state.instructor, appt, course, 'cancelled')
     return reply(state)
   }
 
@@ -392,6 +453,9 @@ export async function onRequestPost({ env, request }) {
     }
     await env.DB.batch(stmts)
     state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
+    const reschStudent = state.students.find((s) => s.id === appt.studentId)
+    await bestEffortEmail(env, state, 'BOOKING_RESCHEDULED', reschStudent, state.instructor, updated, course, 'rescheduled')
+    await bestEffortEmail(env, state, 'INSTRUCTOR_BOOKING_RESCHEDULED', reschStudent, state.instructor, updated, course, 'rescheduled')
     return reply(state)
   }
 

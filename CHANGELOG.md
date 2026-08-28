@@ -5,7 +5,29 @@
 
 ---
 
+## Change 20 — 邮件通知系统（Email + Notification Template + 发送日志；Cloudflare Email Service）
+
+- **我的要求**：构建完整邮件通知系统；供应商指定为 **Cloudflare Email Service**（不接任何第三方）；只发出不接收；教练无 @ezdrives.net 邮箱身份（邮件发到教练真实外部邮箱）；保留 Twilio 短信验证；通知模板存入数据库、可在 /admin 编辑而无需重新部署；记录发送日志；邮件失败不影响业务；幂等（一个事件一封邮件）；存量学员 email=null 安全迁移；注册成功后告知学员「手机已验证、通知走邮箱」。用户已同意 Workers Paid 升级（$5/月，任意收件人发信的前提）。
+- **架构决策**（详见 `FINAL_EMAIL_ARCHITECTURE.md`、`EMAIL_SYSTEM.md`、`CLOUDFLARE_EMAIL_SETUP.md`）：
+  - Cloudflare Email Routing = 仅收信；外发 = **Email Sending**（Public Beta，`send_email` binding / REST / SMTP）；任意收件人需 Workers Paid；免费额度 3,000 封/月，超出 $0.35/1,000；From 必须为 Email-Routing 已配置地址。
+- **实现**：
+  - 数据库 `migrations/0005_email_notifications.sql`：`users.email` 唯一索引（NULL 安全）+ `notification_templates`（14 个默认模板，类型 UNIQUE，安全类型不可停用）+ `notification_logs`（幂等唯一索引 `(type, booking_id, recipient_email)`）。
+  - 通知服务 `functions/lib/notification.js`：19 个模板变量、模板渲染（未知变量→FAILED 不发出）、`env.EMAIL.send()` 分发（缺 binding→failed "not configured"）、幂等预检、日志写入、永不 throw。
+  - 注册 `functions/api/auth/register.js`：email 必填 + 格式校验 + 唯一校验 + 注册成功 best-effort 欢迎邮件。
+  - 预约 `functions/api/student/actions.js`：book → 学员 BOOKING_CONFIRMED + 教练 NEW_BOOKING；教练/学员取消、改期 → 对应学员/教练邮件（全部 best-effort）。
+  - 管理端 `functions/api/admin/templates/{index,preview,test,logs}.js`：列表/保存（安全类型锁定）、样例预览（未知变量报告）、测试发送、最近 50 条日志；`emailStatus` 报告 binding 状态。
+  - 前端：注册表单加邮箱字段 + 双语文案与成功提示；/admin 新增「通知模板」标签页（列表/编辑/预览/测试/日志/状态横幅）；`wrangler.toml` 加 `[[send_email]] name="EMAIL"`。
+- **修复（测试中发现）**：① preview API 返回结构与前端期望不一致（`{unknown,subject,...}` 顶层 → 包进 `preview` 字段）；② logs 端点为 GET 但前端走 POST → 拆出 `apiAdminGetLogs` 专用 GET；③ 测试期间管理员登录速率限制（5 次/5 分钟）挡住自动化 → 清理本地 rate_limits。
+- **修改文件**：`migrations/0005_email_notifications.sql`、`functions/lib/notification.js`、`functions/api/auth/register.js`、`functions/api/student/actions.js`、`functions/api/admin/templates/*`（4 文件）、`src/data/api.ts`、`src/data/store.ts`、`src/pages/auth/LoginPage.tsx`、`src/pages/admin/AdminPage.tsx`、`src/pages/admin/AdminTemplates.tsx`（新）、`src/pages/admin/admin.css`、`src/i18n/locales/en.ts`、`src/i18n/locales/zh.ts`、`wrangler.toml`、文档 6 份（PROJECT_SPEC / DATABASE_SPEC / API_SPEC / USER_FLOW / CHANGELOG + 3 份新邮件文档）。
+- **是否影响旧功能**：是——注册表单新增必填邮箱（旧学员无邮箱不受影响）；预约/取消/改期现在会尝试发邮件（失败仅记日志，业务不变）；/admin 新增第四个标签页。
+- **测试结果**：本地迁移应用成功（14 模板）；templates 全套 API 通过（列表/保存/预览/测试/日志）；浏览器端 9 项全过（标签页、14 行、编辑器、预览样例数据 John Smith/TEST-001、19 变量、日志显示收件人）；Full Regression 22 项全过；编译通过。
+- **生产待办（用户 Cloudflare 侧）**：确认 Workers Paid；完成 Email Routing + DNS（当前 DNS 无邮件记录）；Pages 添加 Email Sending binding（或提供新 API token）；应用生产迁移 0005（需 D1 Edit 权限 token）。未完成前生产邮件记 failed、业务不受影响。
+
+---
+
 ## Change 19 — 二级页返回按钮统一左上角 + 课程预约图标重新设计
+
+- **我的要求**：① 课程预约、模拟题库、教学视频的返回首页按钮位置不一致，统一为左上角；② 课程预约页图标与模拟题库相同，重新设计。
 
 - **我的要求**：① 课程预约、模拟题库、教学视频的返回首页按钮位置不一致，统一为左上角；② 课程预约页图标与模拟题库相同，重新设计。
 - **修复**：

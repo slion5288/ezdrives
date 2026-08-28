@@ -45,7 +45,7 @@ export async function apiSendCode(phone: string): Promise<{ ok: boolean; error?:
 }
 
 /** POST /api/auth/register */
-export async function apiRegister(body: { role: string; name: string; phone: string; password: string; address?: string }): Promise<ApiState> {
+export async function apiRegister(body: { role: string; name: string; email?: string; phone: string; password: string; address?: string }): Promise<ApiState> {
   return request('/auth/register', { method: 'POST', body })
 }
 
@@ -99,4 +99,30 @@ export async function apiAdminTranslate(token: string, texts: string[]): Promise
 /** GET /api/public/home — public homepage data (no auth) */
 export async function apiPublicHome(): Promise<ApiState> {
   return request('/public/home')
+}
+
+/** GET /api/admin/templates — list templates + variables + email status (admin) */
+export async function apiAdminGetTemplates(token: string): Promise<{
+  ok: boolean; templates?: unknown[]; variables?: string[]; emailStatus?: { provider: string; domain: string; from: string; configured: boolean }; error?: string
+}> {
+  return request('/admin/templates', { token })
+}
+
+/** PUT /api/admin/templates — save one template (admin) */
+export async function apiAdminPutTemplate(token: string, body: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
+  return request('/admin/templates', { method: 'PUT', body, token })
+}
+
+/** POST /api/admin/templates/:action — preview | test (admin) */
+export async function apiAdminTemplateAction(
+  token: string,
+  action: 'preview' | 'test',
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; preview?: { subject: string; html: string; text: string; unknown: string[] }; status?: string; error?: string }> {
+  return request(`/admin/templates/${action}`, { method: 'POST', body, token })
+}
+
+/** GET /api/admin/templates/logs — recent notification log entries (admin) */
+export async function apiAdminGetLogs(token: string): Promise<{ ok: boolean; logs?: unknown[]; error?: string }> {
+  return request('/admin/templates/logs', { token })
 }

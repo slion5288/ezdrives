@@ -18,8 +18,12 @@ export async function onRequestPost({ env, request }) {
   const phone = String(body.phone || '').trim()
   const password = String(body.password || '')
   const address = String(body.address || '').trim() || null
+  const email = String(body.email || '').trim().toLowerCase()
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
   if (!name) return fail('Please enter your name.')
+  if (!email) return fail('Please enter your email address.')
+  if (!EMAIL_RE.test(email)) return fail('Please enter a valid email address.')
   if (phone.replace(/\D/g, '').length < 10) return fail('Please enter a valid phone number.')
   if (password.length < 6) return fail('Password must be at least 6 characters.')
 
@@ -53,6 +57,8 @@ export async function onRequestPost({ env, request }) {
 
   const dup = await env.DB.prepare('SELECT id FROM users WHERE phone = ?').bind(phone).first()
   if (dup) return fail('This phone number is already registered.')
+  const dupEmail = await env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first()
+  if (dupEmail) return fail('This email address is already registered.')
 
   const hash = await hashPassword(password)
   const userId = uuid()
@@ -65,6 +71,7 @@ export async function onRequestPost({ env, request }) {
     id: studentId,
     name,
     phone,
+    email,
     address: address || undefined,
     registeredAt: now,
     avatarColor: '#3B82F6',
@@ -73,10 +80,23 @@ export async function onRequestPost({ env, request }) {
 
   await env.DB.batch([
     env.DB.prepare(
-      'INSERT INTO users (id, role, name, phone, email, password_hash, avatar_color, address, registered_at) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?)',
-    ).bind(userId, 'student', name, phone, hash, '#3B82F6', address, now),
+      'INSERT INTO users (id, role, name, phone, email, password_hash, avatar_color, address, registered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    ).bind(userId, 'student', name, phone, email, hash, '#3B82F6', address, now),
     env.DB.prepare('INSERT INTO students (id, user_id, payload) VALUES (?, ?, ?)').bind(studentId, userId, JSON.stringify(student)),
   ])
+
+  // Registration confirmation email (best-effort; failure never blocks signup).
+  try {
+    const { sendNotification } = await import('../../lib/notification.js')
+    await sendNotification(env, {
+      type: 'STUDENT_REGISTERED',
+      recipientEmail: email,
+      student: { id: studentId, name, phone, email },
+      instructor: await env.DB.prepare('SELECT payload FROM instructor WHERE id = 1').first().then((r) => (r ? JSON.parse(r.payload) : null)),
+    })
+  } catch (e) {
+    // email is best-effort — never fail registration because of it
+  }
 
   const token = await createSession(env, userId)
   return json({ ok: true, token, user: { id: userId, role: 'student', name, phone, studentId } })

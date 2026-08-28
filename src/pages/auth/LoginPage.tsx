@@ -88,13 +88,14 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
   const [loginPassword, setLoginPassword] = useState('')
   // Register form
   const [regName, setRegName] = useState('')
+  const [regEmail, setRegEmail] = useState('')
   const [regPhone, setRegPhone] = useState('')
   const [regCountry, setRegCountry] = useState('+1')
   const [regCode, setRegCode] = useState('')
   const [regPassword, setRegPassword] = useState('')
   const [codeSent, setCodeSent] = useState(false)
   const [codeCountdown, setCodeCountdown] = useState(0)
-  const [errors, setErrors] = useState<{ phone?: string; password?: string; name?: string; code?: string }>({})
+  const [errors, setErrors] = useState<{ phone?: string; password?: string; name?: string; code?: string; email?: string }>({})
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const timerRef = useRef<number | null>(null)
@@ -162,21 +163,22 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
 
   const submitRegister = async (e: FormEvent): Promise<void> => {
     e.preventDefault()
-    const next: { name?: string; phone?: string; password?: string; code?: string } = {}
+    const next: { name?: string; phone?: string; password?: string; code?: string; email?: string } = {}
     if (!regName.trim()) next.name = t('auth.error.name')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim())) next.email = t('auth.error.email')
     if (!validPhone(regPhone)) next.phone = t('auth.error.phone')
     if (regPassword.length < 6) next.password = t('auth.error.passwordShort')
     if (!/^\d{6}$/.test(regCode.trim())) next.code = t('auth.error.code')
     setErrors(next)
     if (Object.keys(next).length > 0) return
     setBusy(true)
-    const result = await register({ name: regName.trim(), phone: (regCountry + regPhone).trim(), password: regPassword, code: regCode.trim() })
+    const result = await register({ name: regName.trim(), email: regEmail.trim().toLowerCase(), phone: (regCountry + regPhone).trim(), password: regPassword, code: regCode.trim() })
     setBusy(false)
     if (result.ok) {
-      toast.success(t('auth.register.welcome', { name: regName.trim() }))
+      toast.success(t('auth.register.success', { name: regName.trim(), email: regEmail.trim() }))
       onLoggedIn()
     } else {
-      setErrors({ phone: result.error })
+      setErrors({ email: result.error })
     }
   }
 
@@ -220,6 +222,17 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
               invalid={errors.name != null}
               onChange={(e) => setRegName(e.target.value)}
               placeholder={t('auth.register.name')}
+            />
+          </Field>
+          <Field label={t('auth.register.email')} error={errors.email} htmlFor="reg-email">
+            <Input
+              id="reg-email"
+              type="email"
+              value={regEmail}
+              invalid={errors.email != null}
+              onChange={(e) => setRegEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
             />
           </Field>
           <Field label={t('auth.register.phone')} error={errors.phone} htmlFor="reg-phone">

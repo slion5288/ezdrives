@@ -32,25 +32,26 @@
   - 登录方式：**手机号或邮箱 + 密码**（当前临时密码 `123456`，正式开放前可修改）。
   - **不经过短信验证、没有注册流程**（单人部署，2025-08 需求）。
   - 可访问：`/instructor` 后台全部 7 个标签页；`PUT /api/state` 全量写；确认/拒绝支付；改期/取消任意预约；管理课程/车辆/视频/工作时间/收款设置。
-- **学员（Student）**：手机号 + 密码登录；注册需**姓名 + 真实手机号 + Twilio 短信验证码**。
+- **学员（Student）**：手机号 + 密码登录；注册需**姓名 + 真实手机号 + 邮箱 + Twilio 短信验证码**（2026-08：邮箱必填，作为通知渠道）。
   - 可访问：`/student*`；只能读写自己的预约/支付/通知/地址。
   - 接送地址在登录后于「个人中心」填写（**Geoapify 免费地址自动补全**，`GEOAPIFY_API_KEY` 配置后启用，加拿大偏置；未配置则普通输入框）。
 - **管理员（Admin）**：站点内容管理员，登录 `/admin`（用户名 `slion`，密码存 D1 `admin_users` 表 PBKDF2 哈希；当前密码 `528830`，待提供改密功能）。
-  - 可访问：`/admin` 后台（主页文字 29 字段中英覆盖、6 张轮播图上传、教练增删改）；`GET/PUT /api/admin/content`、`POST /api/admin/translate`。
+  - 可访问：`/admin` 后台（主页文字 29 字段中英覆盖、6 张轮播图上传、教练增删改、**通知模板管理**）；`GET/PUT /api/admin/content`、`POST /api/admin/translate`、`GET/PUT /api/admin/templates*`。
   - **管理员只会中文**：管理界面固定中文；文字编辑显示「当前生效内容」（默认文案或已有覆盖），只填中文，保存时英文自动翻译（后端 Google Cloud Translation（配置 key 时）→ 浏览器直连 MyMemory 兜底）；留空 = 恢复默认文案。
-  - 与教练角色分离：管理员只管**主页展示内容**；课程/车辆/视频/工作时间/支付仍由教练后台管理。
+  - 与教练角色分离：管理员只管**主页展示内容 + 邮件通知模板**；课程/车辆/视频/工作时间/支付仍由教练后台管理。
 - **游客（Public）**：可访问 `/`、`/courses`、`/g1`、`/login`、`/student/book`（公开课程目录，购买时先登录）。
   - 游客看到的数据来自 `GET /api/public/home`（**真实数据库**公开字段：教练、课程/车辆/视频、主页覆盖内容），**不再使用内置演示数据**（2025-08 需求：无任何演示数据）。
 
 ### 3.1 业务管理逻辑（谁维护什么——硬性边界，改动前必查）
 
-> 职责分离原则：**管理员管"网站门面"（主页文字/图片/教练），教练管"业务经营"（时间/日程/课程/学员/支付/设置），学员管"自己的预约"。任何新需求先按此表定位归属，禁止越界实现。**
+> 职责分离原则：**管理员管"网站门面"（主页文字/图片/教练 + 邮件通知模板），教练管"业务经营"（时间/日程/课程/学员/支付/设置），学员管"自己的预约"。任何新需求先按此表定位归属，禁止越界实现。**
 
 | 事项 | 维护人 | 入口 | 数据位置 |
 | --- | --- | --- | --- |
 | 主页文字（29 字段，只填中文、英文自动翻译） | 管理员 | `/admin` → 主页文字 | `home_content.overrides` |
 | 首页轮播图（6 张） | 管理员 | `/admin` → 主页图片 | `home_content.heroImages` |
 | 教练名单（多人展示用） | 管理员 | `/admin` → 教练 | `home_content.instructors` |
+| 邮件通知模板（14 个，编辑/预览/测试/停用 + 发送日志） | 管理员 | `/admin` → 通知模板 | `notification_templates` / `notification_logs` |
 | 教练个人资料（姓名/bio/车辆） | 教练 | `/instructor` → 设置 → 教练资料 | `users` / 车辆表 |
 | 工作时间（周规则+例外+休息） | 教练 | `/instructor` → 设置 | `weekly_rules` / `day_exceptions` |
 | 课程内容（CRUD/价格/上下架） | 教练 | `/instructor` → 课程 | `courses` |
@@ -115,9 +116,24 @@
 - 服务端（D1）为唯一权威；登录后 `GET /api/state` 拉取；学员/教练端**每 30 秒轮询**一次实现双向同步（学员购买 → 教练可见；教练确认 → 学员可见）。
 - 教练修改走 `PUT /api/state`（全量替换，原子 batch）；学员/业务动作走 `POST /api/student/actions`（服务端校验）。
 
-## 9. 通知类型
+## 9. 通知
+
+### 9.1 应用内通知（教练端 + 学员端）
 
 booking_confirmed / booking_cancelled / booking_rescheduled / reminder_2h（**未实现，见问题清单**）/ day_closed / new_booking / payment_pending / payment_confirmed / payment_rejected。
+
+### 9.2 邮件通知（Email + Notification System，2026-08）
+
+- **Provider（用户指定）**：Cloudflare Email Service —— 只用 Cloudflare，**不接任何第三方邮件供应商**（无 Resend/SendGrid/Postmark/Mailgun/SES/Gmail）。
+- **方向**：只发不收（outbound only）。**教练没有 @ezdrives.net 邮箱身份/邮箱**——教练邮件直接发到其真实外部邮箱（users.email，如 gmail.com）；发件人统一 `notifications@ezdrives.net`。
+- **前置条件（生产真实送达）**：Workers Paid（任意收件人，已获用户同意）；Email Routing 配置 `notifications@ezdrives.net` + DNS（MX/SPF/DKIM）就绪。详见 `CLOUDFLARE_EMAIL_SETUP.md`。
+- **模板**：DB 存储（`notification_templates`，14 个默认模板），**/admin「通知模板」标签页可编辑/预览/测试/停用**，改后立即生效，**无需重新部署**。安全类型（PASSWORD_RESET、IMPORTANT_ACCOUNT）不可停用。
+- **变量**：19 个 `{{变量}}`（学员/教练/预约/课程/公司信息）；未知变量 → 该次发送记 FAILED 且不发出（防错发）。
+- **事件钩子**（best-effort，失败绝不影响业务）：注册成功 → 学员欢迎邮件；预约/改期/取消 → 学员 + 教练双邮件；见 `API_SPEC.md`。
+- **幂等**：同一 `(type, booking_id, recipient_email)` 只发一封（D1 唯一索引 + 预检）。
+- **日志**：`notification_logs`，/admin「发送日志」可查最近 50 条（sent/failed/pending + 错误原因）。
+- **注册流程**：姓名 → 手机号 → **邮箱** → 短信验证码 → 账号；注册成功提示「手机已验证，重要账户/预约/日程/提醒通知将发送到 {email}」。
+- **存量学员安全**：`users.email` 唯一索引允许 NULL（历史学员 email=null 不受影响，稍后在个人中心补邮箱即可）。
 
 ## 10. 其他已定需求
 
@@ -133,6 +149,7 @@ booking_confirmed / booking_cancelled / booking_rescheduled / reminder_2h（**�
 - 项目：Cloudflare Pages `ezdrives`；域名 `https://ezdrives.net`（CNAME → pages.dev）。
 - D1：`ezdrives-db`（id `5fcae10e-…49a5`）。
 - 环境变量（secret_text，部署时不会被清空）：`TWILIO_ACCOUNT_SID`、`TWILIO_AUTH_TOKEN`、`TWILIO_FROM_NUMBER`、`TWILIO_VERIFY_SERVICE_SID`（可选 `GOOGLE_TRANSLATE_API_KEY` 提升翻译质量）。
+- 邮件（Cloudflare Email Service）：`wrangler.toml` 声明 `[[send_email]] name="EMAIL"` binding；可选环境变量 `EMAIL_FROM`（默认 `notifications@ezdrives.net`）、`EMAIL_REPLY_TO`、`EMAIL_FROM_DOMAIN`。生产真实发送还需 Pages 项目添加 Email Sending binding（或 API token 方案），见 `CLOUDFLARE_EMAIL_SETUP.md`。**Workers Paid 是任意收件人发信的前提。**
 - Twilio 试用期限制：收件人须为 Verified Tester（`+12266062880`）；试用期 30 天后需升级/绑卡否则短信失效。
 - **CI 自动部署**（Change 15 确认可用）：`.github/workflows/deploy.yml`（checkout → npm ci → build → cloudflare/pages-action@v1），**每次 push main 自动构建并部署**；手动 `wrangler pages deploy dist` 为兜底。
 - 离线交付：`npm run make:preview` 先用 `PREVIEW_INLINE=1` 构建**单 chunk**到 `.preview-dist`（临时，已 gitignore）再内嵌生成 `Preview.html`（file:// 直接双击可用，含 G1 题库；index.html 深链脚本对 file: 协议跳过）。
@@ -153,6 +170,8 @@ booking_confirmed / booking_cancelled / booking_rescheduled / reminder_2h（**�
 4. **生产业务数据**：首页课程区因后台暂无课程而显示「课程暂未开放」，需教练在教练后台录入课程后自动显示；视频/车辆已各 1 个。
 5. **管理员密码 `528830`**：⚠️ 上线前最后一项——请登录 /admin →「修改密码」改为强密码（功能已上线，Change 13）。
 6. 残留优化项（P3，上线后可做）：5 套平行组件体系合并（Toast/UI 基元）；断点系统统一（当前 8 个断点，文档留档）；课程图压缩（2–4.5MB）；`GET /api/ics/[studentId]` 端点无前端入口（删除或补订阅链接）；弹窗焦点陷阱。
+7. **邮件系统（Change 17）Cloudflare 侧待办（用户操作，代码已就绪）**：确认 Workers Paid 已生效；完成 Email Routing（创建 `notifications@ezdrives.net`，自动添加 MX/SPF/DKIM DNS 记录，可选 DMARC）；在 Pages 项目添加 Email Sending binding（或提供含 Email Service:Send 的新 API token 由我配置）；然后应用生产迁移 0005（`wrangler d1 execute ezdrives-db --remote --file migrations/0005_email_notifications.sql`，需 D1 Edit 权限）。在此之前生产环境发信会记 failed（not configured），业务不受影响。
+8. **存量学员邮箱补全**：历史学员 `users.email` 为 NULL，通知不会发送给无邮箱学员；后续可在个人中心提供补填邮箱入口（未实现，P3）。
 
 ## 13. 变更流程（必须遵守）
 

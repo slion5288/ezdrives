@@ -10,3 +10,9 @@ binding = "DB"
 database_name = "ezdrives-db"
 database_id = "5fcae10e-7f1b-4457-927a-42f34ac249a5"
 migrations_dir = "migrations"
+
+# Cloudflare Email Sending (Workers Paid). Pages Functions may send email via
+# this binding (env.EMAIL.send). Not configured yet in the dashboard → the
+# notification service logs FAILED and business flow is never blocked.
+[[send_email]]
+name = "EMAIL"

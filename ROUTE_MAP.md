@@ -15,7 +15,7 @@
 ├── /student/notifications（学员：通知中心）
 ├── /student/profile      （学员：个人中心）
 ├── /instructor           （教练后台：内部 7 个标签页，非独立路由）
-├── /admin                （站点管理员：主页文字/图片/教练管理；登录 slion）
+├── /admin                （站点管理员：主页文字/图片/教练/通知模板管理；登录 slion）
 └── *                     → 重定向 /
 ```
 
@@ -112,16 +112,17 @@
 
 ---
 
-### 10. 站点管理 `/admin` — AdminPage（内部 3 页签）
-- 用途：管理员维护主页展示内容（文字 / 图片 / 教练）。**管理界面固定中文**（管理员只懂中文）。
+### 10. 站点管理 `/admin` — AdminPage（内部 4 页签）
+- 用途：管理员维护主页展示内容（文字 / 图片 / 教练）+ **邮件通知模板**。**管理界面固定中文**（管理员只懂中文）。
 - 谁可访问：仅已登录管理员（未登录显示登录表单；用户名 `slion`）。
 - 进入方式：直接访问 `https://ezdrives.net/admin`。
 - 内部页签（非路由）：
   - 主页文字：29 个可编辑字段，**预填当前生效中文**（默认文案或已有覆盖），只填中文、保存时英文自动翻译（后端 Google（配置 key 时）→ 浏览器直连 MyMemory 兜底）；留空 = 恢复默认文案；下方显示「英文（自动翻译）」只读预览
   - 主页图片：6 张 hero 轮播图上传（压缩为 data URL 存储），显示当前/默认图预览
   - 教练：新增/编辑/删除教练（姓名/简介只填中文、英文自动翻译/经验年数/照片）；列表为空时首页显示单人档案，非空时首页显示多人卡片
+  - 通知模板：14 个邮件模板列表/编辑（主题+HTML+纯文本，安全类型锁定）/样例预览（未知变量提示）/测试发送/发送日志（最近 50 条）+ 邮件状态横幅（🟢 已连接 / 🔴 未配置）
 - 返回：页面内「← Back」→ `/`。
-- 数据接口：`POST /api/admin/login`、`GET/PUT /api/admin/content`、`POST /api/admin/translate`（Bearer token）、`GET /api/public/home`（公开读）。
+- 数据接口：`POST /api/admin/login`、`GET/PUT /api/admin/content`、`POST /api/admin/translate`、`GET/PUT /api/admin/templates`、`POST /api/admin/templates/preview|test`、`GET /api/admin/templates/logs`（Bearer token）、`GET /api/public/home`（公开读）。
 
 ---
 
