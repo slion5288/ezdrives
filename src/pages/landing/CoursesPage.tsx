@@ -5,12 +5,12 @@
 // each card books straight into the student flow.
 // ============================================================================
 
-import { ArrowLeft, ArrowRight, BookOpen, Check, Clock, GraduationCap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, GraduationCap } from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
-import { LandingBadge, LandingButton } from './primitives'
+import { CourseCard, LandingBadge, LandingButton } from './primitives'
 import LandingSubHeader from './LandingSubHeader'
 import './LandingPage.css'
 
@@ -54,51 +54,14 @@ export default function CoursesPage(): JSX.Element {
             ) : (
               <div className="landing-courses landing-courses--grid">
                 {courses.map((course, index) => (
-                  <div
-                    className={
-                      index === popularIndex ? 'landing-courses__card landing-courses__card--popular' : 'landing-courses__card'
-                    }
+                  <CourseCard
                     key={course.id}
-                  >
-                    {course.examCar && (
-                      <LandingBadge tone="info" className="landing-courses__badge">
-                        {t('landing.courses.examCar')}
-                      </LandingBadge>
-                    )}
-                    {index === popularIndex && (
-                      <LandingBadge tone="warning" className="landing-courses__badge">
-                        {t('landing.courses.popular')}
-                      </LandingBadge>
-                    )}
-                    <h3 className="landing-courses__name">{pick(course.name)}</h3>
-                    <p className="landing-courses__desc">{pick(course.description)}</p>
-                    <div className="landing-courses__meta">
-                      <span className="landing-courses__price">${course.price}</span>
-                      <span className="landing-courses__per">{t('courses.perLesson')}</span>
-                      <span className="landing-courses__dur">
-                        <Clock size={14} />
-                        {t('courses.duration', { duration: course.durationMin })}
-                      </span>
-                    </div>
-                    <ul className="landing-courses__features">
-                      <li>
-                        <Check size={15} strokeWidth={2.5} />
-                        {t('vehicles.automatic')}
-                      </li>
-                      <li>
-                        <Check size={15} strokeWidth={2.5} />
-                        {t('vehicles.thisVehicle')}
-                      </li>
-                    </ul>
-                    <LandingButton
-                      variant={index === popularIndex ? 'primary' : 'secondary'}
-                      to={`/student/book?course=${course.id}`}
-                      className="landing-courses__cta"
-                    >
-                      {t('courses.book')}
-                      <ArrowRight size={16} className="landing-btn__icon" />
-                    </LandingButton>
-                  </div>
+                    course={course}
+                    popular={index === popularIndex}
+                    to={`/student/book?course=${course.id}`}
+                    t={t}
+                    pick={pick}
+                  />
                 ))}
               </div>
             )}
