@@ -31,7 +31,13 @@
 - **修改文件**：共享库（Button/ToastProvider/Modal 新建/shared.css）、4 个角色区域的 TSX/CSS、i18n、文档 4 份（UI_UX_AUDIT / ROUTE_AUDIT / DESIGN_SYSTEM_PLAN / FINAL_UI_UX_REPORT 新建 + CHANGELOG）。
 - **是否影响旧功能**：视觉与结构统一；业务逻辑/流程/数据库/API 零改动。Toast 从本地版切到共享版（位置/时长略有变化，功能等价）。
 - **测试结果**：Build 全过；Full Regression 22 项全过；模板测试 9 项全过；P0 Logo 专项 3 项全过（login logo 链接、无嵌套 a、页脚去重）；视觉抽查通过（按钮 40px、区块 h2=24、副页 32px）。
-- **剩余（后续可选）**：按钮/表单组件级替换（视觉已统一）、CourseCard 合并、学员 ModalFrame 委托共享、/admin 站内入口。
+- **组件级收敛（Change 23 后续，已并入）**：
+  - Badge 统一：学员 StatusBadge + 教练 Badge → 委托共享 Badge（3 套 → 1）。
+  - Modal 统一：学员 ModalFrame/ConfirmModal → 委托共享 Modal（共享 Modal 增 `open` prop；3 套 → 1）。
+  - CourseCard 合并：LandingPage + CoursesPage 双份 → 共享 primitive（`media` prop 区分首页图/网格页无图）。
+  - Form 输入统一：教练/管理端自建 input 补齐共享规格（40px、14px、placeholder 上色、aria-invalid 红框、focus ring 2px）——JSX 级替换 180+ 调用点风险高，改为 CSS 规格统一（视觉已验证一致）。
+  - 按钮：6 套规格统一后浏览器实测跨区域一致（40px/10px 圆角）；组件级替换保留为后续纯代码重构（视觉目标已达成）。
+- **剩余（后续可选）**：按钮/表单组件级 JSX 替换（视觉已统一）、/admin 站内入口（安全考虑未暴露公开入口）。
 
 ## Change 22 — 删除学生端「通知设置」模块（Notification Settings 移除，通知系统保留）
 
