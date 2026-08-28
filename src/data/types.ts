@@ -6,30 +6,60 @@
 // timestamps. Re-exported from src/data/store.ts so pages import from one place.
 // ============================================================================
 
+/** Structured course type (business logic must key on this, never on names). */
+export type CourseType =
+  | 'INDIVIDUAL_LESSON'
+  | 'TEN_HOUR_PACKAGE'
+  | 'TRIAL_LESSON'
+  | 'ROAD_TEST_CAR'
+  | 'FULL_COURSE_CERTIFICATE'
+
+/** Driving licence category. NONE for non-licence services (Trial/RoadTest/Cert). */
+export type LicenseClass = 'G2' | 'G' | 'NONE'
+
+/** Discount configuration set by the instructor per course. */
+export interface DiscountConfig {
+  type: 'PERCENTAGE' | 'FIXED_AMOUNT'
+  value: number // PERCENTAGE: 1-100 (10 = 10%); FIXED_AMOUNT: CAD
+}
+
 /** One bookable lesson inside a package course (套餐的一个课时). */
 export interface CourseLesson {
+  sequence_number?: number // 1-based; auto-assigned by index + 1
   name: { en: string; zh: string }
   description: { en: string; zh: string }
   price: number // CAD per lesson
+  /** True for the auto-generated Lesson 11 Free Mock Test (always last). */
+  is_free_mock_test?: boolean
 }
 
 export interface Course {
   id: string
   name: { en: string; zh: string }
   description: { en: string; zh: string }
-  /** 'single' = per-hour lesson; 'package' = 10 fixed lessons (套餐). */
-  type: 'single' | 'package'
+  /** Legacy type — kept for backward compatibility with old data. */
+  type?: 'single' | 'package'
+  /** Structured course type (new). Business logic keys on this. */
+  course_type?: CourseType
+  /** Licence class (new). */
+  license_class?: LicenseClass
   /** single: per-lesson price. package: total package price (sum of lessons). */
   price: number // CAD
   /** single: 60 | 120. package: 60 (each package lesson is one hour). */
-  durationMin: 60 | 120
+  durationMin: number
   active: boolean
-  /** Exam car rental service (考试用车) — shown with a special badge. */
+  /** Exam car rental service (考试用车) — legacy flag, replaced by ROAD_TEST_CAR type. */
   examCar?: boolean
   /** Course cover image (data URL uploaded by the instructor). */
   imageUrl?: string
-  /** Package only: the 10 lessons with editable content. */
+  /** Package only: the lessons (1-10 editable + 11 Free Mock Test). */
   lessons?: CourseLesson[]
+  /** Student discount (在校学生优惠) — set by instructor. */
+  studentDiscount?: DiscountConfig | null
+  /** Referral discount (推荐优惠) — set by instructor. */
+  referralDiscount?: DiscountConfig | null
+  /** Trial: base hourly rate the 50% rule derives from (instructor-level). */
+  hourlyRate?: number
 }
 
 export interface Vehicle {
@@ -70,6 +100,14 @@ export interface Appointment {
   reminded?: boolean // optional — 2h-reminder flag (demo)
   /** Package courses: which lesson number of the package (0-based). */
   lessonIndex?: number
+  /** 1-based lesson sequence (from enrollment snapshot) for calendar display. */
+  lessonSequence?: number
+  /** Lesson title snapshot (instructor calendar shows it). */
+  lessonTitle?: { en: string; zh: string }
+  courseType?: CourseType
+  licenseClass?: LicenseClass
+  /** Instructor-confirmed lesson completion (§61). */
+  lessonCompletion?: { confirmedByInstructor?: boolean; confirmedAt?: string }
   /** Price captured at booking (per lesson for packages). */
   price?: number
 }
@@ -125,10 +163,56 @@ export interface Payment {
   studentId: string
   courseId: string
   method: PaymentMethod
-  amount: number // CAD
+  amount: number // CAD (= final_price, kept for backward compat)
   status: 'pending' | 'confirmed' | 'rejected'
   createdAt: string // ISO local datetime
   confirmedAt?: string
+  // —— Price snapshot (§30/§55): immune to later course/discount changes ——
+  original_price?: number
+  discount_type?: 'STUDENT' | 'REFERRAL' | 'NONE'
+  discount_source?: 'student' | 'referral' | ''
+  discount_value?: number // configured value (10 = 10% or 20 = $20)
+  discount_amount?: number // actual discount in CAD
+  final_price?: number
+  currency?: string // 'CAD'
+  // —— Referral (§31/§33) ——
+  referrer_student_id?: string
+  referral_phone?: string
+  // —— Enrollment link (packages) ——
+  enrollmentId?: string
+}
+
+/** One lesson inside a student's purchased package (snapshot at purchase). */
+export interface LessonSnapshot {
+  sequence_number: number
+  name: { en: string; zh: string }
+  description: { en: string; zh: string }
+  is_free_mock_test?: boolean
+  status: 'available' | 'booked' | 'completed'
+}
+
+/** Package enrollment created at purchase — snapshot drives booking order. */
+export interface Enrollment {
+  id: string
+  studentId: string
+  courseId: string
+  courseName: { en: string; zh: string }
+  courseType: CourseType
+  licenseClass: LicenseClass
+  originalPrice: number
+  discount: {
+    type: 'STUDENT' | 'REFERRAL' | 'NONE'
+    discountType: 'PERCENTAGE' | 'FIXED_AMOUNT'
+    discountValue: number
+    discountAmount: number
+    finalPrice: number
+    currency: string
+  }
+  referrer: { referrerStudentId?: string; referralPhone?: string } | null
+  lessons: LessonSnapshot[]
+  createdAt: string
+  completedLessonCount: number
+  status: 'active' | 'completed' | 'archived'
 }
 
 /** Instructor bank account details (Canadian format). */

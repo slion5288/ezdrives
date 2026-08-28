@@ -33,7 +33,7 @@ interface CourseForm {
   descZh: string
   price: string
   type: 'single' | 'package'
-  durationMin: 60 | 120
+  durationMin: number
   active: boolean
   examCar: boolean
   imageUrl: string

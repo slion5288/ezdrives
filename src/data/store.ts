@@ -11,8 +11,10 @@ import type {
   AppState,
   Appointment,
   Course,
+  CourseType,
   DayException,
   InstructorBank,
+  LicenseClass,
   Notification,
   PayApiConfig,
   Payment,
@@ -35,8 +37,31 @@ import {
 import { apiAction, apiFetchState, apiLogin, apiLogout, apiPublicHome, apiPutState, apiRegister, apiSendCode } from './api'
 import type { ApiUser } from './api'
 
-export type { AppState, Appointment, Course, CourseLesson, DayException, HomeContent, HomeInstructor, InstructorBank, Notification, PayApiConfig, Payment, PaymentMethod, Student, TeachingVideo, Vehicle, WeeklyRule } from './types'
+export type { AppState, Appointment, Course, CourseLesson, CourseType, DayException, DiscountConfig, Enrollment, HomeContent, HomeInstructor, InstructorBank, LessonSnapshot, LicenseClass, Notification, PayApiConfig, Payment, PaymentMethod, Student, TeachingVideo, Vehicle, WeeklyRule } from './types'
 export type { Slot } from './timeEngine'
+
+// --- Course type helpers (structured, backward compatible) ---
+
+/** Resolve the structured course type, deriving from legacy fields if needed. */
+export function courseTypeOf(c: Course): CourseType {
+  if (c.course_type) return c.course_type
+  // Legacy: examCar flag → ROAD_TEST_CAR; type package → TEN_HOUR_PACKAGE; else individual.
+  if (c.examCar) return 'ROAD_TEST_CAR'
+  if (c.type === 'package') return 'TEN_HOUR_PACKAGE'
+  return 'INDIVIDUAL_LESSON'
+}
+
+/** Resolve the licence class, defaulting NONE for non-licence services. */
+export function licenseOf(c: Course): LicenseClass {
+  if (c.license_class) return c.license_class
+  return 'NONE'
+}
+
+/** Trial price = instructor hourly rate × 50%. */
+export function trialPriceOf(c: Course, fallbackHourlyRate = 60): number {
+  const base = c.hourlyRate || fallbackHourlyRate
+  return Math.round(base * 0.5)
+}
 
 const SESSION_KEY = 'dw.session.v2' // { token, user }
 const ADMIN_KEY = 'dw.admin.v2' // site content-admin session token
