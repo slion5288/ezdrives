@@ -505,6 +505,42 @@ export async function onRequestPost({ env, request }) {
     return reply(state)
   }
 
+  // ---- updateStudentEmail: fill in / change the student's notification email ----
+  if (action === 'updateStudentEmail') {
+    if (isInstructor) return fail('Students only.', 403)
+    const email = String(args.email || '').trim().toLowerCase()
+    if (!email) return fail('Email is required.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Invalid email address.')
+    const dup = await env.DB.prepare('SELECT id FROM users WHERE email = ? AND id != ?').bind(email, user.id).first()
+    if (dup) return fail('This email address is already registered.')
+    const now = nowISO()
+    const student = state.students.find((s) => s.id === studentId)
+    if (!student) return fail('Student not found.')
+    const updatedStudent = { ...student, email }
+    await env.DB.batch([
+      env.DB.prepare('UPDATE users SET email = ? WHERE id = ?').bind(email, user.id),
+      env.DB.prepare('UPDATE students SET payload = ? WHERE id = ?').bind(JSON.stringify(updatedStudent), studentId),
+    ])
+    state.students = state.students.map((s) => (s.id === studentId ? updatedStudent : s))
+    // Best-effort notification email (never blocks the update).
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      const instructor = state.instructor || {}
+      const courseInfo = { name: '' }
+      await sendNotification(env, {
+        type: 'ACCOUNT_UPDATED',
+        recipientEmail: email,
+        student: updatedStudent,
+        instructor: instructor.email ? instructor : null,
+        booking: null,
+        course: courseInfo,
+      })
+    } catch (e) {
+      // email is best-effort
+    }
+    return reply(state)
+  }
+
   // ---- markNotificationRead / markAllRead (student or instructor scope) ----
   const notifMatches = (n) =>
     isInstructor

@@ -30,7 +30,7 @@
 | --- | --- | --- |
 | GET | `/api/state` | 登录后拉取全量状态（学员视图 / 教练视图）。 |
 | PUT | `/api/state` | **教练**全量写（原子 batch）：工作时间、课程、车辆、视频、支付设置等。 |
-| POST | `/api/student/actions` | 学员业务动作：book / reschedule / cancel / pay 等。**成功后触发邮件通知钩子**（见下）。 |
+| POST | `/api/student/actions` | 学员业务动作：book / reschedule / cancel / pay / **updateStudentEmail** 等。**成功后触发邮件通知钩子**（见下）。`updateStudentEmail`：补填/修改通知邮箱（格式+唯一校验；成功后 best-effort 发 ACCOUNT_UPDATED 邮件）。 |
 
 ### 邮件通知钩子（/api/student/actions 内，best-effort，失败绝不影响业务）
 

@@ -117,6 +117,7 @@
 | BOOKING_CONFIRMED / NEW_BOOKING | `functions/api/student/actions.js`（book） | 学员 / 教练（instructor.email 真实外部邮箱） |
 | BOOKING_CANCELLED / INSTRUCTOR_BOOKING_CANCELLED | actions.js（教练取消 / 学员取消） | 学员 / 教练 |
 | BOOKING_RESCHEDULED / INSTRUCTOR_BOOKING_RESCHEDULED | actions.js（改期） | 学员 / 教练 |
+| ACCOUNT_UPDATED | actions.js（updateStudentEmail，个人中心补填/修改邮箱） | 学员 |
 
 > 教练无 @ezdrives.net 邮箱身份——`users.email`（教练行）就是教练的真实外部邮箱（如 gmail.com），
 > 邮件直接发到该地址；发件人统一为 `notifications@ezdrives.net`。

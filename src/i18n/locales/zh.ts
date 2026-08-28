@@ -201,6 +201,8 @@ export const messages: Record<MessageKey, string> = {
   'student.profile.name': '姓名',
   'student.profile.phone': '手机号码',
   'student.profile.email': '邮箱',
+  'student.profile.emailPlaceholder': 'name@example.com',
+  'student.profile.emailInvalid': '请输入有效的邮箱地址。',
   'student.profile.registered': '注册时间',
   'student.profile.settings': '通知设置',
   'student.profile.emailNotifs': '邮件提醒',

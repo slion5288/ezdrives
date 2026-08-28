@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CalendarPlus, Download, History } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { cancelAppointment, getSession, lessonLabel, maskPhone, rescheduleAppointment, updateStudentAddress, useAppState } from '../../data/store'
+import { cancelAppointment, getSession, lessonLabel, maskPhone, rescheduleAppointment, updateStudentAddress, updateStudentEmail, useAppState } from '../../data/store'
 import type { Appointment, Course } from '../../data/store'
 import { dateKey, formatHM, fromLocalISO, fromServerISO, getLessonStarts, parseDateKey, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
@@ -168,6 +168,10 @@ function StudentProfileContent(): JSX.Element {
   const addressSearchTimer = useRef<number | null>(null)
   const addressWrapRef = useRef<HTMLDivElement | null>(null)
 
+  // Editable notification email (通知邮箱) — same edit/save pattern.
+  const [emailEditing, setEmailEditing] = useState(false)
+  const [emailDraft, setEmailDraft] = useState<string>('')
+
   /** Geoapify autocomplete (free, Canada-biased) — debounced by the caller. */
   const fetchAddressSuggestions = (input: string): void => {
     if (!GEOAPIFY_API_KEY || input.trim().length < 3) {
@@ -220,6 +224,21 @@ function StudentProfileContent(): JSX.Element {
       showToast('success', t('common.toast.saved'))
     } else {
       showToast('error', t('common.toast.error'))
+    }
+  }
+
+  const saveEmail = async (): Promise<void> => {
+    const value = emailDraft.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      showToast('error', t('student.profile.emailInvalid'))
+      return
+    }
+    const result = await updateStudentEmail(value)
+    if (result.ok) {
+      setEmailEditing(false)
+      showToast('success', t('common.toast.saved'))
+    } else {
+      showToast('error', result.error || t('common.toast.error'))
     }
   }
 
@@ -377,12 +396,55 @@ function StudentProfileContent(): JSX.Element {
                   </div>
                 </div>
               </div>
-              {student?.email && (
-                <div className="student-profile-row">
-                  <span className="student-summary-label">{t('student.profile.email')}</span>
-                  <span className="student-summary-value">{student.email}</span>
+              <div className="student-profile-row">
+                <span className="student-summary-label">{t('student.profile.email')}</span>
+                <div className="student-profile-address">
+                  {emailEditing ? (
+                    <input
+                      className="student-address-input"
+                      type="email"
+                      value={emailDraft}
+                      onChange={(e) => setEmailDraft(e.target.value)}
+                      placeholder={t('student.profile.emailPlaceholder')}
+                      autoComplete="email"
+                      aria-label={t('student.profile.email')}
+                    />
+                  ) : (
+                    <span className="student-summary-value">{student?.email || '—'}</span>
+                  )}
+                  <div className="student-address-actions">
+                    {!emailEditing ? (
+                      <button
+                        type="button"
+                        className="student-btn student-btn-primary student-btn-sm"
+                        onClick={() => {
+                          setEmailDraft(student?.email ?? '')
+                          setEmailEditing(true)
+                        }}
+                      >
+                        {t('common.edit')}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="student-btn student-btn-secondary student-btn-sm"
+                          onClick={() => setEmailEditing(false)}
+                        >
+                          {t('common.cancel')}
+                        </button>
+                        <button
+                          type="button"
+                          className="student-btn student-btn-primary student-btn-sm"
+                          onClick={() => void saveEmail()}
+                        >
+                          {t('common.save')}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
               <div className="student-profile-row">
                 <span className="student-summary-label">{t('student.profile.registered')}</span>
                 <span className="student-summary-value">

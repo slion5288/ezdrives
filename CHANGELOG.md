@@ -5,6 +5,21 @@
 
 ---
 
+---
+
+## Change 21 — 学员个人中心补填/修改通知邮箱（存量学员邮箱补全）
+
+- **我的要求**：完成此前遗留项——历史学员 `users.email` 为 NULL 时收不到通知邮件，需要在个人中心提供补填邮箱入口。
+- **实现**：
+  - 后端 `functions/api/student/actions.js`：新增 `updateStudentEmail` action——邮箱必填+格式校验+唯一性校验（`users.email` 唯一索引）；同步更新 `users.email` 与 `students.payload`；成功后 best-effort 发送 ACCOUNT_UPDATED 邮件（失败不影响更新）。
+  - 前端 `src/pages/student/StudentProfilePage.tsx`：个人中心邮箱行由「只读展示」改为「编辑/保存/取消」模式（与地址一致，预填当前值，误点编辑不丢数据）；无邮箱时显示占位符 `—`，点编辑可补填。
+  - 数据层 `src/data/store.ts`：新增 `updateStudentEmail()`。
+  - i18n：`emailPlaceholder`、`emailInvalid` 中英双语。
+- **修改文件**：`functions/api/student/actions.js`、`src/pages/student/StudentProfilePage.tsx`、`src/data/store.ts`、`src/i18n/locales/en.ts`、`src/i18n/locales/zh.ts`、文档（PROJECT_SPEC / API_SPEC / DATABASE_SPEC / CHANGELOG）。
+- **是否影响旧功能**：是——个人中心邮箱从只读变为可编辑（视觉与交互增强）；已有邮箱的学员可修改（校验唯一）；无邮箱学员可补填。其余不变。
+- **测试结果**：编译通过；API 三路径验证（正常更新写库、无效邮箱拒绝、唯一性校验）；浏览器端 3 项全过（邮箱行显示、编辑预填、保存后显示新邮箱）；ACCOUNT_UPDATED 邮件触发并记为 sent；Full Regression 22 项全过。
+- **生产状态**：代码已部署；生产库 1 个存量学员（email=null）现在可在个人中心补填邮箱后接收通知。
+
 ## Change 20 — 邮件通知系统（Email + Notification Template + 发送日志；Cloudflare Email Service）
 
 - **我的要求**：构建完整邮件通知系统；供应商指定为 **Cloudflare Email Service**（不接任何第三方）；只发出不接收；教练无 @ezdrives.net 邮箱身份（邮件发到教练真实外部邮箱）；保留 Twilio 短信验证；通知模板存入数据库、可在 /admin 编辑而无需重新部署；记录发送日志；邮件失败不影响业务；幂等（一个事件一封邮件）；存量学员 email=null 安全迁移；注册成功后告知学员「手机已验证、通知走邮箱」。用户已同意 Workers Paid 升级（$5/月，任意收件人发信的前提）。

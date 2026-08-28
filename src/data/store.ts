@@ -698,6 +698,19 @@ export async function updateStudentAddress(address: string): Promise<LoginResult
   return { ok: false, error: res.error || 'Update failed' }
 }
 
+/** Student fills in / changes their notification email (通知邮箱) — server-backed. */
+export async function updateStudentEmail(email: string): Promise<LoginResult> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
+  const res = await apiAction(session.token, 'updateStudentEmail', { email })
+  if (res.ok && res.state) {
+    state = res.state as AppState
+    stateLoaded = true
+    notifyListeners()
+    return { ok: true }
+  }
+  return { ok: false, error: res.error || 'Update failed' }
+}
+
 export type LoginResult = { ok: true } | { ok: false; error: string }
 
 /** Real login via the backend (phone + password). */

@@ -199,6 +199,8 @@ export const messages = {
   'student.profile.name': 'Name',
   'student.profile.phone': 'Phone',
   'student.profile.email': 'Email',
+  'student.profile.emailPlaceholder': 'name@example.com',
+  'student.profile.emailInvalid': 'Please enter a valid email address.',
   'student.profile.registered': 'Member since',
   'student.profile.settings': 'Notifications',
   'student.profile.emailNotifs': 'Email reminders',
