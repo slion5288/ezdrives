@@ -748,7 +748,7 @@ export async function markNotificationRead(id: string): Promise<void> {
   }
 }
 
-export async function markAllRead(_role?: string, _recipientId?: string): Promise<void> {
+export async function markAllRead(): Promise<void> {
   if (!session.token) return
   const res = await apiAction(session.token, 'markAllRead', {})
   if (res.ok && res.state) {

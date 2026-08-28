@@ -84,7 +84,7 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
           type="button"
           className="ins-btn ins-btn--secondary"
           disabled={unreadCount === 0}
-          onClick={() => markAllRead('instructor', 'instructor')}
+          onClick={() => markAllRead()}
         >
           {t('instructor.notifications.markAllRead')}
         </button>

@@ -132,26 +132,27 @@ booking_confirmed / booking_cancelled / booking_rescheduled / reminder_2h（**�
 
 - 项目：Cloudflare Pages `ezdrives`；域名 `https://ezdrives.net`（CNAME → pages.dev）。
 - D1：`ezdrives-db`（id `5fcae10e-…49a5`）。
-- 环境变量（secret_text，部署时不会被清空）：`TWILIO_ACCOUNT_SID`、`TWILIO_AUTH_TOKEN`、`TWILIO_FROM_NUMBER`、`TWILIO_VERIFY_SERVICE_SID`。
-- Twilio 试用期限制：收件人须为 Verified Tester（`+12266062880`）；试用期 30 天后需升级/绑卡否则短信失效（存在本地验证码兜底）。
-- 手动部署：`WRANGLER_LOG_PATH=/tmp/wrangler.log HOME=/tmp/wrangler-home node_modules/.bin/wrangler pages deploy dist --project-name=ezdrives --commit-dirty=true`。
-- CI：`.github/workflows/deploy.yml`（cloudflare/pages-action@v1）；已知 GitHub runner 偶发排队失败，不影响手动部署。
+- 环境变量（secret_text，部署时不会被清空）：`TWILIO_ACCOUNT_SID`、`TWILIO_AUTH_TOKEN`、`TWILIO_FROM_NUMBER`、`TWILIO_VERIFY_SERVICE_SID`（可选 `GOOGLE_TRANSLATE_API_KEY` 提升翻译质量）。
+- Twilio 试用期限制：收件人须为 Verified Tester（`+12266062880`）；试用期 30 天后需升级/绑卡否则短信失效。
+- **CI 自动部署**（Change 15 确认可用）：`.github/workflows/deploy.yml`（checkout → npm ci → build → cloudflare/pages-action@v1），**每次 push main 自动构建并部署**；手动 `wrangler pages deploy dist` 为兜底。
+- 离线交付：`npm run make:preview` 先用 `PREVIEW_INLINE=1` 构建**单 chunk**到 `.preview-dist`（临时，已 gitignore）再内嵌生成 `Preview.html`（file:// 直接双击可用，含 G1 题库；index.html 深链脚本对 file: 协议跳过）。
+- 性能：G1 题库（`src/data/g1-bank.ts`，≈3.9MB 内嵌图）通过 React.lazy 懒加载，**首屏主 bundle ≈3.3MB**；公开页只用轻量 `src/data/g1.ts`（`G1_COUNTS` 常量，需与题库长度保持同步 205/188）。
 
-## 12. 待办与已知问题（2025-08-26 Change 2 修复后状态）
+## 12. 待办与已知问题（上线前 FINAL AUDIT 后状态）
 
-**已修复（Change 2；本地 E2E 26/26 + 追加合并测试 + 线上验证通过）**：
-- P0：writeFullState 改为按 id 合并（upsert-only）并保留学员 user_id；不再丢弃并发学员数据。
-- P1：教练端 actions 按角色返回全量视图；教练通知已读生效；首页/移动菜单/页脚锚点滚动正常；时区 past 判断正确；批量移动同日期保留原时刻；SQL NOT EXISTS 并发冲突防护。
-- P2：学员改期 UI（FAQ 承诺兑现）；改期双通知（学员+教练）；reschedule 保持原状态；套餐课时上限校验；addPayment 校验方式+防重复 pending；错误文案修正；studentView 对学生脱敏 payConfig；ICS 订阅 token 鉴权+时区参数；加载失败重试；状态标签修正；日程桌面布局；/courses 移动菜单；2 小时惰性提醒；登录/注册/短信限流（D1 rate_limits）。
-- P3：删除死代码（StudentBookingModal、SlotTimeList、functions/lib/seed.js、resetDemo、FAVICON_DATA_URL、COURSE_IMAGE_FALLBACK）；登录占位符中性化；删除 send-code 本地验证码兜底（未配置 Twilio 时明确报错）；关闭注册为教练的开放通道；补 i18n 键（payment.wechat、pending、cancelled、moveHint 等）；通知/支付时间戳按 UTC 正确换算本地显示；manifest 加 id、/hero、/course 短缓存；设置页新增「教练资料」编辑。
+**上线准备度：ZERO P0 / ZERO P1（Change 13–15 完成）**：
+- P1 全部 14 项修复（表单 label、日历移动端对齐、管理员改密功能、菜单 Esc、轮播暂停、逐字段表单错误、焦点环对比度、CTA/徽章/底部导航统一等，见 CHANGELOG Change 13）。
+- Full Regression 发现并修复真实 P1：访客先看首页（initPublicHome 替换为公开视图，无 payments）再进 `/student` 白屏 → store 辅助函数与学生页数组访问全部 `?? []` 防御（Change 15）。
+- P2：死代码清理 10 组、删除 `/api/setup`、月度统计口径修复、G1 动态加载、Preview.html 离线修复（Change 14）。
+- P3：SEO（OG/Twitter/robots/sitemap）、a11y 微项、对比度（Change 15）。
 
 **仍需用户决定 / 后续事项**：
 1. **真实在线支付（Stripe/PayPal）**：当前为「支付记录 + 教练人工核对」（按推荐方案保持），需商户账号才能接入。
-2. **教练密码 `123456`**：正式开放前由用户修改（可在设置页资料区或由管理员改库）。
-3. **教练姓名**：当前「Michael Reeves」为占位，用户可在「设置 → 教练资料」或 /admin 自行修改。
-4. **生产业务数据为空（部分缓解）**：公开访客现在看到的是真实数据（已不再显示演示数据）；首页课程区因后台暂无课程而显示「课程暂未开放」，需教练在后台录入课程后自动显示。
-5. **管理员改密功能**：/admin 登录密码 `528830` 为简单密码，需在后台页增加「修改密码」功能（待办）。
-6. 残留小项（P3，暂缓）：landing primitives 与 shared 组件去重；死 CSS 清理；`batchReschedule` store 函数现已无调用方（保留备用）。
+2. **教练密码 `123456`**：正式开放前由用户修改。
+3. **教练姓名/资料**：`liang shi` 为真实资料（设置页可改）。
+4. **生产业务数据**：首页课程区因后台暂无课程而显示「课程暂未开放」，需教练在教练后台录入课程后自动显示；视频/车辆已各 1 个。
+5. **管理员密码 `528830`**：⚠️ 上线前最后一项——请登录 /admin →「修改密码」改为强密码（功能已上线，Change 13）。
+6. 残留优化项（P3，上线后可做）：5 套平行组件体系合并（Toast/UI 基元）；断点系统统一（当前 8 个断点，文档留档）；课程图压缩（2–4.5MB）；`GET /api/ics/[studentId]` 端点无前端入口（删除或补订阅链接）；弹窗焦点陷阱。
 
 ## 13. 变更流程（必须遵守）
 

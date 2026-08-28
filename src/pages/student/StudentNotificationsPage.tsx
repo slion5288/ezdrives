@@ -56,7 +56,7 @@ function StudentNotificationsContent(): JSX.Element {
     .sort((a, b) => b.at.localeCompare(a.at))
 
   const handleMarkAllRead = (): void => {
-    markAllRead('student', studentId)
+    markAllRead()
     showToast('success', t('common.toast.saved'))
   }
 
