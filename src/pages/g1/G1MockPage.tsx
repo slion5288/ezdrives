@@ -7,6 +7,7 @@
 // ============================================================================
 
 import { useMemo, useState } from 'react'
+import { Button } from '../../components/shared/Button'
 import { ArrowLeft, BookOpen, Check, ChevronRight, GraduationCap, RotateCcw, X } from 'lucide-react'
 import { G1_BANK_EN, G1_BANK_ZH, G1_IMAGES } from '../../data/g1-bank'
 import type { G1Question } from '../../data/g1-bank'
@@ -185,18 +186,12 @@ export default function G1MockPage(): JSX.Element {
             </div>
 
             <div className="g1-quiz__foot">
-              <button
-                type="button"
-                className="g1-btn g1-btn--primary"
-                onClick={next}
-                disabled={!answered}
-              >
+              <Button variant="primary" onClick={next} disabled={!answered} icon={<ChevronRight size={16} />}>
                 {idx >= total - 1 ? t('g1.result') : t('g1.next')}
-                <ChevronRight size={16} />
-              </button>
-              <button type="button" className="g1-btn g1-btn--ghost" onClick={() => setScreen('intro')}>
-                <RotateCcw size={14} /> {t('g1.switch')}
-              </button>
+              </Button>
+              <Button variant="ghost" onClick={() => setScreen('intro')} icon={<RotateCcw size={14} />}>
+                {t('g1.switch')}
+              </Button>
             </div>
           </div>
         ) : null}
@@ -248,12 +243,12 @@ export default function G1MockPage(): JSX.Element {
               )}
             </div>
             <div className="g1-result__actions">
-              <button type="button" className="g1-btn g1-btn--primary" onClick={() => start(bank)}>
-                <RotateCcw size={15} /> {t('g1.restart')}
-              </button>
-              <button type="button" className="g1-btn g1-btn--secondary" onClick={() => setScreen('intro')}>
+              <Button variant="primary" onClick={() => start(bank)} icon={<RotateCcw size={15} />}>
+                {t('g1.restart')}
+              </Button>
+              <Button variant="secondary" onClick={() => setScreen('intro')}>
                 {t('g1.switch')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
