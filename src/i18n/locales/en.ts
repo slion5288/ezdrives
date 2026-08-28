@@ -483,7 +483,6 @@ export const messages = {
   'g1.passNote': 'The real G1 written test requires 80% (16 of 20) in each section to pass.',
   'g1.restart': 'Try again',
   'g1.switch': 'Switch question bank',
-  'g1.back': 'Back to home',
   'g1.total': '{count} questions',
   'g1.reviewTitle': 'Answer review',
   'g1.yourAnswer': 'Your answer',

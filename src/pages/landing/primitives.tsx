@@ -6,11 +6,10 @@
 // All colors/spacing come from tokens.css; every string via useT().
 // ============================================================================
 
-import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Moon, Star, Sun } from 'lucide-react'
-import { setLocale, useLocale, useT } from '../../i18n'
+import { Star } from 'lucide-react'
+import { useT } from '../../i18n'
 import { LOGO_DATA_URL } from '../../data/assets'
 
 // --- Button (DESIGN §4.1) ---
@@ -134,79 +133,6 @@ export function StarRating({ value, size = 16, label }: StarRatingProps): JSX.El
         />
       ))}
     </span>
-  )
-}
-
-// --- Language switcher (DESIGN §4.11) ---
-
-export function LanguageSwitcher(): JSX.Element {
-  const locale = useLocale()
-  const t = useT()
-  return (
-    <div className="landing-lang" role="group" aria-label={t('nav.language')}>
-      <button
-        type="button"
-        className={locale === 'en' ? 'landing-lang__btn landing-lang__btn--active' : 'landing-lang__btn'}
-        onClick={() => setLocale('en')}
-      >
-        EN
-      </button>
-      <span className="landing-lang__sep" aria-hidden="true">
-        /
-      </span>
-      <button
-        type="button"
-        className={locale === 'zh' ? 'landing-lang__btn landing-lang__btn--active' : 'landing-lang__btn'}
-        onClick={() => setLocale('zh')}
-      >
-        中文
-      </button>
-    </div>
-  )
-}
-
-// --- Theme toggle (ARCHITECTURE §11 / DESIGN §4.11) ---
-
-const THEME_KEY = 'dw.theme'
-
-function savedTheme(): 'light' | 'dark' | null {
-  try {
-    const value = localStorage.getItem(THEME_KEY)
-    if (value === 'light' || value === 'dark') return value
-  } catch {
-    // storage unavailable
-  }
-  return null
-}
-
-export function ThemeToggle(): JSX.Element {
-  const t = useT()
-  const [dark, setDark] = useState<boolean>(() => document.documentElement.dataset.theme === 'dark')
-
-  useEffect(() => {
-    const saved = savedTheme()
-    if (saved && document.documentElement.dataset.theme !== saved) {
-      document.documentElement.dataset.theme = saved
-      setDark(saved === 'dark')
-    }
-  }, [])
-
-  const toggle = (): void => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.dataset.theme = next ? 'dark' : 'light'
-    try {
-      localStorage.setItem(THEME_KEY, next ? 'dark' : 'light')
-    } catch {
-      // storage unavailable — in-memory theme only
-    }
-  }
-
-  const label = dark ? t('nav.theme.light') : t('nav.theme.dark')
-  return (
-    <button type="button" className="landing-icon-btn" onClick={toggle} aria-label={label} title={label}>
-      {dark ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-    </button>
   )
 }
 

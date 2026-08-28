@@ -154,29 +154,29 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
           {logs.length === 0 ? (
             <p className="admin-card__sub">{zh('tpl.logsEmpty')}</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-size-sm)' }}>
+            <table className="admin-tpl-table">
               <thead>
                 <tr>
-                  <th style={thStyle}>{zh('tpl.type')}</th>
-                  <th style={thStyle}>{zh('tpl.from')}</th>
-                  <th style={thStyle}>{zh('tpl.subject')}</th>
-                  <th style={thStyle}>{zh('tpl.logStatus')}</th>
-                  <th style={thStyle}>{zh('tpl.updated')}</th>
+                  <th>{zh('tpl.type')}</th>
+                  <th>{zh('tpl.from')}</th>
+                  <th>{zh('tpl.subject')}</th>
+                  <th>{zh('tpl.logStatus')}</th>
+                  <th>{zh('tpl.updated')}</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((l) => (
                   <tr key={l.id}>
-                    <td style={tdStyle}>{l.type}</td>
-                    <td style={tdStyle}>{l.recipient_email}</td>
-                    <td style={tdStyle}>{l.subject}</td>
-                    <td style={tdStyle}>
-                      <span style={{ color: l.status === 'sent' ? 'var(--color-success)' : l.status === 'pending' ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                    <td>{l.type}</td>
+                    <td>{l.recipient_email}</td>
+                    <td>{l.subject}</td>
+                    <td>
+                      <span className={`admin-tpl-status admin-tpl-status--${l.status === 'sent' ? 'sent' : l.status === 'pending' ? 'pending' : 'failed'}`}>
                         {l.status}
                       </span>
-                      {l.error_message ? <span style={{ color: 'var(--color-danger)', marginLeft: 6 }}>{l.error_message}</span> : null}
+                      {l.error_message ? <span className="admin-tpl-error">{l.error_message}</span> : null}
                     </td>
-                    <td style={tdStyle}>{l.sent_at || l.created_at}</td>
+                    <td>{l.sent_at || l.created_at}</td>
                   </tr>
                 ))}
               </tbody>
@@ -303,5 +303,3 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
   )
 }
 
-const thStyle: React.CSSProperties = { textAlign: 'left', padding: '6px 8px', borderBottom: '1px solid var(--color-border)', fontWeight: 600 }
-const tdStyle: React.CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--color-border)' }

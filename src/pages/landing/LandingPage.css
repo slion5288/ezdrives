@@ -106,19 +106,7 @@ html {
   gap: var(--space-3);
 }
 
-.landing-header__instructor {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color var(--transition-fast);
-}
 
-.landing-header__instructor:hover {
-  color: var(--color-text);
-  text-decoration: none;
-}
 
 /* --- Logo --- */
 
@@ -133,26 +121,7 @@ html {
   text-decoration: none;
 }
 
-.landing-logo__mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: var(--gradient-brand);
-  color: #fff; /* white glyph per DESIGN §4.11 */
-  box-shadow: 0 2px 8px -2px rgba(59, 130, 246, 0.45), 0 1px 3px rgba(16, 24, 40, 0.12);
-  flex-shrink: 0;
-}
 
-.landing-logo__word {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: -0.01em;
-  color: var(--color-text);
-  white-space: nowrap;
-}
 
 /* --- Buttons (DESIGN §4.1) --- */
 
@@ -423,7 +392,7 @@ html[data-theme='dark'] .landing-badge--info {
   color: var(--color-on-brand);
   background: var(--color-bg);
 }
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .landing-hero {
     min-height: 560px;
   }
@@ -542,7 +511,7 @@ html[data-theme='dark'] .landing-badge--info {
   color: #fff;
   text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
 }
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .landing-hero__title {
     font-size: clamp(2.1rem, 9vw, 3.25rem);
     letter-spacing: -0.03em;
@@ -559,7 +528,7 @@ html[data-theme='dark'] .landing-badge--info {
   color: rgba(255, 255, 255, 0.82);
   margin-bottom: var(--space-7);
 }
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .landing-hero__subtitle {
     font-size: var(--font-size-lg);
     line-height: 1.45;
@@ -600,213 +569,6 @@ html[data-theme='dark'] .landing-badge--info {
   width: 1px;
   height: 16px;
   background: rgba(255, 255, 255, 0.35);
-}
-
-/* --- Hero visual (legacy stylized panel — kept for smaller screens) --- */
-
-.landing-visual {
-  position: relative;
-  min-height: 460px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-pop);
-  background: linear-gradient(165deg, var(--color-surface), var(--color-surface-2));
-  overflow: hidden;
-}
-
-.landing-visual__glow {
-  position: absolute;
-  inset: 0;
-  background: var(--color-surface);
-  background:
-    radial-gradient(72% 55% at 78% 10%, var(--color-accent-soft), transparent 62%),
-    radial-gradient(
-      58% 48% at 6% 94%,
-      color-mix(in srgb, var(--color-info) 14%, transparent),
-      transparent 66%
-    );
-  opacity: 0.6;
-}
-
-.landing-visual__grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--color-border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
-  background-size: 44px 44px;
-  opacity: 0.35;
-  -webkit-mask-image: radial-gradient(130% 110% at 55% 40%, #000 30%, transparent 82%);
-  mask-image: radial-gradient(130% 110% at 55% 40%, #000 30%, transparent 82%);
-}
-
-.landing-visual__road {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.landing-visual__road-base {
-  fill: none;
-  stroke: var(--color-border-strong);
-  stroke-width: 22;
-  stroke-linecap: round;
-  opacity: 0.9;
-}
-
-.landing-visual__road-dash {
-  fill: none;
-  stroke: var(--color-accent);
-  stroke-width: 3;
-  stroke-dasharray: 10 14;
-  stroke-linecap: round;
-  opacity: 0.85;
-}
-
-.landing-visual__car {
-  position: absolute;
-  right: 16%;
-  bottom: 32%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-pop);
-  color: var(--color-accent);
-  transform: rotate(-8deg);
-  animation: landing-float 6s ease-in-out infinite;
-}
-
-@keyframes landing-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-8deg);
-  }
-  50% {
-    transform: translateY(-7px) rotate(-8deg);
-  }
-}
-
-.landing-visual__pin {
-  position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-card);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-}
-
-.landing-visual__card {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-pop);
-}
-
-.landing-visual__card--top {
-  top: var(--space-5);
-  left: var(--space-5);
-}
-
-.landing-visual__card--bottom {
-  right: var(--space-5);
-  bottom: var(--space-5);
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-}
-
-.landing-visual__card-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.landing-visual__card-name {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-}
-
-.landing-visual__card-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-soft);
-}
-
-.landing-visual__card-date {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.landing-visual__toast {
-  position: absolute;
-  top: 44%;
-  left: var(--space-5);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-pop);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-success);
-}
-
-.landing-visual__toast-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  color: #fff; /* white check on accent per DESIGN §7.1 */
-}
-
-.landing-visual__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.landing-visual__chip {
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-success);
-  background: color-mix(in srgb, var(--color-success) 12%, transparent);
-  color: var(--color-success);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  font-variant-numeric: tabular-nums;
-}
-
-.landing-visual__chip--off {
-  background: var(--color-surface-2);
-  color: var(--color-text-soft);
 }
 
 /* --- Availability preview strip --- */
@@ -1120,7 +882,7 @@ html[data-theme='dark'] .landing-badge--info {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .landing-videos {
     grid-template-columns: 1fr;
   }
@@ -1829,7 +1591,7 @@ html[data-theme='dark'] .landing-badge--info {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 420px) {
   .landing-visual {
     min-height: 340px;
   }
@@ -2073,7 +1835,7 @@ html[data-theme='dark'] .landing-badge--info {
 }
 
 /* --- Apple-style section polish --- */
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .landing-section__head h2 {
     font-size: var(--font-size-3xl);
   }

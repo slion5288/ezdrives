@@ -109,7 +109,7 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
 }
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .admin-field-grid {
     grid-template-columns: 1fr;
   }
@@ -205,7 +205,7 @@
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
 }
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .admin-hero-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -429,4 +429,52 @@
 .admin-login__back svg {
   width: 14px;
   height: 14px;
+}
+
+/* Notification logs table (replaces inline styles) */
+.admin-tpl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+.admin-tpl-table th,
+.admin-tpl-table td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+.admin-tpl-table th {
+  font-weight: var(--font-weight-semibold);
+}
+.admin-tpl-status {
+  font-weight: var(--font-weight-medium);
+}
+.admin-tpl-status--sent {
+  color: var(--color-success);
+}
+.admin-tpl-status--pending {
+  color: var(--color-warning);
+}
+.admin-tpl-status--failed {
+  color: var(--color-danger);
+}
+.admin-tpl-error {
+  color: var(--color-danger);
+  margin-left: 6px;
+}
+
+/* Tab icon alignment + muted text (replaces inline styles) */
+.admin-tab-icon {
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+.admin-muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+.admin-field--wide {
+  flex: 2;
+}
+.admin-field--narrow {
+  flex: 1;
 }

@@ -1727,7 +1727,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .ins-main-head {
     padding: var(--space-4) var(--space-4) 0;
   }
@@ -1865,7 +1865,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
 }
-@media (max-width: 1200px) {
+@media (max-width: 1100px) {
   .ins-wh-grid {
     grid-template-columns: 1fr;
   }
@@ -1958,7 +1958,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   gap: var(--space-2);
   align-items: center;
 }
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .ins-package-row {
     grid-template-columns: 26px 1fr 1fr 64px;
   }

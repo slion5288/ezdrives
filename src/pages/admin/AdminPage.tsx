@@ -431,16 +431,16 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
         </div>
         <nav className="admin-tabs">
           <button type="button" className={`admin-tab${tab === 'text' ? ' is-active' : ''}`} onClick={() => setTab('text')}>
-            <Type size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{zh('admin.tab.text')}
+            <Type size={14} className="admin-tab-icon" />{zh('admin.tab.text')}
           </button>
           <button type="button" className={`admin-tab${tab === 'images' ? ' is-active' : ''}`} onClick={() => setTab('images')}>
-            <ImagePlus size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{zh('admin.tab.images')}
+            <ImagePlus size={14} className="admin-tab-icon" />{zh('admin.tab.images')}
           </button>
           <button type="button" className={`admin-tab${tab === 'instructors' ? ' is-active' : ''}`} onClick={() => setTab('instructors')}>
-            <Users size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{zh('admin.tab.instructors')}
+            <Users size={14} className="admin-tab-icon" />{zh('admin.tab.instructors')}
           </button>
           <button type="button" className={`admin-tab${tab === 'templates' ? ' is-active' : ''}`} onClick={() => setTab('templates')}>
-            <Mail size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />{zh('admin.tab.templates')}
+            <Mail size={14} className="admin-tab-icon" />{zh('admin.tab.templates')}
           </button>
         </nav>
       </header>
@@ -583,7 +583,7 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
               </button>
             </div>
 
-            {instructors.length === 0 ? <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-sm)' }}>{zh('admin.instructorsEmpty')}</p> : null}
+            {instructors.length === 0 ? <p className="admin-muted">{zh('admin.instructorsEmpty')}</p> : null}
             {instructors.map((inst, idx) => (
               <div key={inst.id} className="admin-instructor">
                 {inst.photo ? (
@@ -593,15 +593,15 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                 )}
                 <div className="admin-instructor__body">
                   <div className="admin-instructor__row">
-                    <div className="admin-field" style={{ flex: 2 }}>
+                    <div className="admin-field admin-field--wide">
                       <label className="admin-label" htmlFor={`admin-ins-name-${idx}`}>{zh('admin.instructor.name')}</label>
                       <input id={`admin-ins-name-${idx}`} className="admin-input" value={inst.name} onChange={(e) => setInstructor(idx, { name: e.target.value })} />
                     </div>
-                    <div className="admin-field" style={{ flex: 1 }}>
+                    <div className="admin-field admin-field--narrow">
                       <label className="admin-label" htmlFor={`admin-ins-years-${idx}`}>{zh('admin.instructor.years')}</label>
                       <input id={`admin-ins-years-${idx}`} className="admin-input" type="number" min={0} value={String(inst.years)} onChange={(e) => setInstructor(idx, { years: Number(e.target.value) || 0 })} />
                     </div>
-                    <div className="admin-field" style={{ flex: 1 }}>
+                    <div className="admin-field admin-field--narrow">
                       <span className="admin-label" id={`admin-ins-photo-${idx}`}>{zh('admin.photo')}</span>
                       <label className="admin-file-btn">
                         {zh('admin.uploadImage')}

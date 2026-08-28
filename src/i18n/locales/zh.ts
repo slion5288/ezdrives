@@ -485,7 +485,6 @@ export const messages: Record<MessageKey, string> = {
   'g1.passNote': '正式 G1 笔试每个部分需答对 80%（20 题中 16 题）才算通过。',
   'g1.restart': '再练一次',
   'g1.switch': '切换题库',
-  'g1.back': '返回首页',
   'g1.total': '共 {count} 题',
   'g1.reviewTitle': '答题回顾',
   'g1.yourAnswer': '你的答案',
