@@ -129,6 +129,11 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
   const [translating, setTranslating] = useState(false)
   const imageRef = useRef<HTMLInputElement>(null)
 
+  // Mirror of the latest form — lets async flows (auto-translate on save)
+  // read the freshest values without stale closures.
+  const formRef = useRef<CourseForm | null>(null)
+  formRef.current = form
+
   // Translation cache: zh text → last translated en (only retranslate on change).
   const [zhCache, setZhCache] = useState<Record<string, string>>({})
 
@@ -171,7 +176,9 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
   }
 
   const autoTranslate = async (): Promise<void> => {
-    if (!form) return
+    const current = formRef.current
+    if (!current) return
+    const form = current
     const texts: string[] = []
     const targets: Array<{ set: (v: string) => void }> = []
     const push = (zh: string, set: (v: string) => void): void => {
@@ -187,7 +194,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     }
     push(form.nameZh, (v) => setForm((f) => (f ? { ...f, nameEn: v } : f)))
     push(form.descZh, (v) => setForm((f) => (f ? { ...f, descEn: v } : f)))
-    if (isPackageType) {
+    if (form.courseType === 'TEN_HOUR_PACKAGE') {
       form.lessons.forEach((l, i) => {
         push(l.nameZh, (v) => patchLesson(i, { nameEn: v }))
         push(l.descZh, (v) => patchLesson(i, { descEn: v }))
@@ -238,24 +245,15 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     }
   }
 
-  const submitForm = (): void => {
-    if (!form) return
-    const errors: { nameZh?: boolean; lessons?: boolean } = {}
-    if (!form.nameZh.trim()) errors.nameZh = true
-    if (isPackageType && form.lessons.some((l) => !l.nameZh.trim())) errors.lessons = true
-    setFieldErrors(errors)
-    if (Object.keys(errors).length > 0) {
-      const first = document.querySelector<HTMLInputElement>('#course-name-zh')
-      first?.focus()
-      return
-    }
+  const doSave = (f: CourseForm): void => {
+    const isPackage = f.courseType === 'TEN_HOUR_PACKAGE'
     const discount = (type: 'PERCENTAGE' | 'FIXED_AMOUNT', value: string): DiscountConfig | null => {
       const v = Number(value)
       if (!value.trim() || isNaN(v) || v <= 0) return null
       return { type, value: v }
     }
-    let lessons: CourseLesson[] | undefined = isPackageType
-      ? form.lessons.map((l, i) => ({
+    let lessons: CourseLesson[] | undefined = isPackage
+      ? f.lessons.map((l, i) => ({
           sequence_number: i + 1,
           name: { en: l.nameEn.trim(), zh: l.nameZh.trim() },
           description: { en: l.descEn.trim(), zh: l.descZh.trim() },
@@ -265,11 +263,11 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     // Package total: use the instructor-typed package price; when it differs
     // from the sum of per-lesson prices, scale lesson prices proportionally so
     // booking charges stay consistent with the package total.
-    const pkgTotal = Math.max(0, Number(form.price) || 0)
-    const price = isPackageType
+    const pkgTotal = Math.max(0, Number(f.price) || 0)
+    const price = isPackage
       ? pkgTotal
-      : Math.max(0, Number(form.price) || 0)
-    if (isPackageType && lessons && lessons.length > 0 && pkgTotal > 0) {
+      : Math.max(0, Number(f.price) || 0)
+    if (isPackage && lessons && lessons.length > 0 && pkgTotal > 0) {
       const sum = lessons.reduce((s, l) => s + l.price, 0)
       if (sum > 0 && Math.abs(sum - pkgTotal) > 0.01) {
         lessons = lessons.map((l) => ({ ...l, price: Math.round((l.price / sum) * pkgTotal * 100) / 100 }))
@@ -277,36 +275,66 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     }
     // Trial: price = hourlyRate × 50% unless instructor overrode.
     const finalPrice =
-      form.courseType === 'TRIAL_LESSON' && (!form.price || Number(form.price) <= 0)
-        ? Math.round((Number(form.hourlyRate) || 60) * 0.5)
+      f.courseType === 'TRIAL_LESSON' && (!f.price || Number(f.price) <= 0)
+        ? Math.round((Number(f.hourlyRate) || 60) * 0.5)
         : price
     const course: Course = {
-      id: form.id,
-      name: { en: form.nameEn.trim(), zh: form.nameZh.trim() },
-      description: { en: form.descEn.trim(), zh: form.descZh.trim() },
-      course_type: form.courseType,
-      license_class: form.courseType === 'ROAD_TEST_CAR' || form.courseType === 'FULL_COURSE_CERTIFICATE' || form.courseType === 'TRIAL_LESSON'
+      id: f.id,
+      name: { en: f.nameEn.trim(), zh: f.nameZh.trim() },
+      description: { en: f.descEn.trim(), zh: f.descZh.trim() },
+      course_type: f.courseType,
+      license_class: f.courseType === 'ROAD_TEST_CAR' || f.courseType === 'FULL_COURSE_CERTIFICATE' || f.courseType === 'TRIAL_LESSON'
         ? 'NONE'
-        : form.licenseClass,
-      type: isPackageType ? 'package' : 'single',
+        : f.licenseClass,
+      type: isPackage ? 'package' : 'single',
       price: finalPrice,
       durationMin:
-        form.courseType === 'ROAD_TEST_CAR' ? 240 :
-        isPackageType ? 60 : form.durationMin,
-      active: form.active,
-      imageUrl: form.imageUrl || undefined,
+        f.courseType === 'ROAD_TEST_CAR' ? 240 :
+        isPackage ? 60 : f.durationMin,
+      active: f.active,
+      imageUrl: f.imageUrl || undefined,
       lessons,
-      hourlyRate: form.courseType === 'TRIAL_LESSON' ? Math.max(0, Number(form.hourlyRate) || 60) : undefined,
-      studentDiscount: form.courseType === 'TRIAL_LESSON' || form.courseType === 'FULL_COURSE_CERTIFICATE'
+      hourlyRate: f.courseType === 'TRIAL_LESSON' ? Math.max(0, Number(f.hourlyRate) || 60) : undefined,
+      studentDiscount: f.courseType === 'TRIAL_LESSON' || f.courseType === 'FULL_COURSE_CERTIFICATE'
         ? null
-        : discount(form.studentDiscountType, form.studentDiscountValue),
-      referralDiscount: form.courseType === 'TRIAL_LESSON' || form.courseType === 'FULL_COURSE_CERTIFICATE'
+        : discount(f.studentDiscountType, f.studentDiscountValue),
+      referralDiscount: f.courseType === 'TRIAL_LESSON' || f.courseType === 'FULL_COURSE_CERTIFICATE'
         ? null
-        : discount(form.referralDiscountType, form.referralDiscountValue),
+        : discount(f.referralDiscountType, f.referralDiscountValue),
     }
     saveCourse(course)
     toast.push({ tone: 'success', title: t('instructor.courses.saved') })
     setForm(null)
+  }
+
+  /** Save — validates Chinese, auto-translates any missing English, then saves. */
+  const submitForm = async (): Promise<void> => {
+    const f = formRef.current
+    if (!f) return
+    const errors: { nameZh?: boolean; lessons?: boolean } = {}
+    if (!f.nameZh.trim()) errors.nameZh = true
+    if (f.courseType === 'TEN_HOUR_PACKAGE' && f.lessons.some((l) => !l.nameZh.trim())) errors.lessons = true
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      const first = document.querySelector<HTMLInputElement>('#course-name-zh')
+      first?.focus()
+      return
+    }
+    // §41-§46: instructor types Chinese only — auto-fill missing English.
+    const needsEn =
+      !f.nameEn.trim() || !f.descEn.trim() ||
+      (f.courseType === 'TEN_HOUR_PACKAGE' && f.lessons.some((l) => !l.nameEn.trim() || !l.descEn.trim()))
+    if (needsEn) {
+      await autoTranslate()
+      // After setForm, wait a tick so formRef.current reflects translations.
+      await new Promise((r) => setTimeout(r, 50))
+      const updated = formRef.current
+      if (updated) {
+        doSave(updated)
+        return
+      }
+    }
+    doSave(f)
   }
 
   const confirmDelete = (): void => {
