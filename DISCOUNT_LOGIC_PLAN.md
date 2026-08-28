@@ -14,7 +14,7 @@
 | Trial 半价 | 系统规则（hourlyRate×50%）| 系统（教练可覆写）| TRIAL_LESSON |
 
 **TRIAL_LESSON 特殊规则（§35）**：Trial 已是 50% 定价，**默认不叠加** Student/Referral Discount（教练可在课程页显式开启后另行确认）。
-**FULL_COURSE_CERTIFICATE（§37）**：无明确业务规则 → 默认**不适用**折扣，标记 Business Rule Confirmation Required。
+**FULL_COURSE_CERTIFICATE（§37）**：默认**不适用**折扣（✅ 用户已确认）；若以后需要，可单独为证书课程设置优惠（教练在课程页单独配置）。
 
 ---
 
@@ -49,7 +49,7 @@ referralDiscount?: { type: 'PERCENTAGE' | 'FIXED_AMOUNT'; value: number } | null
 
 ## 4. 叠加规则（§27，默认）
 
-**Student Discount 与 Referral Discount 同时满足 → 取优惠金额较高的一项，不叠加。**
+**Student Discount 与 Referral Discount 同时满足 → 取优惠金额较高的一项，不叠加。（✅ 用户已确认：折扣不叠加）**
 
 ```
 Discount A (Student):  course.price × studentPct% 或 fixed
@@ -58,7 +58,7 @@ applied = max(Discount A, Discount B)
 finalPrice = course.price − applied
 ```
 
-> 例外提示：若未来用户要求「允许叠加」，逻辑改为 `price × (1-A) × (1-B)` 或 `price − A − B`，由用户确认。
+> 例外提示：若未来用户要求「允许叠加」，逻辑改为 `price × (1-A) × (1-B)` 或 `price − A − B`，由用户确认（当前确认：不叠加）。
 
 ---
 

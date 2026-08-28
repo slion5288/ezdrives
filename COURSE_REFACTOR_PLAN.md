@@ -165,7 +165,7 @@ interface Appointment {
 
 ## 4. Trial Lesson 基础价格（§3/§35，Audit 明确方案）
 
-**方案：Instructor-level Hourly Rate（推荐）**
+**方案：Instructor-level Hourly Rate（✅ 用户已确认 2026-08-28）**
 
 | 项 | 设计 |
 | --- | --- |
