@@ -8,7 +8,7 @@ import type { AppState } from '../../data/store'
 import { courseDistribution, monthStats } from '../../data/stats'
 import { useLocale, useT } from '../../i18n'
 import { dateKey, formatDateEn, formatDateZh, formatHM, fromLocalISO } from '../../data/timeEngine'
-import { ArrowRight, CalendarClock } from 'lucide-react'
+import {CalendarClock} from 'lucide-react'
 import { BarChart, DonutChart, LineChart } from './charts'
 import { courseById, formatMoney, isLiveAppointment, statusLabel, studentById } from './helpers'
 import type { InstructorTab } from './helpers'
@@ -83,7 +83,7 @@ export default function OverviewPage({ state, onNavigate }: { state: AppState; o
         <div className="ins-panel-head">
           <h2 className="ins-panel-title">{t('instructor.overview.appointments')}</h2>
           <button type="button" className="ins-link-btn" onClick={() => onNavigate('schedule')}>
-            {t('instructor.overview.viewSchedule')} <ArrowRight size={14} />
+            {t('instructor.overview.viewSchedule')}
           </button>
         </div>
         {upcoming.length === 0 ? (
