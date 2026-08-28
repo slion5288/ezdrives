@@ -15,7 +15,7 @@ import { setBank, setEmtEmail, setPayConfig, setWechatQr, useAppState } from '..
 import type { InstructorBank, PayApiConfig } from '../../data/store'
 import { useT } from '../../i18n'
 import { Landmark, Mail, Pencil, QrCode, Settings2, Upload } from 'lucide-react'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 
 export default function ReceiveSettings(): JSX.Element {
   const t = useT()

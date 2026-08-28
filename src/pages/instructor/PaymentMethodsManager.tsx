@@ -13,7 +13,7 @@ import { useLocale, useT } from '../../i18n'
 import { CreditCard } from 'lucide-react'
 import { PaymentBrandFrame } from '../../components/payment/PaymentBrandIcons'
 import { Toggle } from './ui'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 
 export default function PaymentMethodsManager(): JSX.Element {
   const t = useT()

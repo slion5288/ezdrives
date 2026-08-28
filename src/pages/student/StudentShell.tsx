@@ -13,7 +13,6 @@ import { Link, Navigate, NavLink, useNavigate } from 'react-router-dom'
 import { getSession, initStateFromServer, isStateLoaded, logout, useAppState } from '../../data/store'
 import { setLocale, useLocale, useT } from '../../i18n'
 import { LOGO_DATA_URL } from '../../data/assets'
-import { ToastProvider } from './StudentToast'
 import './student.css'
 
 type Theme = 'light' | 'dark'
@@ -121,7 +120,7 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
   ]
 
   return (
-    <ToastProvider>
+    <>
       <header className="student-header">
         <div className="student-header-inner">
           <div className="student-header-left">
@@ -195,6 +194,6 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
           </NavLink>
         ))}
       </nav>
-    </ToastProvider>
+    </>
   )
 }

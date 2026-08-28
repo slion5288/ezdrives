@@ -20,12 +20,22 @@ interface ToastItem {
   body?: string
 }
 
+export interface ToastInput {
+  tone: ToastTone
+  title: string
+  body?: string
+}
+
 export interface ToastApi {
   /** Show a toast with an explicit tone. */
   show: (tone: ToastTone, title: string, body?: string) => void
   success: (title: string, body?: string) => void
   error: (title: string, body?: string) => void
   info: (title: string, body?: string) => void
+  /** Legacy-compatible push({tone,title,body}) — used by instructor pages. */
+  push: (toast: ToastInput) => void
+  /** Legacy-compatible showToast(tone, message) — used by student pages. */
+  showToast: (tone: ToastTone, message: string) => void
 }
 
 const ToastContext = createContext<ToastApi | null>(null)
@@ -57,6 +67,8 @@ export function ToastProvider({ children }: { children: ReactNode }): JSX.Elemen
       success: (title, body) => show('success', title, body),
       error: (title, body) => show('error', title, body),
       info: (title, body) => show('info', title, body),
+      push: ({ tone, title, body }) => show(tone, title, body),
+      showToast: (tone, message) => show(tone, message),
     }),
     [show],
   )

@@ -14,7 +14,7 @@ import { deleteVideo, saveVideo } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { ArrowDown, ArrowUp, Pencil, Play, Plus, Trash2, Upload, Youtube } from 'lucide-react'
 import { Badge, ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 import { toLocalISO } from '../../data/timeEngine'
 import { VideoPlayerModal } from '../../components/video/VideoPlayerModal'
 

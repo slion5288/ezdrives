@@ -21,7 +21,7 @@ import { Avatar, ConfirmModal, EmptyState, ModalFrame, StatusBadge } from './Stu
 import type { BadgeTone } from './StudentShared'
 import { StudentShell } from './StudentShell'
 import { formatDateLabel, formatDateTimeLabel, relativeTime } from './studentFormat'
-import { useToast } from './StudentToast'
+import { useToast } from '../../components/shared'
 import './student.css'
 
 const ICS_FILENAME = 'ezdrives-lessons.ics'

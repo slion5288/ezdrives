@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Badge, EmptyState, Modal } from './ui'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 import { formatMoney } from './helpers'
 
 const TYPE_ICONS: Record<Notification['type'], LucideIcon> = {

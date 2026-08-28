@@ -29,7 +29,7 @@ import {
 import { useLocale, useT } from '../../i18n'
 import { ModalFrame } from './StudentShared'
 import { formatPrice } from './studentFormat'
-import { useToast } from './StudentToast'
+import { useToast } from '../../components/shared'
 import {
   AmexIcon,
   InteracIcon,

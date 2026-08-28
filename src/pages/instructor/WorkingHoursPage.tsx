@@ -17,7 +17,7 @@ import { useLocale, useT } from '../../i18n'
 import { Info, Pencil, Trash2 } from 'lucide-react'
 import { MiniCalendar } from '../../components/calendar/MiniCalendar'
 import { Badge } from './ui'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 import { fmtMin, minuteOptions, minOf } from './helpers'
 
 const DAYS = [1, 2, 3, 4, 5, 6, 0] // Mon..Sun

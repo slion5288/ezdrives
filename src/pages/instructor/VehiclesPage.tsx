@@ -12,7 +12,7 @@ import { deleteVehicle, saveVehicle } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { Camera, Car, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 
 interface VehicleForm {
   id: string

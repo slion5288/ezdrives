@@ -606,9 +606,7 @@ export default function LandingPage(): JSX.Element {
         <div className="container">
           <div className="landing-footer__grid">
             <div className="landing-footer__brand">
-              <Link to="/" aria-label={t('nav.home')} style={{ display: 'inline-flex' }}>
-                <Logo />
-              </Link>
+              <Logo />
               <p className="landing-footer__tagline">{c('landing.footer.tagline')}</p>
               <p className="landing-footer__lang">{t('landing.footer.language')}</p>
             </div>
@@ -626,7 +624,6 @@ export default function LandingPage(): JSX.Element {
               <Link to="/courses">{t('landing.courses.title')}</Link>
               <Link to="/g1">{t('nav.g1')}</Link>
               <Link to="/videos">{t('landing.videos.title')}</Link>
-              <Link to="/courses">{t('nav.courses')}</Link>
               <a
                 href="#faq"
                 onClick={(e) => {

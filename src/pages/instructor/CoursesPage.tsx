@@ -13,7 +13,7 @@ import { deleteCourse, saveCourse, toggleCourse } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { Camera, GraduationCap, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Badge, ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 import { formatMoney } from './helpers'
 
 interface LessonForm {

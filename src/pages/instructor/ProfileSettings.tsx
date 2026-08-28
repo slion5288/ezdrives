@@ -13,7 +13,7 @@ import { useState } from 'react'
 import type { AppState } from '../../data/store'
 import { updateInstructorProfile } from '../../data/store'
 import { useT } from '../../i18n'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 import { Pencil, User } from 'lucide-react'
 
 export default function ProfileSettings({ state }: { state: AppState }): JSX.Element {

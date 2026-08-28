@@ -12,7 +12,7 @@ import { useLocale, useT } from '../../i18n'
 import { EmptyState } from './StudentShared'
 import { StudentShell } from './StudentShell'
 import { relativeTime } from './studentFormat'
-import { useToast } from './StudentToast'
+import { useToast } from '../../components/shared'
 import './student.css'
 
 type IconTone = 'success' | 'danger' | 'info' | 'warning'

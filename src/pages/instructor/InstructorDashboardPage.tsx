@@ -26,7 +26,6 @@ import {
   Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { ToastProvider } from './toast'
 import { Avatar } from './ui'
 import { TAB_KEYS } from './helpers'
 import type { InstructorTab } from './helpers'
@@ -131,7 +130,7 @@ export default function InstructorDashboardPage(): JSX.Element {
   const syncTime = formatHM(fromLocalISO(getLastSyncISO()))
 
   return (
-    <ToastProvider>
+    <>
       <div className="ins-shell">
         <header className="ins-header">
           <Link to="/" className="ins-header-brand" aria-label={t('nav.home')}>
@@ -222,6 +221,6 @@ export default function InstructorDashboardPage(): JSX.Element {
           </button>
         ))}
       </nav>
-    </ToastProvider>
+    </>
   )
 }

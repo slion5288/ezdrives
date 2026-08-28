@@ -85,6 +85,17 @@
   filter: brightness(0.95);
 }
 
+/* Danger ghost: transparent background, danger text — for secondary
+   destructive actions (e.g. cancel-booking list rows). */
+.btn--dangerGhost {
+  background: transparent;
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.btn--dangerGhost:hover {
+  background: var(--color-danger-soft);
+}
+
 .btn__icon {
   display: inline-flex;
   align-items: center;

@@ -9,7 +9,7 @@
 import { ArrowLeft, ArrowRight, KeyRound, Send } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Field, Input, LanguageSwitcher, Logo, ThemeToggle, useToast } from '../../components/shared'
 import { getSession, login, register, sendVerificationCode } from '../../data/store'
 import { useT } from '../../i18n'
@@ -399,7 +399,9 @@ export default function LoginPage(): JSX.Element {
   return (
     <div className="login">
       <aside className="login__brand">
-        <Logo size="lg" />
+        <Link to="/" aria-label={t('nav.home')} style={{ display: 'inline-flex' }}>
+          <Logo size="lg" />
+        </Link>
         <h1 className="login__tagline">{t('landing.hero.title')}</h1>
         <p className="login__brand-sub">{t('landing.hero.subtitle')}</p>
         <div>

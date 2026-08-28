@@ -25,7 +25,7 @@ import { ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Download, X } fr
 import { DayStrip } from '../../components/calendar/DayStrip'
 import { WeekCalendar } from '../../components/calendar/WeekCalendar'
 import { Badge, ConfirmDialog, Modal } from './ui'
-import { useToast } from './toast'
+import { useToast } from '../../components/shared'
 import { appointmentsToCSV, downloadCSV } from '../../utils/csv'
 import type { AppointmentCSVRow } from '../../utils/csv'
 import { courseById, fmtMin, isLiveAppointment, overlappingIds, startOfWeek, statusLabel, studentById, weekDates } from './helpers'
