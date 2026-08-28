@@ -19,7 +19,6 @@ import {
   GraduationCap,
   Mail,
   MapPin,
-  Menu,
   Phone,
   Pause,
   Play,
@@ -27,7 +26,6 @@ import {
   ShieldCheck,
   Star,
   Users,
-  X,
   Zap,
 } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
@@ -40,11 +38,10 @@ import {
   LandingAvatar,
   LandingBadge,
   LandingButton,
-  LanguageSwitcher,
   Logo,
   StarRating,
-  ThemeToggle,
 } from './primitives'
+import LandingSubHeader from './LandingSubHeader'
 import './LandingPage.css'
 
 // --- Hero carousel: full-bleed HD slides (Apple-style headline) ---
@@ -209,7 +206,6 @@ export default function LandingPage(): JSX.Element {
   const locale = useLocale()
   const state = useAppState()
   const { instructor } = state
-  const [menuOpen, setMenuOpen] = useState(false)
   const isMobile = useIsMobile()
   const [playingVideo, setPlayingVideo] = useState<TeachingVideo | null>(null)
 
@@ -222,14 +218,6 @@ export default function LandingPage(): JSX.Element {
   }, [])
 
   // Close the mobile menu on Esc.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setMenuOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [])
-
   const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
 
   // Visitors: never show the seed placeholder — render empty until the real
@@ -256,11 +244,8 @@ export default function LandingPage(): JSX.Element {
     ? ''
     : overrides['instructor.bio'] ? pick(overrides['instructor.bio']) : pick(instructor.bio)
 
-  const closeMenu = (): void => setMenuOpen(false)
-
   /** Smooth-scroll to an in-page section (works under HashRouter). */
   const goToSection = (id: string): void => {
-    closeMenu()
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
@@ -276,123 +261,8 @@ export default function LandingPage(): JSX.Element {
 
   return (
     <div className="landing-page">
-      {/* ---- Sticky translucent header ---- */}
-      <header className="landing-header">
-        <div className="landing-header__inner container">
-          <Logo />
-          <nav className="landing-nav">
-            <a
-              href="#how-it-works"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('how-it-works')
-              }}
-            >
-              {t('landing.steps.title')}
-            </a>
-            <a
-              href="#courses"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('courses')
-              }}
-            >
-              {t('landing.courses.title')}
-            </a>
-            <Link to="/g1">{t('nav.g1')}</Link>
-            <Link to="/videos">{t('landing.videos.title')}</Link>
-            <a
-              href="#instructor"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('instructor')
-              }}
-            >
-              {t('landing.instructors.title')}
-            </a>
-            <a
-              href="#contact"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('contact')
-              }}
-            >
-              {t('landing.footer.contact')}
-            </a>
-          </nav>
-          <div className="landing-header__actions">
-            <LanguageSwitcher />
-            <ThemeToggle />
-            <LandingButton to="/login" variant="secondary" size="sm" className="landing-header__login">
-              {t('nav.studentLogin')}
-            </LandingButton>
-            <button
-              type="button"
-              className="landing-menu-btn"
-              aria-label={t('nav.menu')}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Click-away scrim: closes the menu when tapping anywhere outside */}
-        {menuOpen ? (
-          <div className="landing-menu-scrim" onClick={closeMenu} aria-hidden="true" />
-        ) : null}
-
-        {/* Mobile menu — right-aligned dropdown under the menu button */}
-        {menuOpen ? (
-          <nav className="landing-mobile-menu" aria-label={t('nav.menu')}>
-            <a
-              href="#how-it-works"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('how-it-works')
-              }}
-            >
-              {t('landing.steps.title')}
-            </a>
-            <a
-              href="#courses"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('courses')
-              }}
-            >
-              {t('landing.courses.title')}
-            </a>
-            <Link to="/g1" onClick={closeMenu}>
-              {t('nav.g1')}
-            </Link>
-            <Link to="/videos">{t('landing.videos.title')}</Link>
-            <a
-              href="#instructor"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('instructor')
-              }}
-            >
-              {t('landing.instructors.title')}
-            </a>
-            <a
-              href="#contact"
-              onClick={(e) => {
-                e.preventDefault()
-                goToSection('contact')
-              }}
-            >
-              {t('landing.footer.contact')}
-            </a>
-            <div className="landing-mobile-menu__divider" />
-            <LandingButton to="/login" className="landing-mobile-menu__login" onClick={closeMenu}>
-              {t('nav.studentLogin')}
-            </LandingButton>
-          </nav>
-        ) : null}
-      </header>
+      {/* ---- Unified header: logo + nav + top-right menu (same as sub-pages) ---- */}
+      <LandingSubHeader />
 
       <main>
         {/* ---- Hero: full-bleed HD carousel + headline (Apple-style) ---- */}
@@ -751,15 +621,7 @@ export default function LandingPage(): JSX.Element {
               >
                 {t('landing.steps.title')}
               </a>
-              <a
-                href="#courses"
-                onClick={(e) => {
-                  e.preventDefault()
-                  goToSection('courses')
-                }}
-              >
-                {t('landing.courses.title')}
-              </a>
+              <Link to="/courses">{t('landing.courses.title')}</Link>
               <Link to="/g1">{t('nav.g1')}</Link>
               <Link to="/videos">{t('landing.videos.title')}</Link>
               <Link to="/courses">{t('nav.courses')}</Link>
