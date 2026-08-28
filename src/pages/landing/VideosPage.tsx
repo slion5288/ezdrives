@@ -10,10 +10,11 @@ import { ArrowLeft, Play } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
-import { LandingButton } from './primitives'
+
 import LandingSubHeader from './LandingSubHeader'
 import { VideoPlayerModal } from '../../components/video/VideoPlayerModal'
 import './LandingPage.css'
+import { Button } from '../../components/shared/Button'
 
 export default function VideosPage(): JSX.Element {
   const t = useT()
@@ -40,9 +41,9 @@ export default function VideosPage(): JSX.Element {
         <section className="landing-section">
           <div className="container">
             <div className="landing-sub-head">
-              <LandingButton variant="ghost" to="/" className="landing-sub-back">
+              <Button variant="ghost" to="/" className="landing-sub-back">
                 <ArrowLeft size={16} /> {t('nav.home')}
-              </LandingButton>
+              </Button>
               <span className="landing-sub-head__icon" aria-hidden="true">
                 <Play size={30} fill="currentColor" />
               </span>

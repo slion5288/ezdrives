@@ -14,16 +14,10 @@ import type { TeachingVideo } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
 import { G1_IMAGE, HERO_IMAGES } from '../../data/assets'
 import { VideoPlayerModal } from '../../components/video/VideoPlayerModal'
-import {
-  CourseCard,
-  LandingAvatar,
-  LandingBadge,
-  LandingButton,
-  Logo,
-  StarRating,
-} from './primitives'
+import {CourseCard,LandingAvatar,LandingBadge,Logo,StarRating,} from './primitives'
 import LandingSubHeader from './LandingSubHeader'
 import './LandingPage.css'
+import { Button } from '../../components/shared/Button'
 
 // --- Hero carousel: full-bleed HD slides (Apple-style headline) ---
 
@@ -187,10 +181,10 @@ export default function LandingPage(): JSX.Element {
             <h1 className="landing-hero__title">{c('landing.hero.title')}</h1>
             <p className="landing-hero__subtitle">{c('landing.hero.subtitle')}</p>
             <div className="landing-hero__ctas">
-              <LandingButton size="lg" to="/student/book">
+              <Button size="lg" to="/student/book">
                 {t('landing.cta.book')}
                 <ArrowRight size={18} className="landing-btn__icon" />
-              </LandingButton>
+              </Button>
             </div>
             <div className="landing-hero__trust">
               <span className="landing-hero__trust-item">
@@ -264,10 +258,10 @@ export default function LandingPage(): JSX.Element {
             )}
             {/* View-all button pinned to the bottom-right of the section */}
             <div className="landing-courses__viewall-row">
-              <LandingButton variant="primary" to="/courses">
+              <Button variant="primary" to="/courses">
                 {t('landing.courses.viewAll')}
                 <ArrowRight size={16} className="landing-btn__icon" />
-              </LandingButton>
+              </Button>
             </div>
           </div>
         </section>
@@ -325,10 +319,10 @@ export default function LandingPage(): JSX.Element {
             )}
             </div>
             <div className="landing-courses__viewall-row">
-              <LandingButton variant="secondary" to="/videos">
+              <Button variant="secondary" to="/videos">
                 {t('landing.videos.viewAll')}
                 <ArrowRight size={16} className="landing-btn__icon" />
-              </LandingButton>
+              </Button>
             </div>
           </div>
         </section>
@@ -352,10 +346,10 @@ export default function LandingPage(): JSX.Element {
                 </div>
                 <p className="landing-g1__desc">{t('g1.subtitle')}</p>
                 <div className="landing-g1__cta">
-                  <LandingButton to="/g1" size="lg">
+                  <Button to="/g1" size="lg">
                     {t('landing.g1.cta')}
                     <ArrowRight size={18} className="landing-btn__icon" />
-                  </LandingButton>
+                  </Button>
                 </div>
               </div>
               <div className="landing-g1__visual" aria-hidden="true">
@@ -451,9 +445,9 @@ export default function LandingPage(): JSX.Element {
                       </span>
                     ))}
                 </div>
-                <LandingButton to="/student/book" className="landing-instructor__cta">
+                <Button to="/student/book" className="landing-instructor__cta">
                   {t('landing.instructors.book')}
-                </LandingButton>
+                </Button>
               </div>
             </div>
             )}
@@ -504,10 +498,10 @@ export default function LandingPage(): JSX.Element {
                 <p>{c('landing.cta.band.body')}</p>
               </div>
               <div className="landing-band__actions">
-                <LandingButton size="lg" to="/student/book">
+                <Button size="lg" to="/student/book">
                   {t('landing.cta.book')}
                   <ArrowRight size={18} className="landing-btn__icon" />
-                </LandingButton>
+                </Button>
               </div>
             </div>
           </div>

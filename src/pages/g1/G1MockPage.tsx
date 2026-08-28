@@ -13,7 +13,6 @@ import { G1_BANK_EN, G1_BANK_ZH, G1_IMAGES } from '../../data/g1-bank'
 import type { G1Question } from '../../data/g1-bank'
 import { useT } from '../../i18n'
 import LandingSubHeader from '../landing/LandingSubHeader'
-import { LandingButton } from '../landing/primitives'
 import './g1.css'
 
 type BankId = 'zh' | 'en'
@@ -90,9 +89,9 @@ export default function G1MockPage(): JSX.Element {
 
       <main className="g1-main container" id="g1-title">
         <div className="g1-back-top">
-          <LandingButton variant="ghost" to="/" className="landing-sub-back">
-            <ArrowLeft size={16} /> {t('nav.home')}
-          </LandingButton>
+          <Button variant="ghost" to="/" className="landing-sub-back" icon={<ArrowLeft size={16} />}>
+            {t('nav.home')}
+          </Button>
         </div>
         {screen === 'intro' ? (
           <div className="g1-intro">

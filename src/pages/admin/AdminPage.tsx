@@ -28,6 +28,7 @@ import { Logo } from '../../components/shared/Logo'
 import { useToast } from '../../components/shared'
 import AdminTemplates from './AdminTemplates'
 import './admin.css'
+import { Button } from '../../components/shared/Button'
 
 type Tab = 'text' | 'images' | 'instructors' | 'templates'
 
@@ -220,9 +221,9 @@ function AdminLogin({ onLoggedIn }: { onLoggedIn: (token: string) => void }): JS
             <input id="admin-pass" className="admin-input" type="password" value={password} autoComplete="current-password" onChange={(e) => { setPassword(e.target.value); setError(null) }} />
           </div>
           {error ? <p className="admin-login__error">{error}</p> : null}
-          <button type="submit" className="admin-btn admin-btn--primary" disabled={busy}>
+          <Button variant="primary" disabled={busy}>
             {busy ? zh('auth.login.loading') : zh('admin.login.submit')}
-          </button>
+          </Button>
           <Link to="/" className="admin-login__back">
             <ArrowLeft size={14} aria-hidden="true" /> {zh('auth.back')}
           </Link>
@@ -421,12 +422,12 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
           <div className="admin-header__spacer" />
           <div className="admin-header__actions">
             <ThemeToggle />
-            <button type="button" className="admin-btn admin-btn--secondary" onClick={() => { setPwOpen(true); setPwError('') }}>
+            <Button variant="secondary" onClick={() => { setPwOpen(true); setPwError('') }}>
               <KeyRound size={15} /> {zh('admin.password.change')}
-            </button>
-            <button type="button" className="admin-btn admin-btn--secondary" onClick={() => { setAdminToken(''); onLogout() }}>
+            </Button>
+            <Button variant="secondary" onClick={() => { setAdminToken(''); onLogout() }}>
               <LogOut size={15} /> {zh('nav.logout')}
-            </button>
+            </Button>
           </div>
         </div>
         <nav className="admin-tabs">
@@ -469,12 +470,12 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
             </div>
             {pwError ? <p className="admin-login__error">{pwError}</p> : null}
             <div className="admin-actions">
-              <button type="button" className="admin-btn admin-btn--secondary" onClick={() => setPwOpen(false)}>
+              <Button variant="secondary" onClick={() => setPwOpen(false)}>
                 {zh('common.cancel')}
-              </button>
-              <button type="button" className="admin-btn admin-btn--primary" disabled={pwBusy} onClick={() => void submitPassword()}>
+              </Button>
+              <Button variant="primary" disabled={pwBusy} onClick={() => void submitPassword()}>
                 {pwBusy ? zh('auth.login.loading') : zh('common.save')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -513,12 +514,12 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
               ))}
             </div>
             <div className="admin-actions">
-              <button type="button" className="admin-btn admin-btn--secondary" onClick={() => setOverrides({})}>
+              <Button variant="secondary" onClick={() => setOverrides({})}>
                 {zh('admin.defaults')}
-              </button>
-              <button type="button" className="admin-btn admin-btn--primary" disabled={saving} onClick={() => void save()}>
+              </Button>
+              <Button variant="primary" disabled={saving} onClick={() => void save()}>
                 <Save size={15} /> {saving ? zh('auth.login.loading') : zh('admin.save')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -555,12 +556,12 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
               ))}
             </div>
             <div className="admin-actions">
-              <button type="button" className="admin-btn admin-btn--secondary" onClick={() => setHeroImages(Array(6).fill(null))}>
+              <Button variant="secondary" onClick={() => setHeroImages(Array(6).fill(null))}>
                 {zh('admin.defaults')}
-              </button>
-              <button type="button" className="admin-btn admin-btn--primary" disabled={saving} onClick={() => void save()}>
+              </Button>
+              <Button variant="primary" disabled={saving} onClick={() => void save()}>
                 <Save size={15} /> {saving ? zh('auth.login.loading') : zh('admin.save')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
@@ -572,15 +573,13 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                 <div className="admin-card__title">{zh('admin.tab.instructors')}</div>
                 <div className="admin-card__sub">{zh('admin.instructorsHint')}</div>
               </div>
-              <button
-                type="button"
-                className="admin-btn admin-btn--secondary"
+              <Button variant="secondary"
                 onClick={() =>
                   setInstructors((prev) => [...prev, { id: `i${Date.now()}`, name: '', bio: { en: '', zh: '' }, years: 0, photo: '' }])
                 }
               >
                 <Plus size={15} /> {zh('admin.instructor.add')}
-              </button>
+              </Button>
             </div>
 
             {instructors.length === 0 ? <p className="admin-muted">{zh('admin.instructorsEmpty')}</p> : null}
@@ -617,18 +616,18 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                   <textarea id={`admin-ins-bio-${idx}`} className="admin-textarea" rows={2} placeholder={zh('admin.placeholder')} value={inst.bio?.zh ?? ''} onChange={(e) => setInstructorBio(idx, 'zh', e.target.value)} />
                   <div className="admin-text-preview">{zh('admin.enAuto')}: {inst.bio?.en || '—'}</div>
                   <div className="admin-instructor__actions">
-                    <button type="button" className="admin-btn admin-btn--danger" onClick={() => setInstructors((prev) => prev.filter((_, i) => i !== idx))}>
+                    <Button variant="danger" onClick={() => setInstructors((prev) => prev.filter((_, i) => i !== idx))}>
                       <Trash2 size={15} /> {zh('admin.instructor.remove')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
             ))}
             {instructors.length > 0 ? (
               <div className="admin-actions">
-                <button type="button" className="admin-btn admin-btn--primary" disabled={saving} onClick={() => void save()}>
+                <Button variant="primary" disabled={saving} onClick={() => void save()}>
                   <Save size={15} /> {saving ? zh('auth.login.loading') : zh('admin.save')}
-                </button>
+                </Button>
               </div>
             ) : null}
           </div>

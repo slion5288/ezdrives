@@ -10,9 +10,10 @@ import { useEffect } from 'react'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
-import { CourseCard, LandingBadge, LandingButton } from './primitives'
+import {CourseCard,LandingBadge} from './primitives'
 import LandingSubHeader from './LandingSubHeader'
 import './LandingPage.css'
+import { Button } from '../../components/shared/Button'
 
 export default function CoursesPage(): JSX.Element {
   const t = useT()
@@ -39,9 +40,9 @@ export default function CoursesPage(): JSX.Element {
         <section className="landing-section">
           <div className="container">
             <div className="landing-sub-head">
-              <LandingButton variant="ghost" to="/" className="landing-sub-back">
+              <Button variant="ghost" to="/" className="landing-sub-back">
                 <ArrowLeft size={16} /> {t('nav.home')}
-              </LandingButton>
+              </Button>
               <span className="landing-sub-head__icon" aria-hidden="true">
                 <BookOpen size={30} />
               </span>
@@ -72,10 +73,10 @@ export default function CoursesPage(): JSX.Element {
                 G1 · {t('g1.zhBody', { count: G1_COUNTS.zh })} / {t('g1.enBody', { count: G1_COUNTS.en })}
               </LandingBadge>
               <p>{t('g1.subtitle')}</p>
-              <LandingButton variant="secondary" to="/g1">
+              <Button variant="secondary" to="/g1">
                 {t('landing.g1.cta')}
                 <ArrowRight size={16} className="landing-btn__icon" />
-              </LandingButton>
+              </Button>
             </div>
           </div>
         </section>
@@ -88,10 +89,10 @@ export default function CoursesPage(): JSX.Element {
                 <p>{t('landing.cta.band.body')}</p>
               </div>
               <div className="landing-band__actions">
-                <LandingButton size="lg" to="/student/book">
+                <Button size="lg" to="/student/book">
                   {t('landing.cta.book')}
                   <ArrowRight size={18} className="landing-btn__icon" />
-                </LandingButton>
+                </Button>
               </div>
             </div>
           </div>

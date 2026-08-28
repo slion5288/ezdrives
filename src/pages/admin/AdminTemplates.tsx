@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { Copy, Eye, Mail, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { apiAdminGetTemplates, apiAdminGetLogs, apiAdminPutTemplate, apiAdminTemplateAction } from '../../data/api'
 import './admin.css'
+import { Button } from '../../components/shared/Button'
 
 interface Template {
   id: string
@@ -141,9 +142,9 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
           ) : null}
         </div>
         <div className="admin-actions" style={{ marginTop: 0 }}>
-          <button type="button" className="admin-btn admin-btn--secondary" onClick={() => { setShowLogs((v) => !v); if (!showLogs) { apiAdminGetLogs(token).then((r) => { if (r.ok) setLogs((r.logs || []) as LogEntry[]) }).catch(() => undefined) } }}>
+          <Button variant="secondary" onClick={() => { setShowLogs((v) => !v); if (!showLogs) { apiAdminGetLogs(token).then((r) => { if (r.ok) setLogs((r.logs || []) as LogEntry[]) }).catch(() => undefined) } }}>
             {zh('tpl.logs')}
-          </button>
+          </Button>
         </div>
       </div>
       {notice ? <p className="admin-login__error" style={{ color: 'var(--color-success)' }}>{notice}</p> : null}
@@ -200,9 +201,9 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
               <span className={`admin-tpl-state${t.enabled ? ' is-on' : ''}`}>{t.enabled ? zh('tpl.enabled') : '—'}</span>
               <span className="admin-tpl-date">{t.updated_at ? t.updated_at.slice(0, 16) : ''}</span>
               <div className="admin-tpl-actions">
-                <button type="button" className="admin-btn admin-btn--secondary" onClick={() => select(t)}>
+                <Button variant="secondary" onClick={() => select(t)}>
                   <Eye size={14} /> {zh('tpl.edit')}
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -276,12 +277,12 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
           ) : null}
 
           <div className="admin-actions" style={{ marginTop: 'var(--space-4)' }}>
-            <button type="button" className="admin-btn admin-btn--secondary" onClick={() => setSelectedId(null)}>
+            <Button variant="secondary" onClick={() => setSelectedId(null)}>
               {zh('tpl.close')}
-            </button>
-            <button type="button" className="admin-btn admin-btn--secondary" disabled={busy} onClick={() => void runPreview()}>
+            </Button>
+            <Button variant="secondary" disabled={busy} onClick={() => void runPreview()}>
               <Eye size={14} /> {zh('tpl.preview')}
-            </button>
+            </Button>
             <input
               className="admin-input"
               style={{ maxWidth: 220, display: 'inline-block' }}
@@ -290,12 +291,12 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
               value={testTo}
               onChange={(e) => setTestTo(e.target.value)}
             />
-            <button type="button" className="admin-btn admin-btn--secondary" disabled={busy || !testTo.trim()} onClick={() => void sendTest()}>
+            <Button variant="secondary" disabled={busy || !testTo.trim()} onClick={() => void sendTest()}>
               <Send size={14} /> {zh('tpl.test')}
-            </button>
-            <button type="button" className="admin-btn admin-btn--primary" disabled={busy} onClick={() => void save()}>
+            </Button>
+            <Button variant="primary" disabled={busy} onClick={() => void save()}>
               <RefreshCw size={14} /> {zh('tpl.save')}
-            </button>
+            </Button>
           </div>
         </div>
       )}

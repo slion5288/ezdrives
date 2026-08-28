@@ -13,8 +13,9 @@ import { useT } from '../../i18n'
 import { LanguageSwitcher } from '../../components/shared/LanguageSwitcher'
 import { ThemeToggle } from '../../components/shared/ThemeToggle'
 import { Logo } from '../../components/shared/Logo'
-import { LandingButton } from './primitives'
+
 import './LandingPage.css'
+import { Button } from '../../components/shared/Button'
 
 interface NavItem {
   key: string
@@ -120,9 +121,9 @@ export default function LandingSubHeader(): JSX.Element {
         <div className="landing-header__actions">
           <LanguageSwitcher />
           <ThemeToggle />
-          <LandingButton to="/login" variant="secondary" size="sm" className="landing-header__login">
+          <Button to="/login" variant="secondary" size="sm" className="landing-header__login">
             {t('nav.studentLogin')}
-          </LandingButton>
+          </Button>
           <div className="landing-sub-menu" ref={menuRef}>
             <button
               type="button"
