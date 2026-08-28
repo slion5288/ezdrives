@@ -7,6 +7,7 @@
 import type { ReactNode } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { useT } from '../../i18n'
+import { Badge as SharedBadge } from '../../components/shared/Badge'
 import { Modal as SharedModal } from '../../components/shared/Modal'
 
 // --- Modal ----------------------------------------------------------------
@@ -98,12 +99,12 @@ export function Toggle({
   )
 }
 
-// --- Badge ----------------------------------------------------------------
+// --- Badge (delegates to the shared Badge) ---
 
 export type BadgeTone = 'neutral' | 'success' | 'danger' | 'warning' | 'info'
 
 export function Badge({ tone, children }: { tone: BadgeTone; children: ReactNode }): JSX.Element {
-  return <span className={`ins-badge ins-badge--${tone}`}>{children}</span>
+  return <SharedBadge tone={tone}>{children}</SharedBadge>
 }
 
 // --- StatCard -------------------------------------------------------------

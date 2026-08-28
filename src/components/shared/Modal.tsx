@@ -24,9 +24,11 @@ export interface ModalProps {
   footer?: ReactNode
   /** Optional max-width override for the dialog panel. */
   maxWidth?: number
+  /** Render nothing when false (default true). */
+  open?: boolean
 }
 
-export function Modal({ title, onClose, children, footer, maxWidth }: ModalProps): JSX.Element {
+export function Modal({ title, onClose, children, footer, maxWidth, open = true }: ModalProps): JSX.Element | null {
   const t = useT()
   const dialogRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
@@ -35,6 +37,7 @@ export function Modal({ title, onClose, children, footer, maxWidth }: ModalProps
   })
 
   useEffect(() => {
+    if (!open) return
     const dialog = dialogRef.current
     if (!dialog) return
     const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
@@ -69,6 +72,8 @@ export function Modal({ title, onClose, children, footer, maxWidth }: ModalProps
   }, [])
 
   const closeLabel = t('common.close')
+
+  if (!open) return null
 
   return (
     <div className="modal-overlay" onMouseDown={onClose}>

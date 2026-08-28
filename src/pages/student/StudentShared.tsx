@@ -6,11 +6,11 @@
 // at the call site (only aria labels use keys directly).
 // ============================================================================
 
-import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { X } from 'lucide-react'
 import { useT } from '../../i18n'
+import { Badge } from '../../components/shared/Badge'
+import { Modal as SharedModal } from '../../components/shared/Modal'
 
 /* --- Avatar --- */
 interface AvatarProps {
@@ -34,7 +34,7 @@ export function Avatar({ name, color, size = 'md' }: AvatarProps): JSX.Element {
   )
 }
 
-/* --- StatusBadge --- */
+/* --- StatusBadge (delegates to the shared Badge) --- */
 export type BadgeTone = 'success' | 'warning' | 'danger' | 'neutral'
 
 interface StatusBadgeProps {
@@ -44,16 +44,13 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ tone, label }: StatusBadgeProps): JSX.Element {
   return (
-    <span className={`student-badge student-badge-${tone}`}>
-      <span className="student-badge-dot" />
+    <Badge tone={tone} dot>
       {label}
-    </span>
+    </Badge>
   )
 }
 
-/* --- ModalFrame --- */
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+/* --- ModalFrame (delegates to the shared Modal) --- */
 
 interface ModalFrameProps {
   open: boolean
@@ -64,70 +61,10 @@ interface ModalFrameProps {
 }
 
 export function ModalFrame({ open, title, onClose, footer, children }: ModalFrameProps): JSX.Element | null {
-  const t = useT()
-  const dialogRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const dialog = dialogRef.current
-    if (!dialog) return
-    const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-      (el) => !el.hasAttribute('disabled'),
-    )
-    ;(focusables[0] ?? dialog).focus()
-
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-        return
-      }
-      if (e.key !== 'Tab' || focusables.length === 0) return
-      const current = document.activeElement
-      const index = focusables.indexOf(current as HTMLElement)
-      if (e.shiftKey && (index <= 0 || index === -1)) {
-        e.preventDefault()
-        focusables[focusables.length - 1].focus()
-      } else if (!e.shiftKey && (index === focusables.length - 1 || index === -1)) {
-        e.preventDefault()
-        focusables[0].focus()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
-
-  useEffect(() => {
-    if (!open) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [open])
-
-  if (!open) return null
-
   return (
-    <div className="student-modal-scrim" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        className="student-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="student-modal-header">
-          <h3 className="student-modal-title">{title}</h3>
-          <button type="button" className="student-icon-btn" onClick={onClose} aria-label={t('common.close')}>
-            <X size={18} />
-          </button>
-        </div>
-        <div className="student-modal-body">{children}</div>
-        {footer && <div className="student-modal-footer">{footer}</div>}
-      </div>
-    </div>
+    <SharedModal open={open} title={title} onClose={onClose} footer={footer}>
+      {children}
+    </SharedModal>
   )
 }
 
