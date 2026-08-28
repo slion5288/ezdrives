@@ -199,7 +199,31 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     setTranslating(true)
     try {
       const res = await apiCourseTranslate(session.token, texts)
-      const list = res.ok && Array.isArray(res.translations) ? res.translations : []
+      let list: string[] = []
+      if (res.ok && Array.isArray(res.translations)) list = res.translations
+      // §E: browser-direct MyMemory fallback when the server translation
+      // returns empty (Cloudflare Workers egress is rate-limited in prod).
+      if (list.length === 0 || list.some((v) => !v)) {
+        const direct: string[] = []
+        let cursor = 0
+        const worker = async (): Promise<void> => {
+          while (cursor < texts.length) {
+            const i = cursor++
+            try {
+              const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(texts[i])}&langpair=zh-CN|en`)
+              if (!r.ok) throw new Error('http ' + r.status)
+              const d = await r.json()
+              if (d?.responseStatus !== 200) throw new Error('resp ' + d?.responseStatus)
+              direct[i] = (d?.responseData?.translatedText || '').trim()
+            } catch {
+              direct[i] = ''
+            }
+          }
+        }
+        await worker()
+        // merge: prefer server result where non-empty, else direct.
+        list = texts.map((_, i) => list[i] || direct[i] || '')
+      }
       targets.forEach((target, i) => {
         const value = list[i]
         if (value) {
