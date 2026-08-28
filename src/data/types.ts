@@ -182,6 +182,8 @@ export interface Payment {
   referral_phone?: string
   // —— Enrollment link (packages) ——
   enrollmentId?: string
+  // —— Full Course Certificate documents (§39) ——
+  certDocs?: { front?: string; back?: string; uploadedAt?: string; status?: 'partial' | 'complete' }
 }
 
 /** One lesson inside a student's purchased package (snapshot at purchase). */

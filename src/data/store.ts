@@ -440,6 +440,21 @@ export async function completeLesson(id: string): Promise<{ ok: true } | { ok: f
   return { ok: false, error: res.error || 'error' }
 }
 
+/** Student uploads driver's licence front/back for a certificate course. */
+export async function uploadCertificateDocs(
+  paymentId: string,
+  front: string,
+  back: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!session.token) return { ok: false, error: 'not_authenticated' }
+  const res = await apiAction(session.token, 'uploadCertificateDocs', { paymentId, front, back })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error || 'error' }
+}
+
 // --- Working hours ---
 
 /**

@@ -800,6 +800,76 @@ export async function onRequestPost({ env, request }) {
     return reply(state)
   }
 
+  // ---- uploadCertificateDocs (student, FULL_COURSE_CERTIFICATE) ----
+  // §39/§46: student uploads driver's licence front/back after purchasing a
+  // certificate course. Stored as data URLs on the payment (sensitive — only
+  // status is emailed, never the image).
+  if (action === 'uploadCertificateDocs') {
+    if (isInstructor) return fail('Students only.', 403)
+    const paymentId = String(args.paymentId || '')
+    const front = String(args.front || '')
+    const back = String(args.back || '')
+    const payment = state.payments.find((p) => p.id === paymentId && p.studentId === studentId)
+    if (!payment) return fail('Payment not found.')
+    const course = state.courses.find((c) => c.id === payment.courseId)
+    const ct = course ? (course.course_type || 'FULL_COURSE_CERTIFICATE') : 'FULL_COURSE_CERTIFICATE'
+    if (ct !== 'FULL_COURSE_CERTIFICATE') return fail('Not a certificate course.')
+    const now = nowISO()
+    const updated = {
+      ...payment,
+      certDocs: {
+        front: front || null,
+        back: back || null,
+        uploadedAt: now,
+        status: front && back ? 'complete' : 'partial',
+      },
+    }
+    const [nId, nId2] = await nextSeq(env, 'notifications', 'n', 2)
+    const studentRow = state.students.find((s) => s.id === studentId)
+    await env.DB.batch([
+      env.DB.prepare('UPDATE payments SET payload = ? WHERE id = ?').bind(JSON.stringify(updated), paymentId),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nId, 'student', studentId, JSON.stringify({
+          id: nId, role: 'student', recipientId: studentId, type: 'payment_confirmed',
+          title: { en: 'Documents uploaded', zh: '证件已上传' },
+          body: { en: 'Your driver licence documents were uploaded successfully.', zh: '您的驾照证件已成功上传。' },
+          read: false, at: now, paymentId,
+        })),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
+        .bind(nId2, 'instructor', 'instructor', JSON.stringify({
+          id: nId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending',
+          title: { en: 'Certificate documents uploaded', zh: '证书证件已上传' },
+          body: { en: `${studentRow ? studentRow.name : user.name} uploaded licence documents for ${course ? course.name.en : 'certificate'}.`, zh: `${studentRow ? studentRow.name : user.name} 上传了${course ? course.name.zh : '证书'}课程的驾照证件。` },
+          read: false, at: now, paymentId,
+        })),
+    ])
+    state.payments = state.payments.map((p) => (p.id === paymentId ? updated : p))
+    state.notifications.unshift(
+      { id: nId, role: 'student', recipientId: studentId, type: 'payment_confirmed', title: { en: 'Documents uploaded', zh: '证件已上传' }, body: { en: 'Your driver licence documents were uploaded successfully.', zh: '您的驾照证件已成功上传。' }, read: false, at: now, paymentId },
+      { id: nId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending', title: { en: 'Certificate documents uploaded', zh: '证书证件已上传' }, body: { en: `${studentRow ? studentRow.name : user.name} uploaded licence documents for ${course ? course.name.en : 'certificate'}.`, zh: `${studentRow ? studentRow.name : user.name} 上传了${course ? course.name.zh : '证书'}课程的驾照证件。` }, read: false, at: now, paymentId },
+    )
+    // Best-effort instructor email (§6): DOCUMENT_UPLOADED.
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      if (state.instructor && state.instructor.email) {
+        const stEmail = (studentRow && studentRow.email) || ''
+        await sendNotification(env, {
+          type: 'DOCUMENT_UPLOADED',
+          recipientEmail: state.instructor.email,
+          student: studentRow ? { id: studentRow.id, name: studentRow.name, phone: studentRow.phone, email: stEmail } : null,
+          instructor: state.instructor,
+          booking: null,
+          course: course ? { name: course.name.en, courseType: 'FULL_COURSE_CERTIFICATE', licenseClass: 'NONE', price: payment.final_price } : null,
+          lesson: null,
+          pricing: null,
+        })
+      }
+    } catch (e) {
+      // email is best-effort
+    }
+    return reply(state)
+  }
+
   // ---- markNotificationRead / markAllRead (student or instructor scope) ----
   const notifMatches = (n) =>
     isInstructor

@@ -11,7 +11,7 @@
 
 import { useMemo, useState } from 'react'
 import { Check, CalendarClock, Coffee } from 'lucide-react'
-import { bookAppointment, bookPackageLessons, getSession, isCoursePurchased, lessonStatus, packageProgress, useAppState } from '../../data/store'
+import { bookAppointment, bookPackageLessons, courseTypeOf, getSession, isCoursePurchased, lessonStatus, packageProgress, uploadCertificateDocs, useAppState } from '../../data/store'
 import type { Course, Slot } from '../../data/store'
 import { formatHM, fromLocalISO, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
@@ -149,6 +149,11 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
 
   return (
     <div className="course-booking">
+      {/* §39/§46: Full Course Certificate — document upload workflow, no driving calendar */}
+      {courseTypeOf(course) === 'FULL_COURSE_CERTIFICATE' ? (
+        <CertificateUploadCard course={course} studentId={studentId} t={t} />
+      ) : (
+      <>
       {/* Instructor break notice — links the break setting to available times */}
       {(state.instructor.breakMin ?? 0) > 0 ? (
         <div className="course-booking__break">
@@ -350,6 +355,76 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
           </div>
         </ModalFrame>
       ) : null}
+      </>
+      )}
+    </div>
+  )
+}
+
+/** §39/§46: certificate course — student uploads licence front/back. */
+function CertificateUploadCard({
+  course,
+  studentId,
+  t,
+}: {
+  course: Course
+  studentId: string
+  t: (key: string, vars?: Record<string, string | number>) => string
+}): JSX.Element {
+  const state = useAppState()
+  const { showToast } = useToast()
+  const payment = (state.payments ?? [])
+    .filter((p) => p.studentId === studentId && p.courseId === course.id && p.status === 'confirmed')
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+  const docs = payment?.certDocs as { front?: string; back?: string; status?: string } | undefined
+  const [front, setFront] = useState('')
+  const [back, setBack] = useState('')
+  const [busy, setBusy] = useState(false)
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  const upload = async (): Promise<void> => {
+    if (!payment || (!front && !back) || busy) return
+    setBusy(true)
+    const res = await uploadCertificateDocs(payment.id, front, back)
+    setBusy(false)
+    if (res.ok) showToast('success', t('payment.docUploaded'))
+    else showToast('error', t('common.toast.error'))
+  }
+  return (
+    <div className="cert-upload">
+      <p className="student-field-label">{t('payment.certUploadHint')}</p>
+      {docs?.status === 'complete' ? (
+        <p className="student-payment__hint is-ok">✓ {t('payment.certUploaded')}</p>
+      ) : (
+        <div className="cert-upload__row">
+          <label className="cert-upload__label">
+            <span>{t('payment.certFront')}</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => { const f = e.target.files?.[0]; if (f) setFront(await fileToDataUrl(f)) }}
+            />
+          </label>
+          <label className="cert-upload__label">
+            <span>{t('payment.certBack')}</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => { const f = e.target.files?.[0]; if (f) setBack(await fileToDataUrl(f)) }}
+            />
+          </label>
+          <Button variant="primary" disabled={(!front && !back) || busy} onClick={() => void upload()}>
+            {t('payment.certSubmit')}
+          </Button>
+        </div>
+      )}
+      {front ? <img src={front} alt="" className="cert-upload__preview" /> : null}
+      {back ? <img src={back} alt="" className="cert-upload__preview" /> : null}
     </div>
   )
 }
