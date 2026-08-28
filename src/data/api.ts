@@ -96,6 +96,11 @@ export async function apiAdminTranslate(token: string, texts: string[]): Promise
   return request('/admin/translate', { method: 'POST', body: { texts }, token })
 }
 
+/** POST /api/courses/translate — zh → en for instructor course editor (instructor auth) */
+export async function apiCourseTranslate(token: string, texts: string[]): Promise<{ ok: boolean; translations?: string[]; error?: string }> {
+  return request('/courses/translate', { method: 'POST', body: { texts }, token })
+}
+
 /** GET /api/public/home — public homepage data (no auth) */
 export async function apiPublicHome(): Promise<ApiState> {
   return request('/public/home')

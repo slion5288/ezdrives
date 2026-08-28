@@ -1,21 +1,23 @@
 // ============================================================================
 // EZDRIVES — Instructor CoursesPage (instructor-owned)
-// Course cards with active toggle, add/edit modal. Each course is either a
-// SINGLE hourly lesson (1h / 2h) or a PACKAGE (套餐) of exactly 10 lessons,
-// where every lesson has its own editable name, description and price. The
-// package price is the sum of its lessons.
+// Course cards with active toggle, add/edit modal. Structured course types:
+// INDIVIDUAL_LESSON / TEN_HOUR_PACKAGE / TRIAL_LESSON / ROAD_TEST_CAR /
+// FULL_COURSE_CERTIFICATE. The instructor types CHINESE ONLY; English is
+// auto-translated on save (may stay empty on failure — never blocks saving).
+// Each course can configure Student / Referral discounts.
 // ============================================================================
 
 import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import type { AppState, Course, CourseLesson } from '../../data/store'
-import { deleteCourse, saveCourse, toggleCourse } from '../../data/store'
+import type { AppState, Course, CourseLesson, CourseType, DiscountConfig, LicenseClass } from '../../data/store'
+import { courseTypeOf, deleteCourse, getSession, licenseOf, saveCourse, toggleCourse } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { Camera, GraduationCap, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Badge, ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
 import { useToast } from '../../components/shared'
 import { formatMoney } from './helpers'
 import { Button } from '../../components/shared/Button'
+import { apiCourseTranslate } from '../../data/api'
 
 interface LessonForm {
   nameEn: string
@@ -32,12 +34,17 @@ interface CourseForm {
   descEn: string
   descZh: string
   price: string
-  type: 'single' | 'package'
+  courseType: CourseType
+  licenseClass: LicenseClass
   durationMin: number
   active: boolean
-  examCar: boolean
   imageUrl: string
   lessons: LessonForm[]
+  hourlyRate: string
+  studentDiscountType: 'PERCENTAGE' | 'FIXED_AMOUNT'
+  studentDiscountValue: string
+  referralDiscountType: 'PERCENTAGE' | 'FIXED_AMOUNT'
+  referralDiscountValue: string
 }
 
 const emptyLesson = (): LessonForm => ({ nameEn: '', nameZh: '', descEn: '', descZh: '', price: '50' })
@@ -49,12 +56,17 @@ const emptyForm = (): CourseForm => ({
   descEn: '',
   descZh: '',
   price: '60',
-  type: 'single',
+  courseType: 'INDIVIDUAL_LESSON',
+  licenseClass: 'G2',
   durationMin: 60,
   active: true,
-  examCar: false,
   imageUrl: '',
   lessons: Array.from({ length: 10 }, emptyLesson),
+  hourlyRate: '60',
+  studentDiscountType: 'PERCENTAGE',
+  studentDiscountValue: '',
+  referralDiscountType: 'PERCENTAGE',
+  referralDiscountValue: '',
 })
 
 const lessonFrom = (l: CourseLesson): LessonForm => ({
@@ -65,23 +77,46 @@ const lessonFrom = (l: CourseLesson): LessonForm => ({
   price: String(l.price),
 })
 
-const formFromCourse = (c: Course): CourseForm => ({
-  id: c.id,
-  nameEn: c.name.en,
-  nameZh: c.name.zh,
-  descEn: c.description.en,
-  descZh: c.description.zh,
-  price: String(c.price),
-  type: c.type ?? 'single',
-  durationMin: c.durationMin,
-  active: c.active,
-  examCar: c.examCar ?? false,
-  imageUrl: c.imageUrl ?? '',
-  lessons:
-    c.lessons && c.lessons.length > 0
-      ? c.lessons.map(lessonFrom)
-      : Array.from({ length: 10 }, emptyLesson),
-})
+const formFromCourse = (c: Course): CourseForm => {
+  const t = courseTypeOf(c)
+  const lic = licenseOf(c)
+  return {
+    id: c.id,
+    nameEn: c.name.en,
+    nameZh: c.name.zh,
+    descEn: c.description.en,
+    descZh: c.description.zh,
+    price: String(c.price),
+    courseType: t,
+    licenseClass: lic,
+    durationMin: c.durationMin,
+    active: c.active,
+    imageUrl: c.imageUrl ?? '',
+    lessons:
+      c.lessons && c.lessons.length > 0
+        ? c.lessons.map(lessonFrom)
+        : Array.from({ length: 10 }, emptyLesson),
+    hourlyRate: String(c.hourlyRate ?? 60),
+    studentDiscountType: c.studentDiscount?.type ?? 'PERCENTAGE',
+    studentDiscountValue: c.studentDiscount ? String(c.studentDiscount.value) : '',
+    referralDiscountType: c.referralDiscount?.type ?? 'PERCENTAGE',
+    referralDiscountValue: c.referralDiscount ? String(c.referralDiscount.value) : '',
+  }
+}
+
+/** Map course type → whether it is a licence-linked driving course. */
+const LICENSE_TYPES: CourseType[] = ['INDIVIDUAL_LESSON', 'TEN_HOUR_PACKAGE']
+
+/** Human label helper for course types (list cards). */
+function courseTypeLabel(t: CourseType, zh: boolean): string {
+  switch (t) {
+    case 'INDIVIDUAL_LESSON': return zh ? '单课时' : 'Individual'
+    case 'TEN_HOUR_PACKAGE': return zh ? '10 小时套餐' : '10-hour package'
+    case 'TRIAL_LESSON': return zh ? '体验课' : 'Trial'
+    case 'ROAD_TEST_CAR': return zh ? '考试用车' : 'Road test car'
+    case 'FULL_COURSE_CERTIFICATE': return zh ? '全课程证书' : 'Certificate'
+  }
+}
 
 export default function CoursesPage({ state }: { state: AppState }): JSX.Element {
   const t = useT()
@@ -89,10 +124,41 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
   const toast = useToast()
 
   const [form, setForm] = useState<CourseForm | null>(null)
-  const [fieldErrors, setFieldErrors] = useState<{ nameEn?: boolean; nameZh?: boolean; lessons?: boolean }>({})
+  const [fieldErrors, setFieldErrors] = useState<{ nameZh?: boolean; lessons?: boolean }>({})
   const [deleteTarget, setDeleteTarget] = useState<Course | null>(null)
+  const [translating, setTranslating] = useState(false)
   const imageRef = useRef<HTMLInputElement>(null)
 
+  // Translation cache: zh text → last translated en (only retranslate on change).
+  const [zhCache, setZhCache] = useState<Record<string, string>>({})
+
+  const clearError = (key: 'nameZh' | 'lessons'): void => {
+    setFieldErrors((prev) => ({ ...prev, [key]: false }))
+  }
+
+  const openAdd = (): void => {
+    setFieldErrors({})
+    setForm(emptyForm())
+    setZhCache({})
+  }
+
+  const openEdit = (course: Course): void => {
+    setFieldErrors({})
+    setForm(formFromCourse(course))
+    setZhCache({})
+  }
+
+  const patchLesson = (idx: number, patch: Partial<LessonForm>): void => {
+    setForm((prev) => {
+      if (!prev) return prev
+      const lessons = prev.lessons.map((l, i) => (i === idx ? { ...l, ...patch } : l))
+      return { ...prev, lessons }
+    })
+  }
+
+  const isPackageType = form?.courseType === 'TEN_HOUR_PACKAGE'
+
+  /** Auto-translate all Chinese fields → English (cache-aware, §47). */
   const handleImage = (e: ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0]
     if (!file || !form) return
@@ -104,61 +170,107 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     reader.readAsDataURL(file)
   }
 
-  const clearError = (key: 'nameEn' | 'nameZh' | 'lessons'): void => {
-    setFieldErrors((prev) => ({ ...prev, [key]: false }))
-  }
-
-  const openAdd = (): void => {
-    setFieldErrors({})
-    setForm(emptyForm())
-  }
-
-  const openEdit = (course: Course): void => {
-    setFieldErrors({})
-    setForm(formFromCourse(course))
-  }
-
-  const patchLesson = (idx: number, patch: Partial<LessonForm>): void => {
+  const autoTranslate = async (): Promise<void> => {
     if (!form) return
-    const lessons = form.lessons.map((l, i) => (i === idx ? { ...l, ...patch } : l))
-    setForm({ ...form, lessons })
+    const texts: string[] = []
+    const targets: Array<{ set: (v: string) => void }> = []
+    const push = (zh: string, set: (v: string) => void): void => {
+      const key = zh.trim()
+      if (!key) return
+      const cached = zhCache[key]
+      if (cached) {
+        set(cached)
+        return
+      }
+      texts.push(key)
+      targets.push({ set })
+    }
+    push(form.nameZh, (v) => setForm((f) => (f ? { ...f, nameEn: v } : f)))
+    push(form.descZh, (v) => setForm((f) => (f ? { ...f, descEn: v } : f)))
+    if (isPackageType) {
+      form.lessons.forEach((l, i) => {
+        push(l.nameZh, (v) => patchLesson(i, { nameEn: v }))
+        push(l.descZh, (v) => patchLesson(i, { descEn: v }))
+      })
+    }
+    if (texts.length === 0) return
+    const session = getSession()
+    if (!session.token) return
+    setTranslating(true)
+    try {
+      const res = await apiCourseTranslate(session.token, texts)
+      const list = res.ok && Array.isArray(res.translations) ? res.translations : []
+      targets.forEach((target, i) => {
+        const value = list[i]
+        if (value) {
+          target.set(value)
+          setZhCache((prev) => ({ ...prev, [texts[i]]: value }))
+        }
+      })
+    } catch {
+      // translate failed — English stays empty; save still allowed (§46)
+    } finally {
+      setTranslating(false)
+    }
   }
 
   const submitForm = (): void => {
     if (!form) return
-    const errors: { nameEn?: boolean; nameZh?: boolean; lessons?: boolean } = {}
-    if (!form.nameEn.trim()) errors.nameEn = true
+    const errors: { nameZh?: boolean; lessons?: boolean } = {}
     if (!form.nameZh.trim()) errors.nameZh = true
-    const isPackage = form.type === 'package'
-    if (isPackage && form.lessons.some((l) => !l.nameEn.trim() || !l.nameZh.trim())) errors.lessons = true
+    if (isPackageType && form.lessons.some((l) => !l.nameZh.trim())) errors.lessons = true
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) {
-      const first = document.querySelector<HTMLInputElement>('#course-name-en, #course-name-zh')
+      const first = document.querySelector<HTMLInputElement>('#course-name-zh')
       first?.focus()
       return
     }
-    const lessons: CourseLesson[] | undefined = isPackage
-      ? form.lessons.map((l) => ({
+    const discount = (type: 'PERCENTAGE' | 'FIXED_AMOUNT', value: string): DiscountConfig | null => {
+      const v = Number(value)
+      if (!value.trim() || isNaN(v) || v <= 0) return null
+      return { type, value: v }
+    }
+    const lessons: CourseLesson[] | undefined = isPackageType
+      ? form.lessons.map((l, i) => ({
+          sequence_number: i + 1,
           name: { en: l.nameEn.trim(), zh: l.nameZh.trim() },
           description: { en: l.descEn.trim(), zh: l.descZh.trim() },
           price: Math.max(0, Number(l.price) || 0),
         }))
       : undefined
-    const price = isPackage
+    const price = isPackageType
       ? (lessons ?? []).reduce((sum, l) => sum + l.price, 0)
       : Math.max(0, Number(form.price) || 0)
-    saveCourse({
+    // Trial: price = hourlyRate × 50% unless instructor overrode.
+    const finalPrice =
+      form.courseType === 'TRIAL_LESSON' && (!form.price || Number(form.price) <= 0)
+        ? Math.round((Number(form.hourlyRate) || 60) * 0.5)
+        : price
+    const course: Course = {
       id: form.id,
       name: { en: form.nameEn.trim(), zh: form.nameZh.trim() },
       description: { en: form.descEn.trim(), zh: form.descZh.trim() },
-      type: form.type,
-      price,
-      durationMin: isPackage ? 60 : form.durationMin,
+      course_type: form.courseType,
+      license_class: form.courseType === 'ROAD_TEST_CAR' || form.courseType === 'FULL_COURSE_CERTIFICATE' || form.courseType === 'TRIAL_LESSON'
+        ? 'NONE'
+        : form.licenseClass,
+      type: isPackageType ? 'package' : 'single',
+      price: finalPrice,
+      durationMin:
+        form.courseType === 'ROAD_TEST_CAR' ? 240 :
+        isPackageType ? 60 : form.durationMin,
       active: form.active,
-      examCar: form.examCar,
       imageUrl: form.imageUrl || undefined,
       lessons,
-    })
+      hourlyRate: form.courseType === 'TRIAL_LESSON' ? Math.max(0, Number(form.hourlyRate) || 60) : undefined,
+      studentDiscount: form.courseType === 'TRIAL_LESSON' || form.courseType === 'FULL_COURSE_CERTIFICATE'
+        ? null
+        : discount(form.studentDiscountType, form.studentDiscountValue),
+      referralDiscount: form.courseType === 'TRIAL_LESSON' || form.courseType === 'FULL_COURSE_CERTIFICATE'
+        ? null
+        : discount(form.referralDiscountType, form.referralDiscountValue),
+    }
+    saveCourse(course)
     toast.push({ tone: 'success', title: t('instructor.courses.saved') })
     setForm(null)
   }
@@ -169,6 +281,9 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
     toast.push({ tone: 'success', title: t('instructor.courses.deleted') })
     setDeleteTarget(null)
   }
+
+  const showLicensePicker = form ? LICENSE_TYPES.includes(form.courseType) : false
+  const showHourlyRate = form?.courseType === 'TRIAL_LESSON'
 
   return (
     <div className="ins-courses">
@@ -184,50 +299,57 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
         </div>
       ) : (
         <div className="ins-course-grid">
-          {state.courses.map((course) => (
-            <div key={course.id} className={`ins-course-card${course.active ? '' : ' is-inactive'}`}>
-              <div className="ins-course-head">
-                <span className="ins-course-name">{locale === 'zh' ? course.name.zh : course.name.en}</span>
-                <div className="ins-course-badges">
-                  {course.type === 'package' ? <Badge tone="info">{t('instructor.courses.typePackage')}</Badge> : null}
-                  {course.examCar ? <Badge tone="warning">{t('instructor.courses.examCar')}</Badge> : null}
-                  <Badge tone={course.active ? 'success' : 'neutral'}>
-                    {t(course.active ? 'instructor.courses.active' : 'instructor.courses.inactive')}
-                  </Badge>
+          {state.courses.map((course) => {
+            const ct = courseTypeOf(course)
+            const lic = licenseOf(course)
+            return (
+              <div key={course.id} className={`ins-course-card${course.active ? '' : ' is-inactive'}`}>
+                <div className="ins-course-head">
+                  <span className="ins-course-name">{locale === 'zh' ? course.name.zh : course.name.en}</span>
+                  <div className="ins-course-badges">
+                    <Badge tone="info">{courseTypeLabel(ct, locale === 'zh')}</Badge>
+                    {lic !== 'NONE' ? <Badge tone="neutral">{lic}</Badge> : null}
+                    {ct === 'TRIAL_LESSON' ? <Badge tone="warning">{t('instructor.courses.discountNone')}</Badge> : null}
+                    <Badge tone={course.active ? 'success' : 'neutral'}>
+                      {t(course.active ? 'instructor.courses.active' : 'instructor.courses.inactive')}
+                    </Badge>
+                  </div>
+                </div>
+                <p className="ins-course-desc">{locale === 'zh' ? course.description.zh : course.description.en}</p>
+                <div className="ins-course-meta">
+                  <span className="ins-course-price tabular-nums">
+                    {formatMoney(course.price)} <span className="ins-course-cad">{t('common.cad')}</span>
+                  </span>
+                  <span className="ins-course-duration">
+                    {ct === 'TEN_HOUR_PACKAGE'
+                      ? t('courses.lessons', { count: course.lessons?.length ?? 11 })
+                      : ct === 'ROAD_TEST_CAR'
+                        ? `4h · ${t('instructor.courses.duration')}`
+                        : t(`instructor.courses.duration${course.durationMin}`)}
+                  </span>
+                </div>
+                <div className="ins-course-actions">
+                  <div className="ins-course-toggle">
+                    <span className="ins-course-toggle-label">{t('instructor.courses.active')}</span>
+                    <Toggle checked={course.active} onChange={() => toggleCourse(course.id)} label={course.name.en} />
+                  </div>
+                  <div className="ins-course-btns">
+                    <button type="button" className="ins-icon-btn" aria-label={t('common.edit')} onClick={() => openEdit(course)}>
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ins-icon-btn is-danger"
+                      aria-label={t('common.delete')}
+                      onClick={() => setDeleteTarget(course)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
-              <p className="ins-course-desc">{locale === 'zh' ? course.description.zh : course.description.en}</p>
-              <div className="ins-course-meta">
-                <span className="ins-course-price tabular-nums">
-                  {formatMoney(course.price)} <span className="ins-course-cad">{t('common.cad')}</span>
-                </span>
-                <span className="ins-course-duration">
-                  {course.type === 'package'
-                    ? t('courses.lessons', { count: course.lessons?.length ?? 10 })
-                    : t(`instructor.courses.duration${course.durationMin}`)}
-                </span>
-              </div>
-              <div className="ins-course-actions">
-                <div className="ins-course-toggle">
-                  <span className="ins-course-toggle-label">{t('instructor.courses.active')}</span>
-                  <Toggle checked={course.active} onChange={() => toggleCourse(course.id)} label={course.name.en} />
-                </div>
-                <div className="ins-course-btns">
-                  <button type="button" className="ins-icon-btn" aria-label={t('common.edit')} onClick={() => openEdit(course)}>
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="ins-icon-btn is-danger"
-                    aria-label={t('common.delete')}
-                    onClick={() => setDeleteTarget(course)}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -235,11 +357,14 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
         <Modal
           title={form.id ? t('instructor.courses.edit') : t('instructor.courses.add')}
           onClose={() => setForm(null)}
-          maxWidth={form.type === 'package' ? 820 : 480}
+          maxWidth={isPackageType ? 820 : 560}
           footer={
             <>
               <Button variant="secondary" onClick={() => setForm(null)}>
                 {t('common.cancel')}
+              </Button>
+              <Button variant="secondary" loading={translating} onClick={() => void autoTranslate()}>
+                {t('instructor.courses.autoTranslate')}
               </Button>
               <Button variant="primary" onClick={submitForm}>
                 {t('instructor.courses.save')}
@@ -248,90 +373,134 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
           }
         >
           <div className="ins-form-grid">
-            <div className="ins-field">
-              <label className="ins-field-label" htmlFor="course-name-en">{t('instructor.courses.nameEn')}</label>
-              <input id="course-name-en" className="ins-input" aria-invalid={!!fieldErrors.nameEn} value={form.nameEn} onChange={(e) => { setForm({ ...form, nameEn: e.target.value }); clearError('nameEn') }} />
-              {fieldErrors.nameEn ? <p className="ins-field-error">{t('common.required')}</p> : null}
+            {/* Course type + license */}
+            <div className="ins-field ins-field--wide">
+              <span className="ins-field-label">{t('instructor.courses.type')}</span>
+              <div className="ins-radio-row ins-radio-row--wrap">
+                {(['INDIVIDUAL_LESSON', 'TEN_HOUR_PACKAGE', 'TRIAL_LESSON', 'ROAD_TEST_CAR', 'FULL_COURSE_CERTIFICATE'] as CourseType[]).map((ct) => (
+                  <label key={ct} className="ins-radio">
+                    <input
+                      type="radio"
+                      name="course-type-new"
+                      checked={form.courseType === ct}
+                      onChange={() =>
+                        setForm({
+                          ...form,
+                          courseType: ct,
+                          licenseClass: LICENSE_TYPES.includes(ct) ? (form.licenseClass === 'NONE' ? 'G2' : form.licenseClass) : 'NONE',
+                        })
+                      }
+                    />
+                    <span>{t(`instructor.courses.type${ct === 'INDIVIDUAL_LESSON' ? 'Individual' : ct === 'TEN_HOUR_PACKAGE' ? 'Package' : ct === 'TRIAL_LESSON' ? 'Trial' : ct === 'ROAD_TEST_CAR' ? 'RoadTest' : 'Certificate'}`)}</span>
+                  </label>
+                ))}
+              </div>
             </div>
+
+            {showLicensePicker ? (
+              <div className="ins-field">
+                <span className="ins-field-label">{t('instructor.courses.license')}</span>
+                <div className="ins-radio-row">
+                  {(['G2', 'G'] as LicenseClass[]).map((lic) => (
+                    <label key={lic} className="ins-radio">
+                      <input
+                        type="radio"
+                        name="course-license"
+                        checked={form.licenseClass === lic}
+                        onChange={() => setForm({ ...form, licenseClass: lic })}
+                      />
+                      <span>{t(`instructor.courses.license${lic}`)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Name + description: Chinese primary, English auto */}
             <div className="ins-field">
               <label className="ins-field-label" htmlFor="course-name-zh">{t('instructor.courses.nameZh')}</label>
               <input id="course-name-zh" className="ins-input" aria-invalid={!!fieldErrors.nameZh} value={form.nameZh} onChange={(e) => { setForm({ ...form, nameZh: e.target.value }); clearError('nameZh') }} />
               {fieldErrors.nameZh ? <p className="ins-field-error">{t('common.required')}</p> : null}
             </div>
-            <div className="ins-field ins-field--wide">
-              <label className="ins-field-label" htmlFor="course-desc-en">{t('instructor.courses.descEn')}</label>
-              <textarea id="course-desc-en" className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} />
+            <div className="ins-field">
+              <label className="ins-field-label" htmlFor="course-name-en">{t('instructor.courses.nameEn')}</label>
+              <input id="course-name-en" className="ins-input" value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} placeholder="Auto-translated" />
             </div>
             <div className="ins-field ins-field--wide">
               <label className="ins-field-label" htmlFor="course-desc-zh">{t('instructor.courses.descZh')}</label>
               <textarea id="course-desc-zh" className="ins-input" rows={2} value={form.descZh} onChange={(e) => setForm({ ...form, descZh: e.target.value })} />
             </div>
-
             <div className="ins-field ins-field--wide">
-              <span className="ins-field-label">{t('instructor.courses.type')}</span>
-              <div className="ins-radio-row">
-                <label className="ins-radio">
-                  <input
-                    type="radio"
-                    name="course-type"
-                    checked={form.type === 'single'}
-                    onChange={() => setForm({ ...form, type: 'single' })}
-                  />
-                  <span>{t('instructor.courses.typeSingle')}</span>
-                </label>
-                <label className="ins-radio">
-                  <input
-                    type="radio"
-                    name="course-type"
-                    checked={form.type === 'package'}
-                    onChange={() => setForm({ ...form, type: 'package' })}
-                  />
-                  <span>{t('instructor.courses.typePackage')}</span>
-                </label>
-              </div>
+              <label className="ins-field-label" htmlFor="course-desc-en">{t('instructor.courses.descEn')}</label>
+              <textarea id="course-desc-en" className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} placeholder="Auto-translated" />
             </div>
+            <p className="ins-field-hint ins-field--wide">{t('instructor.courses.autoTranslate')}</p>
 
-            {form.type === 'single' ? (
-              <>
-                <div className="ins-field">
-                  <label className="ins-field-label" htmlFor="course-price">{t('instructor.courses.price')}</label>
-                  <input
-                    id="course-price"
-                    className="ins-input tabular-nums"
-                    type="number"
-                    min={0}
-                    value={form.price}
-                    onChange={(e) => setForm({ ...form, price: e.target.value })}
-                  />
+            {/* Pricing */}
+            {form.courseType !== 'TEN_HOUR_PACKAGE' ? (
+              <div className="ins-field">
+                <label className="ins-field-label" htmlFor="course-price">{t('instructor.courses.price')}</label>
+                <input
+                  id="course-price"
+                  className="ins-input tabular-nums"
+                  type="number"
+                  min={0}
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                />
+                {form.courseType === 'TRIAL_LESSON' ? (
+                  <p className="ins-field-hint">
+                    {t('instructor.courses.trialPriceNote')}: ${Math.round((Number(form.hourlyRate) || 60) * 0.5)}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {showHourlyRate ? (
+              <div className="ins-field">
+                <label className="ins-field-label" htmlFor="course-hourly">{t('instructor.courses.hourlyRate')}</label>
+                <input
+                  id="course-hourly"
+                  className="ins-input tabular-nums"
+                  type="number"
+                  min={0}
+                  value={form.hourlyRate}
+                  onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
+                />
+              </div>
+            ) : null}
+
+            {form.courseType === 'INDIVIDUAL_LESSON' ? (
+              <div className="ins-field">
+                <span className="ins-field-label">{t('instructor.courses.duration')}</span>
+                <div className="ins-radio-row">
+                  <label className="ins-radio">
+                    <input type="radio" name="course-duration" checked={form.durationMin === 60} onChange={() => setForm({ ...form, durationMin: 60 })} />
+                    <span>{t('instructor.courses.duration60')}</span>
+                  </label>
+                  <label className="ins-radio">
+                    <input type="radio" name="course-duration" checked={form.durationMin === 120} onChange={() => setForm({ ...form, durationMin: 120 })} />
+                    <span>{t('instructor.courses.duration120')}</span>
+                  </label>
                 </div>
-                <div className="ins-field">
-                  <span className="ins-field-label">{t('instructor.courses.duration')}</span>
-                  <div className="ins-radio-row">
-                    <label className="ins-radio">
-                      <input type="radio" name="course-duration" checked={form.durationMin === 60} onChange={() => setForm({ ...form, durationMin: 60 })} />
-                      <span>{t('instructor.courses.duration60')}</span>
-                    </label>
-                    <label className="ins-radio">
-                      <input type="radio" name="course-duration" checked={form.durationMin === 120} onChange={() => setForm({ ...form, durationMin: 120 })} />
-                      <span>{t('instructor.courses.duration120')}</span>
-                    </label>
-                  </div>
-                </div>
-              </>
-            ) : (
+              </div>
+            ) : null}
+
+            {form.courseType === 'ROAD_TEST_CAR' ? (
+              <p className="ins-field-hint ins-field--wide">{t('instructor.courses.roadTestHint')}</p>
+            ) : null}
+            {form.courseType === 'FULL_COURSE_CERTIFICATE' ? (
+              <p className="ins-field-hint ins-field--wide">{t('instructor.courses.certificateHint')}</p>
+            ) : null}
+
+            {/* Package lessons 1-10 + 11 mock test */}
+            {isPackageType ? (
               <div className="ins-field ins-field--wide">
-                <label className="ins-field-label" htmlFor="course-lesson-0">{t('instructor.courses.lessons')}</label>
+                <label className="ins-field-label">{t('instructor.courses.lessons')}</label>
                 <div className="ins-package-editor">
                   {form.lessons.map((lesson, i) => (
                     <div key={i} className="ins-package-row">
                       <span className="ins-package-row-num tabular-nums">{i + 1}</span>
-                      <input
-                        className="ins-input"
-                        placeholder={t('instructor.courses.lessonNameEn')}
-                        aria-label={t('instructor.courses.lessonNameEn') + ` (${i + 1})`}
-                        value={lesson.nameEn}
-                        onChange={(e) => patchLesson(i, { nameEn: e.target.value })}
-                      />
                       <input
                         className="ins-input"
                         placeholder={t('instructor.courses.lessonNameZh')}
@@ -341,10 +510,10 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                       />
                       <input
                         className="ins-input"
-                        placeholder={t('instructor.courses.lessonDescEn')}
-                        aria-label={t('instructor.courses.lessonDescEn') + ` (${i + 1})`}
-                        value={lesson.descEn}
-                        onChange={(e) => patchLesson(i, { descEn: e.target.value })}
+                        placeholder="Auto-translated EN"
+                        aria-label={t('instructor.courses.lessonNameEn') + ` (${i + 1})`}
+                        value={lesson.nameEn}
+                        onChange={(e) => patchLesson(i, { nameEn: e.target.value })}
                       />
                       <input
                         className="ins-input"
@@ -352,6 +521,13 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                         aria-label={t('instructor.courses.lessonDescZh') + ` (${i + 1})`}
                         value={lesson.descZh}
                         onChange={(e) => patchLesson(i, { descZh: e.target.value })}
+                      />
+                      <input
+                        className="ins-input"
+                        placeholder="Desc EN"
+                        aria-label={t('instructor.courses.lessonDescEn') + ` (${i + 1})`}
+                        value={lesson.descEn}
+                        onChange={(e) => patchLesson(i, { descEn: e.target.value })}
                       />
                       <input
                         className="ins-input ins-input--price tabular-nums"
@@ -364,6 +540,10 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                       />
                     </div>
                   ))}
+                  <div className="ins-package-row ins-package-row--mock">
+                    <span className="ins-package-row-num tabular-nums">11</span>
+                    <span className="ins-package-mock-label">🔒 {t('instructor.courses.mockTest')}</span>
+                  </div>
                 </div>
                 <p className="ins-field-hint">
                   {t('instructor.courses.packageTotal', {
@@ -372,8 +552,57 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                 </p>
                 {fieldErrors.lessons ? <p className="ins-field-error">{t('common.required')}</p> : null}
               </div>
-            )}
+            ) : null}
 
+            {/* Discounts (not for Trial / Certificate) */}
+            {form.courseType !== 'TRIAL_LESSON' && form.courseType !== 'FULL_COURSE_CERTIFICATE' ? (
+              <>
+                <div className="ins-field">
+                  <span className="ins-field-label">{t('instructor.courses.studentDiscount')}</span>
+                  <div className="ins-radio-row">
+                    <label className="ins-radio">
+                      <input type="radio" name="stu-dtype" checked={form.studentDiscountType === 'PERCENTAGE'} onChange={() => setForm({ ...form, studentDiscountType: 'PERCENTAGE' })} />
+                      <span>{t('instructor.courses.discountPercent')}</span>
+                    </label>
+                    <label className="ins-radio">
+                      <input type="radio" name="stu-dtype" checked={form.studentDiscountType === 'FIXED_AMOUNT'} onChange={() => setForm({ ...form, studentDiscountType: 'FIXED_AMOUNT' })} />
+                      <span>{t('instructor.courses.discountFixed')}</span>
+                    </label>
+                  </div>
+                  <input
+                    className="ins-input tabular-nums"
+                    type="number"
+                    min={0}
+                    placeholder={t('instructor.courses.discountValue')}
+                    value={form.studentDiscountValue}
+                    onChange={(e) => setForm({ ...form, studentDiscountValue: e.target.value })}
+                  />
+                </div>
+                <div className="ins-field">
+                  <span className="ins-field-label">{t('instructor.courses.referralDiscount')}</span>
+                  <div className="ins-radio-row">
+                    <label className="ins-radio">
+                      <input type="radio" name="ref-dtype" checked={form.referralDiscountType === 'PERCENTAGE'} onChange={() => setForm({ ...form, referralDiscountType: 'PERCENTAGE' })} />
+                      <span>{t('instructor.courses.discountPercent')}</span>
+                    </label>
+                    <label className="ins-radio">
+                      <input type="radio" name="ref-dtype" checked={form.referralDiscountType === 'FIXED_AMOUNT'} onChange={() => setForm({ ...form, referralDiscountType: 'FIXED_AMOUNT' })} />
+                      <span>{t('instructor.courses.discountFixed')}</span>
+                    </label>
+                  </div>
+                  <input
+                    className="ins-input tabular-nums"
+                    type="number"
+                    min={0}
+                    placeholder={t('instructor.courses.discountValue')}
+                    value={form.referralDiscountValue}
+                    onChange={(e) => setForm({ ...form, referralDiscountValue: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : null}
+
+            {/* Image */}
             <div className="ins-field ins-field--wide">
               <span className="ins-field-label">{t('instructor.courses.image')}</span>
               <div className="ins-course-image-row">
@@ -399,15 +628,6 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                   </button>
                 ) : null}
               </div>
-            </div>
-
-            <div className="ins-field ins-toggle-row">
-              <span className="ins-field-label">{t('instructor.courses.examCar')}</span>
-              <Toggle
-                checked={form.examCar}
-                onChange={() => setForm({ ...form, examCar: !form.examCar })}
-                label={t('instructor.courses.examCar')}
-              />
             </div>
           </div>
           {Object.values(fieldErrors).some(Boolean) ? <p className="ins-field-error">{t('common.required')}</p> : null}

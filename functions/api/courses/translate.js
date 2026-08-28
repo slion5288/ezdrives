@@ -1,23 +1,20 @@
-// /api/admin/translate — translate Simplified Chinese text to English (admin only).
-// Used by the /admin editor: the admin types Chinese only; the site stores
-// {en, zh} pairs, so English is machine-translated on save.
-//
-// Strategy (fallback chain, first success wins):
-//   1. Google Cloud Translation API v2 (needs GOOGLE_TRANSLATE_API_KEY env).
-//   2. MyMemory free API (no key; ~5k chars/day anonymous — fine for admin edits).
-//   3. Keyless Google translate_a endpoint (may return 429 from cloud IPs).
+// /api/courses/translate — translate Simplified Chinese → English (instructor).
+// Used by the instructor course editor: the instructor types Chinese only;
+// English is machine-translated on save. English may stay empty on failure
+// (§45-46: empty English must never block saving).
 import { json, fail, readJson } from '../../lib/util.js'
-import { authAdmin } from '../../lib/admin.js'
+import { authUser } from '../../lib/auth.js'
 import { checkRate } from '../../lib/rate.js'
 
-const MAX_TEXTS = 50
+const MAX_TEXTS = 60
 const MAX_LEN = 2000
 
 export async function onRequestPost({ env, request }) {
-  if (!(await authAdmin(env, request))) return fail('Not authenticated', 401)
+  const user = await authUser(env, request)
+  if (!user) return fail('Not authenticated', 401)
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
-  if (!(await checkRate(env, `admintranslate:${ip}`, 60, 60 * 1000))) {
+  if (!(await checkRate(env, `coursetranslate:${ip}`, 60, 60 * 1000))) {
     return fail('Too many requests. Try again in a minute.', 429)
   }
 
@@ -34,7 +31,7 @@ export async function onRequestPost({ env, request }) {
   try {
     translations = await translateZhToEn(env, texts)
   } catch (e) {
-    console.error('[admin/translate] error:', e && e.message ? e.message : String(e))
+    console.error('[courses/translate] error:', e && e.message ? e.message : String(e))
   }
   return json({ ok: true, translations: translations || [] })
 }
