@@ -1142,7 +1142,6 @@ html[data-theme='dark'] .landing-badge--info {
 
 .landing-courses__cta {
   margin-top: auto;
-  padding-top: var(--space-3);
   width: 100%;
 }
 

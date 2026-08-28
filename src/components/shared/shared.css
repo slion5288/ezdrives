@@ -105,6 +105,13 @@
   width: 16px;
   height: 16px;
 }
+/* Label: always perfectly centered vertically inside the button, even when
+   the button renders as an <a> (Link) or the font's line-box is taller. */
+.btn__label {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
 
 .btn__spinner {
   width: 14px;
