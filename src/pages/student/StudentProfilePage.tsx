@@ -146,7 +146,6 @@ function StudentProfileContent(): JSX.Element {
   const { showToast } = useToast()
   const [cancelId, setCancelId] = useState<string | null>(null)
   const [rescheduleId, setRescheduleId] = useState<string | null>(null)
-  const [settings, setSettings] = useState({ email: true, sms: false, inApp: true })
 
   const session = getSession()
   const studentId = session.studentId ?? ''
@@ -288,16 +287,6 @@ function StudentProfileContent(): JSX.Element {
     setCancelId(null)
     showToast('success', t('common.toast.deleted'))
   }
-
-  const toggleSetting = (key: 'email' | 'sms' | 'inApp'): void => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
-
-  const toggleRows = [
-    { key: 'email' as const, label: t('student.profile.emailNotifs') },
-    { key: 'sms' as const, label: t('student.profile.smsNotifs') },
-    { key: 'inApp' as const, label: t('student.profile.inAppNotifs') },
-  ]
 
   return (
     <div className="student-page">
@@ -445,33 +434,15 @@ function StudentProfileContent(): JSX.Element {
                   </div>
                 </div>
               </div>
+              {student && !student.email ? (
+                <p className="student-email-hint">{t('student.profile.emailMissingHint')}</p>
+              ) : null}
               <div className="student-profile-row">
                 <span className="student-summary-label">{t('student.profile.registered')}</span>
                 <span className="student-summary-value">
                   {student ? formatDateLabel(locale, fromLocalISO(student.registeredAt)) : ''}
                 </span>
               </div>
-            </div>
-          </section>
-
-          <section className="student-card">
-            <div className="student-card-header">
-              <h3 className="student-card-title">{t('student.profile.settings')}</h3>
-            </div>
-            <div className="student-settings-group">
-              {toggleRows.map((row) => (
-                <div key={row.key} className="student-toggle-row">
-                  <span className="student-toggle-label">{row.label}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={settings[row.key]}
-                    aria-label={row.label}
-                    className={`student-toggle${settings[row.key] ? ' on' : ''}`}
-                    onClick={() => toggleSetting(row.key)}
-                  />
-                </div>
-              ))}
             </div>
           </section>
         </div>

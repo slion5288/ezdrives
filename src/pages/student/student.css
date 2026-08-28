@@ -1315,65 +1315,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.student-settings-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.student-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) 0;
-  border-top: 1px solid var(--color-border);
-}
-
-.student-toggle-row:first-child {
-  border-top: none;
-}
-
-.student-toggle-label {
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-}
-
-.student-toggle-hint {
-  display: block;
-  margin-top: 1px;
-  color: var(--color-text-muted);
+.student-email-hint {
+  margin: var(--space-2) 0 var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-text);
   font-size: var(--font-size-sm);
-}
-
-.student-toggle {
-  position: relative;
-  width: 40px;
-  height: 24px;
-  border-radius: 999px;
-  background: var(--color-border-strong);
-  transition: background var(--transition-fast);
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.student-toggle::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  transition: transform var(--transition-fast);
-}
-
-.student-toggle.on {
-  background: var(--color-accent);
-}
-
-.student-toggle.on::after {
-  transform: translateX(16px);
+  line-height: 1.5;
 }
 
 .student-book-row {

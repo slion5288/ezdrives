@@ -133,6 +133,7 @@ booking_confirmed / booking_cancelled / booking_rescheduled / reminder_2h（**�
 - **幂等**：同一 `(type, booking_id, recipient_email)` 只发一封（D1 唯一索引 + 预检）。
 - **日志**：`notification_logs`，/admin「发送日志」可查最近 50 条（sent/failed/pending + 错误原因）。
 - **注册流程**：姓名 → 手机号 → **邮箱** → 短信验证码 → 账号；注册成功提示「手机已验证，重要账户/预约/日程/提醒通知将发送到 {email}」。
+- **通知渠道统一管理（Change 22）**：学生端**不再提供任何通知设置开关**（Notification Settings 已删除）。系统统一：**Email = 开启、In-App = 开启、SMS = 关闭（仅用于手机号验证）**。手机号仅用于身份验证/紧急联系，不再作为普通通知渠道。学生可查看应用内通知（Notification Center，含已读/全部已读）。老学生无邮箱时，个人中心显示提示横幅引导补填邮箱（不强制重新注册）。
 - **存量学员安全**：`users.email` 唯一索引允许 NULL（历史学员 email=null 不受影响，稍后在个人中心补邮箱即可）。
 
 ## 10. 其他已定需求

@@ -7,6 +7,25 @@
 
 ---
 
+---
+
+## Change 22 — 删除学生端「通知设置」模块（Notification Settings 移除，通知系统保留）
+
+- **我的要求**：学生端不再允许自主选择通知渠道。删除 Notification Settings / Notification Preferences 全部 UI（页面/Card/Toggle/相关前端逻辑），但**保留底层通知系统**（Email + In-App 照常发送，Notification Center / Templates / Logs 不动）；SMS 仅用于手机号验证，不再作为普通通知渠道；老学生无邮箱时在个人中心提示补填，不强制重新注册。
+- **扫描结论**：学生端「通知设置」只是 `StudentProfilePage.tsx` 内的本地 React state（`useState({ email: true, sms: false, inApp: true })`）——**无数据库字段、无 API、无持久化**；后端 SMS 仅存在于 Twilio Verify（验证码），本就无普通 SMS 通知；路由无独立设置页（学生导航 4 项 Book/Dashboard/Notifications/Profile 本就不含 Settings）。
+- **删除**：
+  - `src/pages/student/StudentProfilePage.tsx`：「通知设置（Notifications）」整卡 + `toggleSetting` + `toggleRows` + `settings` state。
+  - `src/i18n/locales/en.ts` / `zh.ts`：`emailNotifs` / `smsNotifs` / `inAppNotifs` / `settings` 4 个 key。
+  - `src/pages/student/student.css`：`.student-settings-group` + `.student-toggle*` 8 条规则。
+- **新增**：
+  - `StudentProfilePage.tsx`：老学生无邮箱时显示提示横幅（`student-email-hint`）——「Please add your email address to receive important booking and account notifications.」/ 中文对应。
+  - i18n：`student.profile.emailMissingHint` 双语；CSS：`.student-email-hint`。
+- **保留（未动）**：`functions/lib/notification.js`（Email 发送）、`/student/notifications` Notification Center（已读/全部已读）、管理端 `notification_templates` / `notification_logs`、actions.js 的 In-App 通知写入、Twilio Verify（`send-code.js`/`register.js`）。
+- **数据库**：无任何字段改动（学生端设置本就不落库，§12 结论：无需迁移）。
+- **修改文件**：`src/pages/student/StudentProfilePage.tsx`、`src/pages/student/student.css`、`src/i18n/locales/en.ts`、`src/i18n/locales/zh.ts`、`CHANGELOG.md`、`PROJECT_SPEC.md`。
+- **是否影响旧功能**：是——个人中心移除通知开关（学生不再能关闭 Email/In-App，默认全部开启，符合新逻辑）；Notification Center 与邮件发送不受影响。
+- **测试结果**：Build 通过；6 项专项浏览器测试全过（个人中心无 Notification Settings、无邮箱时提示横幅显示、邮箱行保留、Notification Center 正常渲染、导航无设置项、导航含通知项）；Full Regression 22 项全过；管理端模板测试全过。
+
 ## Change 21 — 学员个人中心补填/修改通知邮箱（存量学员邮箱补全）
 
 - **我的要求**：完成此前遗留项——历史学员 `users.email` 为 NULL 时收不到通知邮件，需要在个人中心提供补填邮箱入口。
