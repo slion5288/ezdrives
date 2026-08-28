@@ -534,6 +534,8 @@ export const messages: Record<MessageKey, string> = {
   'instructor.courses.lessonDescEn': '内容（英文）',
   'instructor.courses.lessonDescZh': '内容（中文）',
   'instructor.courses.packageTotal': '套餐总价：${total}',
+  'instructor.courses.packagePrice': '套餐价格（总价）',
+  'instructor.courses.packagePriceHint': '各课时价格合计 ${total}。修改套餐总价会自动按比例调整课时价格。',
 
   // --- 教练端学员统计 ---
   'instructor.students.title': '学员管理',

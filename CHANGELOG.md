@@ -28,6 +28,7 @@
   - 证书上传：uploadCertificateDocs（正反面 data URL → payment.certDocs，状态 partial/complete）+ 学员端上传卡 + 教练通知（邮件仅状态不含图 §46）
 - **迁移**：0007（5 新模板）本地+生产已应用。
 - **测试**：Individual 重复购买成功；Trial 二次购买拒绝；优惠 checkbox 取消；NEW_PURCHASE→教练/PURCHASE_CONFIRMED→学员邮件日志；证书上传 complete + DOCUMENT_UPLOADED→教练；Full Regression 22/22；模板测试全过。
+- **追加修复（用户反馈：套餐价格无修改入口）**：套餐类型现在显示「套餐价格（总价）」输入框；保存时用教练输入的总价，并按比例自动缩放各课时价格（10×课时价=总价，预约计费一致）。浏览器验证 500→600 时课时价 50→60。
 
 ## Change 24 — 课程系统重构（结构化类型 + 翻译 + 优惠 + 套餐快照 + 顺序预约）
 

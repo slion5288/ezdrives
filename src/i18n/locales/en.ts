@@ -532,6 +532,8 @@ export const messages = {
   'instructor.courses.lessonDescEn': 'Content (EN)',
   'instructor.courses.lessonDescZh': 'Content (中文)',
   'instructor.courses.packageTotal': 'Package total: ${total}',
+  'instructor.courses.packagePrice': 'Package price (total)',
+  'instructor.courses.packagePriceHint': 'Lesson prices total ${total}. Changing the package price auto-scales lesson prices.',
 
   // --- instructor students page ---
   'instructor.students.title': 'Students',

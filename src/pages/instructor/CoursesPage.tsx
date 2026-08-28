@@ -254,7 +254,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
       if (!value.trim() || isNaN(v) || v <= 0) return null
       return { type, value: v }
     }
-    const lessons: CourseLesson[] | undefined = isPackageType
+    let lessons: CourseLesson[] | undefined = isPackageType
       ? form.lessons.map((l, i) => ({
           sequence_number: i + 1,
           name: { en: l.nameEn.trim(), zh: l.nameZh.trim() },
@@ -262,9 +262,19 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
           price: Math.max(0, Number(l.price) || 0),
         }))
       : undefined
+    // Package total: use the instructor-typed package price; when it differs
+    // from the sum of per-lesson prices, scale lesson prices proportionally so
+    // booking charges stay consistent with the package total.
+    const pkgTotal = Math.max(0, Number(form.price) || 0)
     const price = isPackageType
-      ? (lessons ?? []).reduce((sum, l) => sum + l.price, 0)
+      ? pkgTotal
       : Math.max(0, Number(form.price) || 0)
+    if (isPackageType && lessons && lessons.length > 0 && pkgTotal > 0) {
+      const sum = lessons.reduce((s, l) => s + l.price, 0)
+      if (sum > 0 && Math.abs(sum - pkgTotal) > 0.01) {
+        lessons = lessons.map((l) => ({ ...l, price: Math.round((l.price / sum) * pkgTotal * 100) / 100 }))
+      }
+    }
     // Trial: price = hourlyRate × 50% unless instructor overrode.
     const finalPrice =
       form.courseType === 'TRIAL_LESSON' && (!form.price || Number(form.price) <= 0)
@@ -460,25 +470,32 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
             </div>
             <p className="ins-field-hint ins-field--wide">{t('instructor.courses.autoTranslate')}</p>
 
-            {/* Pricing */}
-            {form.courseType !== 'TEN_HOUR_PACKAGE' ? (
-              <div className="ins-field">
-                <label className="ins-field-label" htmlFor="course-price">{t('instructor.courses.price')}</label>
-                <input
-                  id="course-price"
-                  className="ins-input tabular-nums"
-                  type="number"
-                  min={0}
-                  value={form.price}
-                  onChange={(e) => setForm({ ...form, price: e.target.value })}
-                />
-                {form.courseType === 'TRIAL_LESSON' ? (
-                  <p className="ins-field-hint">
-                    {t('instructor.courses.trialPriceNote')}: ${Math.round((Number(form.hourlyRate) || 60) * 0.5)}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
+            {/* Pricing — always shown; package label differs */}
+            <div className="ins-field">
+              <label className="ins-field-label" htmlFor="course-price">
+                {isPackageType ? t('instructor.courses.packagePrice') : t('instructor.courses.price')}
+              </label>
+              <input
+                id="course-price"
+                className="ins-input tabular-nums"
+                type="number"
+                min={0}
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+              />
+              {isPackageType ? (
+                <p className="ins-field-hint">
+                  {t('instructor.courses.packagePriceHint', {
+                    total: form.lessons.reduce((sum, l) => sum + (Math.max(0, Number(l.price) || 0)), 0),
+                  })}
+                </p>
+              ) : null}
+              {form.courseType === 'TRIAL_LESSON' ? (
+                <p className="ins-field-hint">
+                  {t('instructor.courses.trialPriceNote')}: ${Math.round((Number(form.hourlyRate) || 60) * 0.5)}
+                </p>
+              ) : null}
+            </div>
 
             {showHourlyRate ? (
               <div className="ins-field">
