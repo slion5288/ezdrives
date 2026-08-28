@@ -11,6 +11,21 @@
 
 ---
 
+---
+
+## Change 24 — 课程系统重构（结构化类型 + 翻译 + 优惠 + 套餐快照 + 顺序预约）
+
+- **我的要求**：重构完整课程商业链——课程类型结构化（G2/G/Trial/RoadTest/Certificate）、教练中文创建自动翻译、学生/推荐优惠、套餐 Lesson Snapshot、顺序预约、教练确认课时完成。
+- **用户决策**：Trial 用 Instructor Hourly Rate × 50%；学生+推荐优惠不叠加（取较高）；证书课程默认无优惠（可单独设置）。
+- **数据模型**：Course 增 `course_type`（INDIVIDUAL_LESSON/TEN_HOUR_PACKAGE/TRIAL_LESSON/ROAD_TEST_CAR/FULL_COURSE_CERTIFICATE）+ `license_class`（G2/G/NONE）+ `studentDiscount`/`referralDiscount`（PERCENTAGE/FIXED_AMOUNT）+ `hourlyRate`；Lesson 增 `sequence_number`/`is_free_mock_test`；Payment 增价格快照（original/discount/final + referrer）；Appointment 增 lessonSequence/lessonTitle/courseType/lessonCompletion；新增 `enrollments` 表（Lesson Snapshot）。
+- **迁移**：`migrations/0006_course_refactor.sql`（enrollments 表；其余在 payload 扩展，无 ALTER）——本地+生产已应用（生产 0 历史业务数据，零风险）。
+- **教练端**：课程表单 5 类型动态字段；中文必填、英文自动翻译（新 `/api/courses/translate`，共享 lib/translate.js，Google→MyMemory→keyless 兜底，失败可空保存）；Lesson 1-10 编辑 + Lesson 11 Free Mock Test 自动锁定；优惠配置（Trial/Certificate 隐藏）；RoadTest 4h 固定；Trial 50% 定价。
+- **学生端**：购买弹窗加「在校学生 Yes/No」+ 推荐电话（实时验证）+ 价格预览框；服务端权威重算。
+- **服务端**：`lib/pricing.js` computeDiscount（best-wins 不叠加、Trial/Cert 排除、服务端重算 §54）；addPayment 价格快照 + Enrollment/Snapshot 创建；completeLesson（教练确认 §61）；取消恢复课时 available（§62）；booking 记录 lessonSequence + snapshot booked。
+- **通知**：变量扩至 29 个（course_type/license_class/lesson_number/title/content/original/discount/final/start/end time）。
+- **测试**：翻译 API（中→英 3 条）；优惠 API（无效推荐 NONE/500、有效推荐 REFERRAL 100→400+referrer id、自荐忽略）；pricing 单元测试 4 例；购买→确认→Enrollment（10 available）→预约 L1（booked）→完成（completed count=1）；浏览器（课程表单 8 项、购买弹窗优惠 UI）；Full Regression 22/22；模板测试全过。
+- **生产**：迁移 0006 已应用；代码待部署。
+
 ## Change 23 — 全站 UI/UX 统一（Audit → Standardize → Fix → Polish → Clean Up）
 
 - **我的要求**：对全站进行一次系统性 UI/UX 检查与统一，让 Student/Instructor/Admin/Public 看起来像同一个专业团队设计。先 Audit 后实施，不开发新业务功能、不改业务逻辑/数据库/API。
