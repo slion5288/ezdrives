@@ -98,97 +98,37 @@
 /* ---------------------------------------------------------------------------
    Buttons
    --------------------------------------------------------------------------- */
-.student-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: 40px;
-  padding: 0 var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  line-height: 1;
-  text-decoration: none;
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast),
-    transform var(--transition-fast);
-  cursor: pointer;
-}
 
-.student-btn:hover {
-  text-decoration: none;
-}
 
-.student-btn:active {
-  transform: translateY(1px);
-}
 
-.student-btn:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-  box-shadow: none;
-}
 
-.student-btn-primary {
-  background: var(--gradient-brand);
-  color: var(--color-on-brand);
-  box-shadow: var(--shadow-card);
-}
 
-.student-btn-primary:hover {
-  background: var(--gradient-brand-hover);
-}
 
-.student-btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border-strong);
-}
 
-.student-btn-secondary:hover {
-  background: var(--color-surface-2);
-}
 
-.student-btn-ghost {
-  background: transparent;
-  color: var(--color-text-muted);
-}
 
-.student-btn-ghost:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
-}
 
-.student-btn-danger {
-  background: var(--color-danger);
-  color: #fff;
-}
 
-.student-btn-danger:hover {
-  filter: brightness(0.94);
-}
 
-.student-btn-ghost-danger {
-  background: transparent;
-  color: var(--color-danger);
-}
 
-.student-btn-ghost-danger:hover {
-  background: var(--color-danger-soft);
-}
 
-.student-btn-sm {
-  height: 32px;
-  padding: 0 var(--space-3);
-  font-size: var(--font-size-sm);
-}
 
-.student-btn-block {
-  width: 100%;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 .student-icon-btn {
   display: inline-flex;
@@ -2475,6 +2415,9 @@
 
 /* Cancel-lesson button: danger ghost without the border (matches legacy
    student-btn-ghost-danger look). */
+
+
+/* Cancel-lesson button: danger ghost without border (legacy look). */
 .student-btn-ghost-danger-clean {
   border-color: transparent;
 }

@@ -11,56 +11,12 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Car, Check, Clock, Star } from 'lucide-react'
 import { useT } from '../../i18n'
 import { COURSE_IMAGES, LOGO_DATA_URL } from '../../data/assets'
+import { Button } from '../../components/shared/Button'
 
 // --- Button (DESIGN §4.1) ---
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost'
 export type ButtonSize = 'sm' | 'md' | 'lg'
-
-interface LandingButtonProps {
-  variant?: ButtonVariant
-  size?: ButtonSize
-  /** react-router path */
-  to?: string
-  /** plain anchor href */
-  href?: string
-  onClick?: () => void
-  className?: string
-  children: ReactNode
-}
-
-export function LandingButton({
-  variant = 'primary',
-  size = 'md',
-  to,
-  href,
-  onClick,
-  className,
-  children,
-}: LandingButtonProps): JSX.Element {
-  const classes = ['landing-btn', `landing-btn--${variant}`, `landing-btn--${size}`]
-  if (className) classes.push(className)
-  const joined = classes.join(' ')
-  if (to) {
-    return (
-      <Link to={to} className={joined} onClick={onClick}>
-        {children}
-      </Link>
-    )
-  }
-  if (href) {
-    return (
-      <a href={href} className={joined} onClick={onClick}>
-        {children}
-      </a>
-    )
-  }
-  return (
-    <button type="button" className={joined} onClick={onClick}>
-      {children}
-    </button>
-  )
-}
 
 // --- Badge (DESIGN §4.3) ---
 
@@ -218,10 +174,9 @@ export function CourseCard({
           {t('vehicles.thisVehicle')}
         </li>
       </ul>
-      <LandingButton variant={popular ? 'primary' : 'secondary'} to={to} className="landing-courses__cta">
+      <Button variant={popular ? 'primary' : 'secondary'} to={to} className="landing-courses__cta" icon={<ArrowRight size={16} />}>
         {t('courses.book')}
-        <ArrowRight size={16} className="landing-btn__icon" />
-      </LandingButton>
+      </Button>
     </div>
   )
 }

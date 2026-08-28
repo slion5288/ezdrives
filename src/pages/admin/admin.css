@@ -171,38 +171,11 @@
   margin-bottom: 6px;
 }
 
-.admin-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: 40px;
-  padding: 0 var(--space-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-.admin-btn--primary {
-  background: var(--gradient-brand);
-  color: var(--color-on-brand);
-}
-.admin-btn--secondary {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
-}
-.admin-btn--danger {
-  background: transparent;
-  color: var(--color-danger, #dc2626);
-  border-color: var(--color-border);
-}
-.admin-btn:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
+
+
+
+
+
 .admin-actions {
   display: flex;
   justify-content: flex-end;
