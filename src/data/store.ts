@@ -51,6 +51,16 @@ export function courseTypeOf(c: Course): CourseType {
   return 'INDIVIDUAL_LESSON'
 }
 
+/** Public course display order: the Trial Lesson (体验课) always comes first,
+ *  then every other course keeps its original (insertion) order. */
+export function sortCoursesForDisplay(courses: Course[]): Course[] {
+  return [...courses].sort((a, b) => {
+    const ta = courseTypeOf(a) === 'TRIAL_LESSON' ? 0 : 1
+    const tb = courseTypeOf(b) === 'TRIAL_LESSON' ? 0 : 1
+    return ta - tb
+  })
+}
+
 /** Resolve the licence class, defaulting NONE for non-licence services. */
 export function licenseOf(c: Course): LicenseClass {
   if (c.license_class) return c.license_class

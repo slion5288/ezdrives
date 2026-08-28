@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {Calendar, CalendarCheck, Car, CheckCircle2, ChevronDown, GraduationCap, Mail, MapPin, Phone, Pause, Play, Quote, ShieldCheck, Star, Users, Zap, } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
-import { getSession, initPublicHome, isPublicReady, maskPhone, useAppState } from '../../data/store'
+import { getSession, initPublicHome, isPublicReady, maskPhone, sortCoursesForDisplay, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
 import { G1_IMAGE, HERO_IMAGES } from '../../data/assets'
@@ -155,8 +155,9 @@ export default function LandingPage(): JSX.Element {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  /** Every active course — desktop shows them all in a horizontal rail. */
-  const allCourses = visitor && !publicReady ? [] : state.courses.filter((c) => c.active)
+  /** Every active course — desktop shows them all in a horizontal rail.
+   *  §Trial: the Trial Lesson (体验课) always comes first. */
+  const allCourses = visitor && !publicReady ? [] : sortCoursesForDisplay(state.courses.filter((c) => c.active))
   /** Mobile shows a few cards + a "view all" entry to the /courses page. */
   const shownCourses = isMobile ? allCourses.slice(0, 3) : allCourses
   // §C: primary button = first course of each (courseType+license) group —

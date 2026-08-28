@@ -8,7 +8,7 @@
 import {ArrowLeft,BookOpen,GraduationCap} from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocale, useT } from '../../i18n'
-import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
+import { getSession, initPublicHome, isPublicReady, sortCoursesForDisplay, useAppState } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
 import {CourseCard,LandingBadge} from './primitives'
 import LandingSubHeader from './LandingSubHeader'
@@ -29,7 +29,7 @@ export default function CoursesPage(): JSX.Element {
   // Never show the seed placeholder catalogue to visitors — real public data
   // only (empty until fetched, or forever when the fetch failed).
   const visitor = !getSession().token
-  const courses = visitor && !isPublicReady() ? [] : state.courses.filter((c) => c.active)
+  const courses = visitor && !isPublicReady() ? [] : sortCoursesForDisplay(state.courses.filter((c) => c.active))
   // §C: primary button = first course of each (courseType+license) group.
   const firstOfGroup = (c: { id: string; course_type?: string; type?: string; license_class?: string; examCar?: boolean }): boolean => {
     const key = `${c.course_type ?? (c.examCar ? 'ROAD_TEST_CAR' : c.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${c.license_class ?? (c.examCar ? 'NONE' : c.type === 'package' ? 'G2' : 'G2')}`
@@ -70,6 +70,7 @@ export default function CoursesPage(): JSX.Element {
                     to={`/student/book?course=${course.id}`}
                     t={t}
                     pick={pick}
+                    media
                   />
                 ))}
               </div>

@@ -27,7 +27,7 @@ export const messages: Record<MessageKey, string> = {
   'landing.steps.2.body': '新手基础、路考强化、高速驾驶或防御性驾驶，任您挑选。',
   'landing.steps.3.title': '立即确认',
   'landing.steps.3.body': '预约即时确认，每节课前自动发送上课提醒。',
-  'landing.courses.title': '课程预约',
+  'landing.courses.title': '课程介绍',
   'landing.courses.subtitle': '透明加元定价。每节课程均配备现代双控教练车。',
   'landing.courses.popular': '最受欢迎',
   'landing.courses.viewAll': '查看更多课程',

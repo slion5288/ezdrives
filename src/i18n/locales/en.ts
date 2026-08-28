@@ -25,7 +25,7 @@ export const messages = {
   'landing.steps.2.body': 'Beginner practice, road-test prep, highway confidence or defensive driving.',
   'landing.steps.3.title': 'Get confirmed instantly',
   'landing.steps.3.body': 'Your booking is confirmed on the spot, with reminders before every lesson.',
-  'landing.courses.title': 'Course booking',
+  'landing.courses.title': 'Course introduction',
   'landing.courses.subtitle': 'Transparent CAD pricing. Every course includes a modern dual-control vehicle.',
   'landing.courses.popular': 'Most popular',
   'landing.courses.viewAll': 'View all courses',
