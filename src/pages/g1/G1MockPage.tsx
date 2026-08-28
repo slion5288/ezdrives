@@ -7,12 +7,12 @@
 // ============================================================================
 
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { BookOpen, Check, ChevronLeft, ChevronRight, GraduationCap, RotateCcw, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, Check, ChevronRight, GraduationCap, RotateCcw, X } from 'lucide-react'
 import { G1_BANK_EN, G1_BANK_ZH, G1_IMAGES } from '../../data/g1-bank'
 import type { G1Question } from '../../data/g1-bank'
 import { useT } from '../../i18n'
 import LandingSubHeader from '../landing/LandingSubHeader'
+import { LandingButton } from '../landing/primitives'
 import './g1.css'
 
 type BankId = 'zh' | 'en'
@@ -88,6 +88,11 @@ export default function G1MockPage(): JSX.Element {
       <LandingSubHeader />
 
       <main className="g1-main container" id="g1-title">
+        <div className="g1-back-top">
+          <LandingButton variant="ghost" to="/" className="landing-sub-back">
+            <ArrowLeft size={16} /> {t('nav.home')}
+          </LandingButton>
+        </div>
         {screen === 'intro' ? (
           <div className="g1-intro">
             <div className="g1-intro__hero">
@@ -249,18 +254,12 @@ export default function G1MockPage(): JSX.Element {
               <button type="button" className="g1-btn g1-btn--secondary" onClick={() => setScreen('intro')}>
                 {t('g1.switch')}
               </button>
-              <Link to="/" className="g1-btn g1-btn--ghost">
-                <ChevronLeft size={15} /> {t('g1.back')}
-              </Link>
             </div>
           </div>
         ) : null}
       </main>
 
       {/* Always-available back-to-home link (bottom-left) */}
-      <Link to="/" className="g1-back-home">
-        <ChevronLeft size={16} /> {t('g1.back')}
-      </Link>
     </div>
   )
 }

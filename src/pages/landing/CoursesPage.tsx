@@ -5,7 +5,7 @@
 // each card books straight into the student flow.
 // ============================================================================
 
-import { ArrowLeft, ArrowRight, Check, Clock, GraduationCap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, Check, Clock, GraduationCap } from 'lucide-react'
 import { useEffect } from 'react'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
@@ -43,7 +43,7 @@ export default function CoursesPage(): JSX.Element {
                 <ArrowLeft size={16} /> {t('nav.home')}
               </LandingButton>
               <span className="landing-sub-head__icon" aria-hidden="true">
-                <GraduationCap size={30} />
+                <BookOpen size={30} />
               </span>
               <h1 className="landing-sub-title">{t('nav.courses')}</h1>
               <p className="landing-sub-sub">{t('landing.courses.subtitle')}</p>

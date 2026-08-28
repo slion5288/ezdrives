@@ -10,6 +10,18 @@
   flex-direction: column;
 }
 
+/* Top-left back-to-home button — pinned to the viewport top-left,
+   consistent with /courses & /videos (sits below the sticky header) */
+.g1-back-top {
+  position: fixed;
+  left: 16px;
+  top: calc(64px + 12px);
+  z-index: 40;
+}
+.g1-back-top .landing-sub-back {
+  position: static;
+}
+
 /* --- Top bar --- */
 .g1-header {
   position: sticky;
