@@ -4,10 +4,11 @@
 // Built from tokens only; every label comes from useT().
 // ============================================================================
 
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import type { ReactNode } from 'react'
-import { TrendingDown, TrendingUp, X } from 'lucide-react'
+import { TrendingDown, TrendingUp } from 'lucide-react'
 import { useT } from '../../i18n'
+import { Modal as SharedModal } from '../../components/shared/Modal'
 
 // --- Modal ----------------------------------------------------------------
 
@@ -24,44 +25,10 @@ export function Modal({
   footer?: ReactNode
   maxWidth?: number
 }): JSX.Element {
-  const t = useT()
-  const onCloseRef = useRef(onClose)
-  useEffect(() => {
-    onCloseRef.current = onClose
-  })
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onCloseRef.current()
-    }
-    window.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [])
-
   return (
-    <div className="ins-modal-scrim" onMouseDown={onClose}>
-      <div
-        className="ins-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        style={maxWidth ? { maxWidth } : undefined}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="ins-modal-head">
-          <h3 className="ins-modal-title">{title}</h3>
-          <button type="button" className="ins-icon-btn" onClick={onClose} aria-label={t('common.close')}>
-            <X size={18} />
-          </button>
-        </div>
-        <div className="ins-modal-body">{children}</div>
-        {footer ? <div className="ins-modal-foot">{footer}</div> : null}
-      </div>
-    </div>
+    <SharedModal title={title} onClose={onClose} footer={footer} maxWidth={maxWidth}>
+      {children}
+    </SharedModal>
   )
 }
 

@@ -171,6 +171,10 @@
 .ins-main {
   flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-8);
 }
 
 .ins-main-head {
@@ -223,7 +227,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   height: 40px;
   padding: 0 var(--space-4);
   border-radius: var(--radius-md);

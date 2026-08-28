@@ -432,10 +432,9 @@ export default function LoginPage(): JSX.Element {
             </>
           )}
 
-          <button type="button" className="login__back" onClick={() => navigate('/')}>
-            <ArrowLeft size={14} aria-hidden="true" />
+          <Button variant="ghost" size="sm" className="login__back" onClick={() => navigate('/')} icon={<ArrowLeft size={14} aria-hidden="true" />}>
             {t('auth.back')}
-          </button>
+          </Button>
         </Card>
       </main>
     </div>

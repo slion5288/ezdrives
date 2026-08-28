@@ -16,7 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ImagePlus, KeyRound, LogOut, Mail, Plus, Save, Trash2, Type, Users } from 'lucide-react'
+import { ArrowLeft, ImagePlus, KeyRound, LogOut, Mail, Plus, Save, Trash2, Type, Users } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { apiAdminChangePassword, apiAdminGetContent, apiAdminLogin, apiAdminPutContent, apiAdminTranslate, apiPublicHome } from '../../data/api'
 import { getAdminToken, setAdminToken } from '../../data/store'
@@ -223,8 +223,8 @@ function AdminLogin({ onLoggedIn }: { onLoggedIn: (token: string) => void }): JS
           <button type="submit" className="admin-btn admin-btn--primary" disabled={busy}>
             {busy ? zh('auth.login.loading') : zh('admin.login.submit')}
           </button>
-          <Link to="/" className="admin-login__back" style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-            ← {zh('auth.back')}
+          <Link to="/" className="admin-login__back">
+            <ArrowLeft size={14} aria-hidden="true" /> {zh('auth.back')}
           </Link>
         </form>
       </div>

@@ -216,19 +216,19 @@ html {
 
 .landing-btn--sm {
   height: 32px;
-  padding: 0 14px;
+  padding: 0 var(--space-3);
   font-size: var(--font-size-sm);
 }
 
 .landing-btn--md {
   height: 40px;
-  padding: 0 18px;
+  padding: 0 var(--space-4);
   font-size: var(--font-size-base);
 }
 
 .landing-btn--lg {
   height: 48px;
-  padding: 0 24px;
+  padding: 0 var(--space-6);
   font-size: var(--font-size-md);
 }
 
@@ -2073,23 +2073,6 @@ html[data-theme='dark'] .landing-badge--info {
 }
 
 /* --- Apple-style section polish --- */
-.landing-section {
-  padding: var(--space-8) 0;
-}
-.landing-section__head {
-  text-align: center;
-  max-width: 720px;
-  margin: 0 auto var(--space-6);
-}
-.landing-section__head h2 {
-  font-size: var(--font-size-5xl);
-  letter-spacing: -0.025em;
-}
-.landing-section__sub {
-  margin-top: var(--space-2);
-  font-size: var(--font-size-lg);
-  color: var(--color-text-muted);
-}
 @media (max-width: 760px) {
   .landing-section__head h2 {
     font-size: var(--font-size-3xl);
