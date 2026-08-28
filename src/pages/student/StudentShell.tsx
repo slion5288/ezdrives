@@ -14,6 +14,7 @@ import { getSession, initStateFromServer, isStateLoaded, logout, useAppState } f
 import { setLocale, useLocale, useT } from '../../i18n'
 import { LOGO_DATA_URL } from '../../data/assets'
 import './student.css'
+import { Button } from '../../components/shared/Button'
 
 type Theme = 'light' | 'dark'
 
@@ -88,9 +89,9 @@ export function StudentShell({ children }: StudentShellProps): JSX.Element {
         {loadError ? (
           <div className="student-loading__error">
             <p>{t('common.toast.error')}</p>
-            <button type="button" className="student-btn student-btn-primary student-btn-sm" onClick={retryLoad}>
+            <Button variant="primary" size="sm" onClick={retryLoad}>
               {t('common.retry')}
-            </button>
+            </Button>
           </div>
         ) : null}
       </div>

@@ -13,6 +13,7 @@ import { EmptyState } from './StudentShared'
 import { StudentShell } from './StudentShell'
 import { relativeTime } from './studentFormat'
 import { useToast } from '../../components/shared'
+import { Button } from '../../components/shared/Button'
 import './student.css'
 
 type IconTone = 'success' | 'danger' | 'info' | 'warning'
@@ -65,9 +66,9 @@ function StudentNotificationsContent(): JSX.Element {
       <header className="student-page-head">
         <h1>{t('student.notifications.title')}</h1>
         {notifications.length > 0 && (
-          <button type="button" className="student-btn student-btn-ghost student-btn-sm" onClick={handleMarkAllRead}>
+          <Button variant="ghost" size="sm" onClick={handleMarkAllRead}>
             {t('student.notifications.markAllRead')}
-          </button>
+          </Button>
         )}
       </header>
 

@@ -24,6 +24,7 @@ import { StudentShell } from './StudentShell'
 import { PaymentModal } from './PaymentModal'
 import { formatPrice } from './studentFormat'
 import './student.css'
+import { Button } from '../../components/shared/Button'
 
 export default function StudentBookingPage(): JSX.Element {
   const t = useT()
@@ -65,9 +66,9 @@ export default function StudentBookingPage(): JSX.Element {
             <div className="student-public-actions">
               <LanguageSwitcher />
               <ThemeToggle />
-              <Link to="/login" className="student-btn student-btn-primary student-btn-sm">
+              <Button to="/login" variant="primary" size="sm">
                 {t('nav.login')}
-              </Link>
+              </Button>
             </div>
           </div>
         </header>

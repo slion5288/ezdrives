@@ -6,13 +6,13 @@
 // 1–2 consecutive). No notifications here — those live under 通知.
 // ============================================================================
 
-import { Link } from 'react-router-dom'
 import { getSession, isCoursePurchased, useAppState } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { CalendarPlus } from 'lucide-react'
 import { StudentShell } from './StudentShell'
 import { CourseBookingPanel } from './CourseBookingPanel'
 import './student.css'
+import { Button } from '../../components/shared/Button'
 
 export default function StudentDashboardPage(): JSX.Element {
   const t = useT()
@@ -45,9 +45,9 @@ export default function StudentDashboardPage(): JSX.Element {
               </span>
               <h2>{t('student.dashboard.noCourses')}</h2>
               <p>{t('student.dashboard.noCoursesBody')}</p>
-              <Link to="/student/book" className="student-btn student-btn-primary">
+              <Button to="/student/book" variant="primary">
                 {t('student.dashboard.backToBook')}
-              </Link>
+              </Button>
             </div>
           </div>
         ) : (

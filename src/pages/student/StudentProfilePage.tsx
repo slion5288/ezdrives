@@ -9,8 +9,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CalendarPlus, Download, History } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { cancelAppointment, getSession, lessonLabel, maskPhone, rescheduleAppointment, updateStudentAddress, updateStudentEmail, useAppState } from '../../data/store'
+import { Button } from '../../components/shared/Button'
 import type { Appointment, Course } from '../../data/store'
 import { dateKey, formatHM, fromLocalISO, fromServerISO, getLessonStarts, parseDateKey, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
@@ -120,12 +120,12 @@ function RescheduleModal({
         )}
       </div>
       <div className="student-modal-actions">
-        <button type="button" className="student-btn student-btn-secondary" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose}>
           {t('common.cancel')}
-        </button>
-        <button type="button" className="student-btn student-btn-primary" disabled={!startISO || busy} onClick={() => void confirm()}>
+        </Button>
+        <Button variant="primary" disabled={!startISO || busy} onClick={() => void confirm()}>
           {busy ? t('auth.login.loading') : t('common.confirm')}
-        </button>
+        </Button>
       </div>
     </ModalFrame>
   )
@@ -351,35 +351,17 @@ function StudentProfileContent(): JSX.Element {
                   )}
                   <div className="student-address-actions">
                     {!addressEditing ? (
-                      <button
-                        type="button"
-                        className="student-btn student-btn-primary student-btn-sm"
-                        onClick={() => {
-                          setAddressDraft(student?.address ?? '')
-                          setAddressEditing(true)
-                        }}
-                      >
+                      <Button variant="primary" size="sm" onClick={() => { setAddressDraft(student?.address ?? ''); setAddressEditing(true) }}>
                         {t('common.edit')}
-                      </button>
+                      </Button>
                     ) : (
                       <>
-                        <button
-                          type="button"
-                          className="student-btn student-btn-secondary student-btn-sm"
-                          onClick={() => {
-                            setAddressEditing(false)
-                            setAddressSuggestions([])
-                          }}
-                        >
+                        <Button variant="secondary" size="sm" onClick={() => { setAddressEditing(false); setAddressSuggestions([]) }}>
                           {t('common.cancel')}
-                        </button>
-                        <button
-                          type="button"
-                          className="student-btn student-btn-primary student-btn-sm"
-                          onClick={() => void saveAddress()}
-                        >
+                        </Button>
+                        <Button variant="primary" size="sm" onClick={() => void saveAddress()}>
                           {t('common.save')}
-                        </button>
+                        </Button>
                       </>
                     )}
                   </div>
@@ -403,32 +385,17 @@ function StudentProfileContent(): JSX.Element {
                   )}
                   <div className="student-address-actions">
                     {!emailEditing ? (
-                      <button
-                        type="button"
-                        className="student-btn student-btn-primary student-btn-sm"
-                        onClick={() => {
-                          setEmailDraft(student?.email ?? '')
-                          setEmailEditing(true)
-                        }}
-                      >
+                      <Button variant="primary" size="sm" onClick={() => { setEmailDraft(student?.email ?? ''); setEmailEditing(true) }}>
                         {t('common.edit')}
-                      </button>
+                      </Button>
                     ) : (
                       <>
-                        <button
-                          type="button"
-                          className="student-btn student-btn-secondary student-btn-sm"
-                          onClick={() => setEmailEditing(false)}
-                        >
+                        <Button variant="secondary" size="sm" onClick={() => setEmailEditing(false)}>
                           {t('common.cancel')}
-                        </button>
-                        <button
-                          type="button"
-                          className="student-btn student-btn-primary student-btn-sm"
-                          onClick={() => void saveEmail()}
-                        >
+                        </Button>
+                        <Button variant="primary" size="sm" onClick={() => void saveEmail()}>
                           {t('common.save')}
-                        </button>
+                        </Button>
                       </>
                     )}
                   </div>
@@ -467,21 +434,13 @@ function StudentProfileContent(): JSX.Element {
                       </div>
                       <StatusBadge tone={statusTone(appt)} label={statusLabel(appt)} />
                       {appt.status === 'confirmed' || appt.status === 'pending' ? (
-                        <button
-                          type="button"
-                          className="student-btn student-btn-secondary student-btn-sm"
-                          onClick={() => setRescheduleId(appt.id)}
-                        >
+                        <Button variant="secondary" size="sm" onClick={() => setRescheduleId(appt.id)}>
                           {t('student.dashboard.reschedule')}
-                        </button>
+                        </Button>
                       ) : null}
-                      <button
-                        type="button"
-                        className="student-btn student-btn-ghost-danger student-btn-sm"
-                        onClick={() => setCancelId(appt.id)}
-                      >
+                      <Button variant="dangerGhost" size="sm" className="student-btn-ghost-danger-clean" onClick={() => setCancelId(appt.id)}>
                         {t('student.dashboard.cancel')}
-                      </button>
+                      </Button>
                     </li>
                   )
                 })}
@@ -492,9 +451,9 @@ function StudentProfileContent(): JSX.Element {
                 title={t('student.dashboard.upcomingEmpty')}
                 body={t('student.dashboard.historyEmptyBody')}
                 action={
-                  <Link to="/student/book" className="student-btn student-btn-primary">
+                  <Button to="/student/book" variant="primary">
                     {t('student.dashboard.bookAnother')}
-                  </Link>
+                  </Button>
                 }
               />
             )}
@@ -537,9 +496,9 @@ function StudentProfileContent(): JSX.Element {
                 title={t('student.dashboard.historyEmpty')}
                 body={t('student.dashboard.historyEmptyBody')}
                 action={
-                  <Link to="/student/book" className="student-btn student-btn-primary">
+                  <Button to="/student/book" variant="primary">
                     {t('student.dashboard.bookAnother')}
-                  </Link>
+                  </Button>
                 }
               />
             )}
@@ -551,15 +510,9 @@ function StudentProfileContent(): JSX.Element {
             </div>
             <p className="student-card-subtitle">{t('student.profile.calendarSyncBody')}</p>
             <div className="student-sync-actions">
-              <button
-                type="button"
-                className="student-btn student-btn-secondary"
-                disabled={icsEvents.length === 0}
-                onClick={handleDownloadIcs}
-              >
-                <Download size={16} />
+              <Button variant="secondary" disabled={icsEvents.length === 0} onClick={handleDownloadIcs} icon={<Download size={16} />}>
                 {t('ics.export')}
-              </button>
+              </Button>
             </div>
             <p className="student-sync-hint">{t('ics.howTo')}</p>
           </section>

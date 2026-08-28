@@ -22,6 +22,7 @@ import { slotId, WeekCalendar } from '../../components/calendar/WeekCalendar'
 import { lessonLabel } from '../../data/store'
 import { formatDateLabel, formatPrice, mondayOf } from './studentFormat'
 import { useToast } from '../../components/shared'
+import { Button } from '../../components/shared/Button'
 import { ModalFrame } from './StudentShared'
 import { downloadICS } from '../../utils/ics'
 import type { IcsEvent } from '../../utils/ics'
@@ -326,11 +327,11 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
             <span className="course-booking__hint">{t('student.booking.pickSlot')}</span>
           )}
         </div>
-        <button type="button" className="student-btn student-btn-primary" disabled={!canBook} onClick={handleBook}>
+        <Button variant="primary" disabled={!canBook} onClick={handleBook}>
           {isPackage
             ? t('student.booking.packageConfirm', { count: selCount, total: formatPrice(selectedTotal) })
             : t('student.booking.confirm')}
-        </button>
+        </Button>
       </div>
         </>
       )}
@@ -340,12 +341,12 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
         <ModalFrame open title={t('student.booking.bookedOk')} onClose={() => setJustBooked(null)}>
           <p className="student-confirm-body">{t('ics.addCalendarHint')}</p>
           <div className="student-modal-actions">
-            <button type="button" className="student-btn student-btn-secondary" onClick={() => setJustBooked(null)}>
+            <Button variant="secondary" onClick={() => setJustBooked(null)}>
               {t('ics.addLater')}
-            </button>
-            <button type="button" className="student-btn student-btn-primary" onClick={addJustBookedToCalendar}>
+            </Button>
+            <Button variant="primary" onClick={addJustBookedToCalendar}>
               <CalendarClock size={16} /> {t('ics.addToCalendar')}
-            </button>
+            </Button>
           </div>
         </ModalFrame>
       ) : null}

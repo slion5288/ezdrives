@@ -30,6 +30,7 @@ import { useLocale, useT } from '../../i18n'
 import { ModalFrame } from './StudentShared'
 import { formatPrice } from './studentFormat'
 import { useToast } from '../../components/shared'
+import { Button } from '../../components/shared/Button'
 import {
   AmexIcon,
   InteracIcon,
@@ -167,9 +168,9 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
           </>
         ) : (
           <>
-            <button type="button" className="student-btn student-btn-ghost student-btn-sm" onClick={() => setMethod(null)}>
+            <Button variant="ghost" size="sm" onClick={() => setMethod(null)}>
               <ArrowLeft size={14} /> {t('common.back')}
-            </button>
+            </Button>
 
             {method === 'wechat' ? (
               <div className="student-payment__wechat">
@@ -344,12 +345,11 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
             </div>
 
             <div className="student-payment__actions">
-              <button type="button" className="student-btn student-btn-ghost" onClick={onClose} disabled={processing}>
+              <Button variant="ghost" onClick={onClose} disabled={processing}>
                 {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="student-btn student-btn-primary"
+              </Button>
+              <Button
+                variant="primary"
                 disabled={processing || (isCardFlow && !cardValid)}
                 onClick={submit}
               >
@@ -358,7 +358,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
                   : method === 'cash' || method === 'wechat'
                     ? `${t('payment.iHavePaid')} · ${formatPrice(course.price)}`
                     : `${t('payment.payNow')} · ${formatPrice(course.price)}`}
-              </button>
+              </Button>
             </div>
           </>
         )}

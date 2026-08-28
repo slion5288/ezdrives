@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { useT } from '../../i18n'
 import { Badge } from '../../components/shared/Badge'
+import { Button } from '../../components/shared/Button'
 import { Modal as SharedModal } from '../../components/shared/Modal'
 
 /* --- Avatar --- */
@@ -96,16 +97,12 @@ export function ConfirmModal({
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="student-btn student-btn-ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className={`student-btn ${tone === 'danger' ? 'student-btn-danger' : 'student-btn-primary'}`}
-            onClick={onConfirm}
-          >
+          </Button>
+          <Button variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </Button>
         </>
       }
     >

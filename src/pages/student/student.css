@@ -2472,3 +2472,9 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-normal);
 }
+
+/* Cancel-lesson button: danger ghost without the border (matches legacy
+   student-btn-ghost-danger look). */
+.student-btn-ghost-danger-clean {
+  border-color: transparent;
+}
