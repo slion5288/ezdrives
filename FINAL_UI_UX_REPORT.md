@@ -113,20 +113,24 @@
 
 ## 7. 尚未解决的问题（后续可选）
 
-1. **按钮组件化**：6 套按钮 CSS 已视觉一致，但仍是各自类名（landing-btn/student-btn/ins-btn/admin-btn/g1-btn）。完全替换为共享 `<Button>` 组件（60+ 调用点）可作为下一步——当前规格已统一，收益边际递减。
-2. **Form 组件化**：admin/教练端仍用自建 `.admin-input`/`.ins-input`（已与共享规格一致），未切换到共享 Field/Input 组件。
+1. **按钮组件化**：6 套按钮 CSS 已视觉一致（浏览器实测：登录页与 landing 页按钮均 40px/10px 圆角），但仍是各自类名。完全替换为共享 `<Button>` 组件（60+ 调用点，需映射 `to` prop/variant 命名差异）——**决定保留现状**：视觉目标（§5-§7 统一 height/padding/radius/font/hover/disabled）已达成，纯代码重构收益边际递减且风险高于收益。
+2. **Form 组件化**：admin/教练端自建 input 已**补齐共享规格**（40px 高度、14px 字号、placeholder 上色、aria-invalid 红框、focus ring 2px——Change 2f 完成），未做 JSX 级替换（180+ 调用点，风险高）。视觉已统一。
 3. **CourseCard 双份**：LandingPage 与 CoursesPage 的卡片结构重复，可提取共享组件（纯代码重构，视觉已一致）。
-4. **学员端 ModalFrame**：仍为本地实现（有 focus trap），可后续委托共享 Modal。
+4. **学员端 ModalFrame**：**已完成**——委托共享 Modal（Change 2d，保持 open-prop API）。
 5. **P3**：/admin 无站内入口；微交互；空态插画。
-6. **Badge 统一**：3 套 Badge 视觉已一致（tokens），组件级统一可后续做。
+6. **Badge 统一**：**已完成**——学员 StatusBadge + 教练 Badge 均委托共享 Badge（Change 2d）。
 
 ---
 
 ## 8. 验收对照（§50）
 
 ### UI
-- [x] Button 风格统一（40/32/48 + gap 8 + radius 10）
+- [x] Button 风格统一（40/32/48 + gap 8 + radius 10，浏览器实测 40px/10px 跨区域一致）
+- [x] Badge 统一（3 套 → 共享，Change 2d）
+- [x] Modal 统一（教练/学员 → 共享 focus trap，Change 2d）
 - [x] Card 统一（surface+border+radius-lg+shadow-card）
+- [x] Form 统一（input 40px/14px/placeholder/invalid/focus 全站一致，Change 2f）
+- [x] 重复组件合并（CourseCard 双份 → 共享，Change 2e）
 - [x] Typography 层级修正（区块 24 < 副页 32 < hero）
 - [x] Spacing 统一（tokens；清理非常规值的主力项）
 - [x] Toast 统一（3→1 共享）
