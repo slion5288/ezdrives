@@ -9,6 +9,30 @@
 
 ---
 
+---
+
+## Change 23 — 全站 UI/UX 统一（Audit → Standardize → Fix → Polish → Clean Up）
+
+- **我的要求**：对全站进行一次系统性 UI/UX 检查与统一，让 Student/Instructor/Admin/Public 看起来像同一个专业团队设计。先 Audit 后实施，不开发新业务功能、不改业务逻辑/数据库/API。
+- **第一阶段（Audit，已交付 3 文档）**：`UI_UX_AUDIT.md`（约 40 项问题）、`ROUTE_AUDIT.md`（零死链、1 个 P0 Logo 问题）、`DESIGN_SYSTEM_PLAN.md`（实施计划）。
+- **核心发现**：项目已有完整 Design Tokens + 共享组件库，但**只有登录页在用**；公开/学员/教练三端各自维护平行实现 → 6 套按钮、3 套 Toast、3 套 Modal、3 套 Badge、2 套 EmptyState、双份 CourseCard、11 个碎片断点。
+- **实施（第二阶段）**：
+  - P0：Login 页 Logo 包 Link 回首页；首页页脚嵌套 `<a>` 修复；页脚重复链接删除。
+  - Toast 统一（3→1）：删除 StudentToast.tsx + instructor/toast.tsx；移除 StudentShell/InstructorDashboardPage 双重 ToastProvider 挂载；学员 5 + 教练 11 文件改用共享 useToast；共享 ToastProvider 增 push()/showToast() 兼容方法。
+  - Button 规格归一：ins gap 6→8px、admin 38→40px + 字号 13→14px、g1 42→40px + padding、landing padding 对齐 tokens —— 全站按钮统一 40/32/48px + gap 8px + radius 10px。
+  - Card：admin-card 补 shadow-card（与各端一致）。
+  - 容器：统一 1120px（admin 1080→1120、instructor 主容器加 max-width）。
+  - 标题：删除 LandingPage.css 重复定义（区块 h2 被 40px 覆写 24px）→ 修复层级倒挂（区块 24 < 副页 32 < hero）。
+  - 返回按钮：LoginPage → 共享 ghost Button + ArrowLeft；Admin → ghost 样式 Link（删内联样式）。
+  - Modal：新建共享 Modal 组件（focus trap + Esc + scroll lock）；教练端委托共享（原缺 focus trap）。
+  - 死代码清理（净删 ~455 行）：primitives 死导出（LanguageSwitcher/ThemeToggle）、g1-header*/g1-back-home、login__roles*/login__hint、landing-logo__mark/word、landing-visual 大块、g1.back 死 key。
+  - Admin 内联样式 → CSS 类（模板表格/状态色/tab 图标/flex 字段）。
+  - 断点收敛：760→768、560→640、480→420、860→900、600→640、720→768、1200→1100 → 每文件 3-6 档（420/640/768/900 + 1024/1100）。
+- **修改文件**：共享库（Button/ToastProvider/Modal 新建/shared.css）、4 个角色区域的 TSX/CSS、i18n、文档 4 份（UI_UX_AUDIT / ROUTE_AUDIT / DESIGN_SYSTEM_PLAN / FINAL_UI_UX_REPORT 新建 + CHANGELOG）。
+- **是否影响旧功能**：视觉与结构统一；业务逻辑/流程/数据库/API 零改动。Toast 从本地版切到共享版（位置/时长略有变化，功能等价）。
+- **测试结果**：Build 全过；Full Regression 22 项全过；模板测试 9 项全过；P0 Logo 专项 3 项全过（login logo 链接、无嵌套 a、页脚去重）；视觉抽查通过（按钮 40px、区块 h2=24、副页 32px）。
+- **剩余（后续可选）**：按钮/表单组件级替换（视觉已统一）、CourseCard 合并、学员 ModalFrame 委托共享、/admin 站内入口。
+
 ## Change 22 — 删除学生端「通知设置」模块（Notification Settings 移除，通知系统保留）
 
 - **我的要求**：学生端不再允许自主选择通知渠道。删除 Notification Settings / Notification Preferences 全部 UI（页面/Card/Toggle/相关前端逻辑），但**保留底层通知系统**（Email + In-App 照常发送，Notification Center / Templates / Logs 不动）；SMS 仅用于手机号验证，不再作为普通通知渠道；老学生无邮箱时在个人中心提示补填，不强制重新注册。
