@@ -126,14 +126,6 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
     return c ? (locale === 'zh' ? c.name.zh : c.name.en) : p.courseId
   }
 
-  if (payments.length === 0) {
-    return (
-      <div className="ins-panel">
-        <EmptyState icon={<Wallet size={24} />} title={t('instructor.payments.empty')} />
-      </div>
-    )
-  }
-
   const confirmable = open
     ? open.status === 'cash_approved' || open.status === 'submitted' || open.status === 'wechat_pending' || open.status === 'emt_pending'
     : false
@@ -254,6 +246,55 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
           </tbody>
         </table>
       </div>
+
+      {/* § #4: filters always stay visible — when a filter has no records the
+          empty state shows here (and 全部 is one tap away). */}
+      {payments.length === 0 ? (
+        <div className="ins-panel">
+          <EmptyState icon={<Wallet size={24} />} title={t('instructor.payments.empty')} />
+        </div>
+      ) : (
+        <>
+        {/* § #3 mobile: card list with truncated course names (table is desktop-only) */}
+        <div className="ins-pay-cards">
+          {payments.map((p) => {
+            const student = state.students.find((s) => s.id === p.studentId)
+            const meta = statusMeta(p)
+            const st = p.status
+            const confirmableRow =
+              st === 'cash_approved' || st === 'submitted' || st === 'wechat_pending' || st === 'emt_pending'
+            return (
+              <div key={p.id} className="ins-pay-card-row2">
+                <div className="ins-pay-card-row2__main">
+                  <span className="ins-pay-card-row2__name">{student ? student.name : p.studentId}</span>
+                  <span className="ins-pay-card-row2__course" title={courseName(p)}>{courseName(p)}</span>
+                  <span className="ins-pay-card-row2__meta tabular-nums">
+                    {p.order_no || p.id} · {paymentMethodLabel(p.method, locale)} · {formatMoney(p.amount)}
+                  </span>
+                </div>
+                <span className="ins-pay-card-row2__status">
+                  <Badge tone={meta.tone}>{meta.label}</Badge>
+                </span>
+                <div className="ins-pay-card-row2__actions">
+                  {confirmableRow ? (
+                    <Button variant="primary" size="sm" onClick={() => openWith(p.id, 'markReceived')}>
+                      {t('instructor.payments.markReceived')}
+                    </Button>
+                  ) : st === 'cash_pending' ? (
+                    <Button variant="primary" size="sm" onClick={() => openWith(p.id, 'approveCash')}>
+                      {t('instructor.payments.approveCash')}
+                    </Button>
+                  ) : null}
+                  <Button variant="ghost" size="sm" onClick={() => openWith(p.id, null)}>
+                    <Eye size={14} /> {t('instructor.payments.view')}
+                  </Button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        </>
+      )}
 
       {/* § payment overhaul: order detail modal (proof, student info, actions) */}
       {open ? (

@@ -788,3 +788,33 @@
     font-size: var(--font-size-sm);
   }
 }
+
+/* --- § mobile: fit the FULL Mon–Sun week — no horizontal cut-off --- */
+@media (max-width: 640px) {
+  /* instructor week view: 7 day columns fill the width */
+  .ios-week__head {
+    width: 100%;
+  }
+  .ios-week__corner {
+    flex-basis: 28px;
+  }
+  .ios-week__dayhead,
+  .ios-week__col {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .ios-week__scroller {
+    overflow-x: hidden;
+  }
+  .ios-week__event {
+    font-size: 10px;
+  }
+  /* student 7-day strip: every day visible, no side whitespace */
+  .ios-strip__scroller {
+    justify-content: flex-start;
+  }
+  .ios-strip__day {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

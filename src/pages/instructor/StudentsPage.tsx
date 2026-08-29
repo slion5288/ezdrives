@@ -31,10 +31,11 @@ export default function StudentsPage({ state }: { state: AppState }): JSX.Elemen
       const live = appts.filter((a) => a.status === 'confirmed' || a.status === 'pending')
       const confirmed = appts.filter((a) => a.status === 'confirmed')
       const courses = [...new Set(live.map(courseLabelOf))]
-      const spend = confirmed.reduce((sum, a) => {
-        const c = state.courses.find((x) => x.id === a.courseId)
-        return sum + (a.price ?? (c ? c.price : 0))
-      }, 0)
+      // § user decision: 消费 = the student's PAID orders (the full course fee
+      // is paid when booking) — not the sum of per-lesson appointment prices.
+      const spend = (state.payments ?? [])
+        .filter((p) => p.studentId === student.id && (p.status === 'paid' || p.status === 'confirmed'))
+        .reduce((sum, p) => sum + (p.amount ?? p.final_price ?? 0), 0)
       return {
         student,
         courses,
