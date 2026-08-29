@@ -2583,3 +2583,93 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   margin-top: 0;
   padding-top: 0;
 }
+
+/* § payment overhaul: instructor payment filters + order detail modal + proof */
+.ins-pay-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.ins-pay-filters__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ins-pay-filter {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.ins-pay-filter.is-active {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+.ins-detail-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+.ins-detail-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-pop);
+}
+.ins-detail-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.ins-detail-modal__title {
+  font-weight: var(--font-weight-semibold);
+  word-break: break-all;
+}
+.ins-detail-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.ins-detail-modal__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.ins-detail-value--bad {
+  color: var(--color-danger);
+}
+.ins-detail-row--block {
+  align-items: flex-start;
+}
+.ins-pay-proof {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.ins-pay-reject {
+  display: flex;
+}
+.ins-pay-reject .ins-input {
+  flex: 1;
+}

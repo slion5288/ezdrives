@@ -102,7 +102,22 @@ function ownsCourse(payments, studentId, courseId) {
 
 function hasPending(payments, studentId, courseId) {
   return payments.some((p) => p.studentId === studentId && p.courseId === courseId &&
-    (p.status === 'pending' || p.status === 'cash_pending' || p.status === 'wechat_pending' || p.status === 'emt_pending'))
+    (p.status === 'pending' || p.status === 'cash_pending' || p.status === 'wechat_pending' ||
+     p.status === 'emt_pending' || p.status === 'submitted'))
+}
+
+/**
+ * § Payment proof upload validation. Accepts JPG/JPEG/PNG/WEBP data URLs up to
+ * 10MB. Returns null when valid, or an error string. Never trusts the client —
+ * the server checks the media type and the decoded size.
+ */
+function proofError(dataUrl) {
+  if (typeof dataUrl !== 'string' || dataUrl.length === 0) return null // proof optional
+  const m = /^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/.exec(dataUrl)
+  if (!m) return 'Invalid image type. Only JPG / PNG / WEBP are allowed.'
+  const size = Math.floor((m[2].length * 3) / 4) // approx decoded bytes
+  if (size > 10 * 1024 * 1024) return 'Image too large. Maximum 10MB.'
+  return null
 }
 
 /** § Final Payment Fix: the site currently offers ONLY WeChat / Cash / EMT.
@@ -229,6 +244,27 @@ export async function onRequestPost({ env, request }) {
     if (!repeatAllowed && ownsCourse(state.payments, studentId, courseId)) return fail('Course already purchased.')
     if (!allowedMethods(state.instructor).includes(method)) return fail('Payment method not available.')
 
+    // § payment overhaul: WeChat / EMT orders may be created WITH the proof in
+    // one call ("我已完成付款") → status 'submitted'. Proof is validated here,
+    // never trusted from the client.
+    let proofData = null
+    let proofName = ''
+    let proofPhone = ''
+    let proofNote = ''
+    if (method === 'wechat' || method === 'emt') {
+      const proof = String(args.proof || '')
+      if (proof) {
+        const proofErr = proofError(proof)
+        if (proofErr) return fail(proofErr)
+        proofName = String(args.name || '').trim().slice(0, 80)
+        proofPhone = String(args.phone || '').trim().slice(0, 30)
+        if (!proofName || !proofPhone) return fail('Name and phone are required.')
+        proofNote = String(args.note || '').trim().slice(0, 300)
+        proofData = proof
+      }
+    }
+    const effectiveStatus = proofData ? 'submitted' : payStatus
+
     // ---- Server-side discount & price (§54) ----
     const { computeDiscount } = await import('../../lib/pricing.js')
     const isStudent = studentStatus === 'yes'
@@ -261,12 +297,27 @@ export async function onRequestPost({ env, request }) {
 
     const [paymentId] = await nextSeq(env, 'payments', 'p')
     const now = nowISO()
+    // § Order number shown to the student: ORD-YYYYMMDD-### (unique per order).
+    const orderNo = `ORD-${now.slice(0, 10).replace(/-/g, '')}-${paymentId.slice(1)}`
     const payment = {
       id: paymentId, studentId, courseId, method,
+      order_no: orderNo,
       channel: isCash ? 'CASH' : 'ONLINE',
       amount: pricing.finalPrice,
-      status: payStatus, // § cash/wechat/emt requests ≠ paid
+      status: effectiveStatus, // § cash/wechat/emt requests ≠ paid
       createdAt: now,
+      ...(proofData
+        ? {
+            submittedAt: now,
+            proof: {
+              dataUrl: proofData,
+              name: proofName,
+              phone: proofPhone,
+              note: proofNote || undefined,
+              uploadedAt: now,
+            },
+          }
+        : {}),
       // price snapshot (§30/§55)
       original_price: pricing.originalPrice,
       discount_type: pricing.discountType,
@@ -319,7 +370,7 @@ export async function onRequestPost({ env, request }) {
     let enrollment
     const inserts = [
       env.DB.prepare('INSERT INTO payments (id, student_id, status, payload) VALUES (?, ?, ?, ?)')
-        .bind(paymentId, studentId, payStatus, JSON.stringify(payment)),
+        .bind(paymentId, studentId, effectiveStatus, JSON.stringify(payment)),
       env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
         .bind(notifId, 'student', studentId, JSON.stringify({
           id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending',
@@ -403,23 +454,105 @@ export async function onRequestPost({ env, request }) {
         finalPrice: pricing.finalPrice,
       }
       if (state.instructor && state.instructor.email) {
-        // § Final Payment Fix: each method gets its own pending email to the
-        // instructor (CASH_REQUEST / WECHAT_REQUEST / EMT_REQUEST); legacy
-        // online keeps NEW_PURCHASE.
-        const reqType = isCash ? 'CASH_REQUEST' : method === 'wechat' ? 'WECHAT_REQUEST' : method === 'emt' ? 'EMT_REQUEST' : 'NEW_PURCHASE'
-        const reqBooking = isCash || method === 'wechat' || method === 'emt'
-          ? { id: `${method}-request-${paymentId}` }
-          : null
+        // § payment overhaul: cash notifies immediately; WeChat/EMT notify the
+        // instructor only once the proof is actually submitted ('submitted').
+        const proofReady = method === 'wechat' || method === 'emt' ? effectiveStatus === 'submitted' : true
+        if (proofReady) {
+          const reqType = isCash ? 'CASH_REQUEST' : method === 'wechat' ? 'WECHAT_REQUEST' : method === 'emt' ? 'EMT_REQUEST' : 'NEW_PURCHASE'
+          const reqBooking = isCash || method === 'wechat' || method === 'emt'
+            ? { id: `${method}-request-${paymentId}` }
+            : null
+          await sendNotification(env, {
+            type: reqType,
+            recipientEmail: state.instructor.email,
+            student: stInfo,
+            instructor: state.instructor,
+            booking: reqBooking,
+            course: courseInfo,
+            lesson: null,
+            pricing: pricingCtx,
+            payment: method === 'wechat' ? { cnyAmount: wechatCnyAmount, rate: wechatRate } : undefined,
+          })
+        }
+      }
+    } catch (e) {
+      // email is best-effort
+    }
+    return reply(state)
+  }
+
+  // ---- submitPaymentProof (student, own order; § payment overhaul) ----
+  // After paying via WeChat / e-Transfer the student submits name + phone +
+  // (optional) screenshot as the manual proof. status → 'submitted' (awaiting
+  // admin confirmation). A previously REJECTED order can be re-submitted in
+  // place (no duplicate records, §16).
+  if (action === 'submitPaymentProof') {
+    if (isInstructor) return fail('Students only.', 403)
+    const paymentId = String(args.id || '')
+    const payment = state.payments.find((p) => p.id === paymentId && p.studentId === studentId)
+    if (!payment) return fail('Payment not found.')
+    if (!['wechat_pending', 'emt_pending', 'submitted', 'rejected'].includes(payment.status)) {
+      return fail('This order cannot be submitted for confirmation.')
+    }
+    const proofErr = proofError(String(args.proof || ''))
+    if (proofErr) return fail(proofErr)
+    const name = String(args.name || '').trim().slice(0, 80)
+    const phone = String(args.phone || '').trim().slice(0, 30)
+    if (!name || !phone) return fail('Name and phone are required.')
+    const now = nowISO()
+    const updated = {
+      ...payment,
+      status: 'submitted',
+      submittedAt: now,
+      rejectReason: undefined,
+      proof: {
+        dataUrl: args.proof ? String(args.proof) : null,
+        name,
+        phone,
+        note: String(args.note || '').trim().slice(0, 300) || undefined,
+        uploadedAt: now,
+      },
+    }
+    const [nIdS, nIdI] = await nextSeq(env, 'notifications', 'n', 2)
+    const course = state.courses.find((c) => c.id === payment.courseId)
+    const courseInfo = course
+      ? { name: course.name.en, courseType: course.course_type || 'INDIVIDUAL_LESSON', licenseClass: course.license_class || 'NONE', price: payment.final_price }
+      : null
+    const pricingCtx = { originalPrice: payment.original_price, discountAmount: payment.discount_amount, finalPrice: payment.final_price }
+    const nS = {
+      id: nIdS, role: 'student', recipientId: studentId, type: 'payment_submitted',
+      title: { en: 'Payment proof submitted', zh: '付款凭证已提交' },
+      body: { en: `Your ${course ? course.name.en : ''} payment proof was submitted. Awaiting confirmation.`, zh: `您对${course ? course.name.zh : ''}的付款凭证已提交，请等待确认。` },
+      read: false, at: now, paymentId,
+    }
+    const nI = {
+      id: nIdI, role: 'instructor', recipientId: 'instructor', type: 'payment_submitted',
+      title: { en: 'New payment proof awaiting confirmation', zh: '新的付款凭证待确认' },
+      body: { en: `${user.name} submitted a ${payment.method === 'wechat' ? 'WeChat' : 'e-Transfer'} payment proof for ${course ? course.name.en : ''} (${payment.order_no || payment.id}).`, zh: `${user.name} 提交了${payment.method === 'wechat' ? '微信' : 'EMT'}付款凭证（${course ? course.name.zh : ''}，订单 ${payment.order_no || payment.id}）。` },
+      read: false, at: now, paymentId,
+    }
+    await env.DB.batch([
+      env.DB.prepare('UPDATE payments SET status = ?, payload = ? WHERE id = ?').bind('submitted', JSON.stringify(updated), paymentId),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)').bind(nS.id, nS.role, nS.recipientId, JSON.stringify(nS)),
+      env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)').bind(nI.id, nI.role, nI.recipientId, JSON.stringify(nI)),
+    ])
+    state.payments = state.payments.map((p) => (p.id === paymentId ? updated : p))
+    state.notifications.unshift(nS, nI)
+    // Instructor email: WeChat / EMT proof awaiting confirmation.
+    try {
+      const { sendNotification } = await import('../../lib/notification.js')
+      if (state.instructor && state.instructor.email) {
+        const studentRow = state.students.find((s) => s.id === studentId)
         await sendNotification(env, {
-          type: reqType,
+          type: payment.method === 'wechat' ? 'WECHAT_REQUEST' : 'EMT_REQUEST',
           recipientEmail: state.instructor.email,
-          student: stInfo,
+          student: studentRow ? { id: studentRow.id, name: studentRow.name, phone: studentRow.phone, email: studentRow.email || '' } : null,
           instructor: state.instructor,
-          booking: reqBooking,
+          booking: { id: `${payment.method}-request-${paymentId}` },
           course: courseInfo,
           lesson: null,
           pricing: pricingCtx,
-          payment: method === 'wechat' ? { cnyAmount: wechatCnyAmount, rate: wechatRate } : undefined,
+          payment: { cnyAmount: payment.wechat_cny_amount ?? null },
         })
       }
     } catch (e) {
@@ -930,9 +1063,13 @@ export async function onRequestPost({ env, request }) {
       const methodKey = isCash ? 'cash' : payment.method
       if (!['cash', 'wechat', 'emt'].includes(methodKey)) return fail('Only cash / WeChat / EMT payments can be marked received.')
       if (payment.status === 'paid') return reply(state) // idempotent
-      const allowedFrom = methodKey === 'cash' ? 'cash_approved' : `${methodKey}_pending`
-      if (payment.status !== allowedFrom) {
-        return fail(methodKey === 'cash' ? 'Approve the cash payment first.' : `Only ${methodKey}_pending payments can be marked received.`)
+      // Cash: must be approved first. WeChat / EMT: submitted (proof) or the
+      // plain pending (orders created before the proof step existed).
+      const allowedFrom = methodKey === 'cash'
+        ? 'cash_approved'
+        : ['submitted', `${methodKey}_pending`]
+      if (!allowedFrom.includes(payment.status)) {
+        return fail(methodKey === 'cash' ? 'Approve the cash payment first.' : `Only submitted ${methodKey} payments can be confirmed.`)
       }
       const receivedBy = (state.instructor && state.instructor.name) || 'Instructor'
       next = {
@@ -953,12 +1090,17 @@ export async function onRequestPost({ env, request }) {
       }
     } else { // rejectPayment
       if (payment.status !== 'pending' && payment.status !== 'cash_pending' && payment.status !== 'cash_approved' &&
-          payment.status !== 'wechat_pending' && payment.status !== 'emt_pending') {
+          payment.status !== 'wechat_pending' && payment.status !== 'emt_pending' && payment.status !== 'submitted') {
         return reply(state) // idempotent
       }
+      const reason = String(args.reason || '').trim().slice(0, 300)
       next = { status: 'rejected', emailType: 'PAYMENT_REJECTED', notifType: 'payment_rejected',
         title: { en: 'Payment rejected', zh: '支付已拒绝' },
-        body: { en: `Your payment for ${course ? course.name.en : ''} was rejected. Please contact the instructor.`, zh: `您对${course ? course.name.zh : ''}的支付被拒绝，请联系教练。` } }
+        body: {
+          en: `Your payment for ${course ? course.name.en : ''} was rejected${reason ? `: ${reason}` : ''}. Please resubmit or contact the instructor.`,
+          zh: `您对${course ? course.name.zh : ''}的支付被拒绝${reason ? `：${reason}` : ''}。请重新提交或联系教练。`,
+        } }
+      if (reason) next.rejectReason = reason
     }
 
     // § record the receipt: amount, received at, received by (PAID only from instructor).
@@ -969,6 +1111,7 @@ export async function onRequestPost({ env, request }) {
       ...(next.status === 'paid'
         ? { receivedAt: next.receivedAt || now, receivedBy: next.receivedBy || (state.instructor && state.instructor.name) || 'Instructor' }
         : {}),
+      ...(next.rejectReason ? { rejectReason: next.rejectReason } : {}),
     }
     const [nId] = await nextSeq(env, 'notifications', 'n')
     await env.DB.batch([

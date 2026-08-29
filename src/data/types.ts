@@ -186,12 +186,22 @@ export interface Payment {
     | 'cash_approved'
     | 'wechat_pending'
     | 'emt_pending'
+    | 'submitted'
     | 'paid'
   createdAt: string // ISO local datetime
   confirmedAt?: string
   /** § receipt record (paid): when / who confirmed receiving the money. */
   receivedAt?: string
   receivedBy?: string
+  /** § payment overhaul: human-readable order number (ORD-YYYYMMDD-###). */
+  order_no?: string
+  /** § payment overhaul: when the student submitted the payment proof. */
+  submittedAt?: string
+  /** § payment overhaul: admin reject reason (shown to the student). */
+  rejectReason?: string
+  /** § payment overhaul: student-submitted proof (name/phone/note + screenshot
+   *  as a data URL). Only the owner and the instructor ever see it. */
+  proof?: { dataUrl?: string | null; name?: string; phone?: string; note?: string; uploadedAt?: string }
   /** § WeChat display amount — real-time CAD→CNY rate + 0.5. CAD stays the
    *  stored price; the ¥ figure is display-only and captured for the email. */
   wechat_rate?: number
@@ -302,6 +312,9 @@ export interface AppState {
     paymentMethods?: PaymentMethod[]
     /** Instructor's personal WeChat Pay receive QR (data URL), shown to students. */
     wechatQr?: string
+    /** § payment overhaul: the instructor's WeChat ID (微信号) — required for
+     *  mobile users to pay by adding/finding the account. */
+    wechatId?: string
     /** Interac e-Transfer receiving email. */
     emtEmail?: string
     /** Bank account for other transfers. */

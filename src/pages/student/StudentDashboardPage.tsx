@@ -1,25 +1,23 @@
 // ============================================================================
 // EZDRIVES — StudentDashboardPage (预约时间)
-// ONE unified calendar for ALL purchased courses (not one calendar per course):
-// every booked lesson shows as a color-coded card (one color per course); a
-// course chip row above the calendar picks which course to book next — its
-// availability start boxes, package lesson list and the confirm button follow
-// the selection. Booked lessons are managed from the calendar popup
-// (cancel / reschedule, same interaction as the instructor).
+// § payment overhaul: a compact "My Orders" list (every payment with its
+// status) sits above the unified booking calendar.
 // ============================================================================
 
 import { useEffect, useRef, useState } from 'react'
-import { getSession, isCoursePurchased, isStateLoaded, useAppState } from '../../data/store'
-import { useT } from '../../i18n'
-import { CalendarPlus } from 'lucide-react'
+import { getSession, isCoursePurchased, isStateLoaded, paymentMethodLabel, useAppState } from '../../data/store'
+import { useLocale, useT } from '../../i18n'
+import { CalendarPlus, Receipt } from 'lucide-react'
 import { StudentShell } from './StudentShell'
 import { CourseBookingPanel } from './CourseBookingPanel'
 import { fromLocalISO } from '../../data/timeEngine'
 import './student.css'
 import { Button } from '../../components/shared/Button'
+import { formatPrice } from './studentFormat'
 
 export default function StudentDashboardPage(): JSX.Element {
   const t = useT()
+  const locale = useLocale()
   const state = useAppState()
 
   const session = getSession()
@@ -60,6 +58,11 @@ export default function StudentDashboardPage(): JSX.Element {
   }, [purchased.length, defaultCourseId])
   const effectiveId = purchased.some((c) => c.id === selCourseId) ? selCourseId : defaultCourseId
 
+  // § payment overhaul: this student's own orders only (newest first).
+  const myOrders = (state.payments ?? [])
+    .filter((p) => p.studentId === studentId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+
   return (
     <StudentShell>
       <div className="student-page">
@@ -84,15 +87,67 @@ export default function StudentDashboardPage(): JSX.Element {
             </div>
           </div>
         ) : (
-          <div className="student-lessons-list">
-            {effectiveId ? (
-              <CourseBookingPanel
-                courses={purchased}
-                selectedCourseId={effectiveId}
-                onSelectCourse={setSelCourseId}
-              />
-            ) : null}
-          </div>
+          <>
+            {/* § payment overhaul: My Orders — real order list, never demo data */}
+            <div className="student-orders">
+              <div className="student-orders__head">
+                <Receipt size={16} />
+                <span>{t('student.orders.title')}</span>
+              </div>
+              {myOrders.length === 0 ? (
+                <p className="student-orders__empty">{t('student.orders.empty')}</p>
+              ) : (
+                <div className="student-orders__list">
+                  {myOrders.map((o) => {
+                    const oc = (state.courses ?? []).find((c) => c.id === o.courseId)
+                    const st =
+                      o.status === 'paid' || o.status === 'confirmed'
+                        ? { text: t('payment.statusPaid'), cls: 'is-paid' }
+                        : o.status === 'submitted'
+                          ? { text: t('payment.statusSubmitted'), cls: 'is-submitted' }
+                          : o.status === 'rejected'
+                            ? { text: t('payment.statusRejected'), cls: 'is-rejected' }
+                            : o.status === 'cash_pending'
+                              ? { text: t('payment.statusCashPending'), cls: 'is-pending' }
+                              : o.status === 'cash_approved'
+                                ? { text: t('payment.statusCashPending'), cls: 'is-pending' }
+                                : { text: t('payment.statusPending'), cls: 'is-pending' }
+                    return (
+                      <div key={o.id} className="student-orders__row">
+                        <div className="student-orders__main">
+                          <span className="student-orders__name">
+                            {oc ? (locale === 'zh' ? oc.name.zh : oc.name.en) : o.courseId}
+                          </span>
+                          <span className="student-orders__sub tabular-nums">
+                            {o.order_no || o.id} · {paymentMethodLabel(o.method, locale)} · {formatPrice(o.amount ?? o.final_price ?? 0)} CAD
+                          </span>
+                          {o.status === 'submitted' ? (
+                            <span className="student-orders__note">{t('student.orders.submittedNote')}</span>
+                          ) : o.status === 'paid' ? (
+                            <span className="student-orders__note is-ok">{t('student.orders.paidNote')}</span>
+                          ) : o.status === 'rejected' && o.rejectReason ? (
+                            <span className="student-orders__note is-bad">
+                              {t('student.orders.rejectReason')} {o.rejectReason}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className={`student-orders__status ${st.cls}`}>{st.text}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="student-lessons-list">
+              {effectiveId ? (
+                <CourseBookingPanel
+                  courses={purchased}
+                  selectedCourseId={effectiveId}
+                  onSelectCourse={setSelCourseId}
+                />
+              ) : null}
+            </div>
+          </>
         )}
       </div>
     </StudentShell>

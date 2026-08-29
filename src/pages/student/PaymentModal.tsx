@@ -1,44 +1,26 @@
 // ============================================================================
-// EZDRIVES — PaymentModal (student-owned) — standard payment flow
-// Step 1: choose a method (official colored icons): Cash / WeChat Pay (personal
-// QR) / Interac e-Transfer / Apple Pay / Google Pay / Credit Card / Debit Card
-// / PayPal.
-// Step 2 per method:
-//  · Credit/Debit card: a real card form (name, number, expiry, CVC, postal)
-//    with brand detection + validation — secured by Stripe when configured,
-//    otherwise clearly-labelled test mode.
-//  · Apple Pay / Google Pay: official wallet buttons → wallet confirmation.
-//  · PayPal: official button → approval flow (orders API when configured).
-//  · e-Transfer: send + record the reference number.
-// Every payment stays PENDING until the instructor checks the receipt and
-// confirms (system notification) — then booking unlocks.
+// EZDRIVES — PaymentModal (student-owned) — payment overhaul flow
+// Step 1: choose a method (WeChat / Cash / e-Transfer only).
+// Step 2 per method (order summary + instructions):
+//  · WeChat: desktop → QR + "扫一扫"; mobile → copy WeChat ID + guide (+QR backup)
+//  · Cash: pay the instructor in person; confirm to create the order
+//  · e-Transfer: copy the receiving email + memo; then submit proof
+// Step 3 (WeChat / EMT): 【我已完成付款】→ name / phone / (optional) screenshot
+//  → order becomes SUBMITTED (awaiting admin confirmation) — never PAID by the
+//    student. Rejected orders can be re-submitted in place (no duplicates).
+// All prices come from the server-captured snapshot; the client only displays.
 // ============================================================================
 
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react'
-import type { Course, PaymentMethod } from '../../data/store'
-import { addPayment, enabledPaymentMethods, getSession, paymentMethodLabel, useAppState } from '../../data/store'
-import {
-  detectCardBrand,
-  expiryValid,
-  formatCardNumber,
-  formatExpiry,
-  luhnValid,
-  stripeConfigured,
-} from '../../data/paymentGateway'
+import { ArrowLeft, Check, Copy, ShieldCheck, Smartphone } from 'lucide-react'
+import type { Course, Payment, PaymentMethod } from '../../data/store'
+import { addPayment, enabledPaymentMethods, getSession, paymentMethodLabel, submitPaymentProof, useAppState } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { ModalFrame } from './StudentShared'
 import { formatPrice } from './studentFormat'
 import { useToast } from '../../components/shared'
 import { Button } from '../../components/shared/Button'
-import {
-  AmexIcon,
-  InteracIcon,
-  MastercardIcon,
-  PaymentBrandFrame,
-  PaymentMethodBrand,
-  VisaIcon,
-} from '../../components/payment/PaymentBrandIcons'
+import { PaymentBrandFrame, PaymentMethodBrand } from '../../components/payment/PaymentBrandIcons'
 
 interface PaymentModalProps {
   open: boolean
@@ -47,21 +29,10 @@ interface PaymentModalProps {
   onSubmitted?: () => void
 }
 
-interface CardState {
-  name: string
-  number: string
-  expiry: string
-  cvc: string
-  postal: string
-}
-
-const EMPTY_CARD: CardState = { name: '', number: '', expiry: '', cvc: '', postal: '' }
-
-// § Final Payment Fix: WeChat CAD→CNY rate (real-time + 0.5), cached client-side
-// for 6h so the API is not hit on every page refresh. Failure → null (the UI
-// shows "Unable to retrieve the latest exchange rate…" and blocks WeChat submit).
+// § WeChat CAD→CNY rate (real-time + 0.5), cached 6h client-side.
 const RATE_CACHE_KEY = 'dw.wechatRate'
 const RATE_CACHE_TTL = 6 * 60 * 60 * 1000
+const MAX_PROOF_BYTES = 10 * 1024 * 1024
 
 async function fetchWechatRate(): Promise<number | null> {
   try {
@@ -71,12 +42,12 @@ async function fetchWechatRate(): Promise<number | null> {
       try {
         localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ rate: data.rate, at: Date.now() }))
       } catch {
-        // storage unavailable — in-memory only
+        // ignore
       }
       return data.rate
     }
   } catch {
-    // fall through to cached / null
+    // fall through
   }
   return null
 }
@@ -86,26 +57,42 @@ function readCachedRate(): number | null {
     const raw = localStorage.getItem(RATE_CACHE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { rate: number; at: number }
-    if (parsed && typeof parsed.rate === 'number' && parsed.rate > 0 && Date.now() - parsed.at < RATE_CACHE_TTL) {
-      return parsed.rate
-    }
+    if (parsed && typeof parsed.rate === 'number' && parsed.rate > 0 && Date.now() - parsed.at < RATE_CACHE_TTL) return parsed.rate
   } catch {
     // ignore
   }
   return null
 }
 
+/** § device detection: mobile / WeChat built-in browser → copy-WeChat-ID flow. */
+function detectMobile(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Mobi|Android|iPhone|iPad|iPod|MicroMessenger|WeChat/i.test(navigator.userAgent)
+}
+
+const PROOF_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
 export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModalProps): JSX.Element | null {
   const t = useT()
   const locale = useLocale()
   const state = useAppState()
   const { showToast } = useToast()
+
+  const session = getSession()
+  const studentId = session.studentId ?? ''
   const [method, setMethod] = useState<PaymentMethod | null>(null)
+  const [processing, setProcessing] = useState(false)
   const [wechatRate, setWechatRate] = useState<number | null>(() => readCachedRate())
   const [rateLoading, setRateLoading] = useState(false)
+  const [showProof, setShowProof] = useState(false)
+  const [proofName, setProofName] = useState('')
+  const [proofPhone, setProofPhone] = useState('')
+  const [proofNote, setProofNote] = useState('')
+  const [proofDataUrl, setProofDataUrl] = useState<string | null>(null)
+  const [proofErr, setProofErr] = useState<string | null>(null)
+  const [createdOrder, setCreatedOrder] = useState<Payment | null>(null)
 
-  // § WeChat rate: use the cached value first; refresh in the background only
-  // when the modal opens (never on every page refresh).
+  // § WeChat rate: cached value first; refresh in background when the modal opens.
   useEffect(() => {
     if (!open) return
     if (readCachedRate() !== null) return
@@ -115,13 +102,25 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
       if (rate !== null) setWechatRate(rate)
     })
   }, [open])
-  const [card, setCard] = useState<CardState>(EMPTY_CARD)
-  const [emtEmailInput, setEmtEmailInput] = useState('')
-  const [emtRef, setEmtRef] = useState('')
-  const [processing, setProcessing] = useState(false)
-  const [cardError, setCardError] = useState(false)
-  // —— Discount UI (§18/§22/§51/§52) ——
-  const [isStudent, setIsStudent] = useState<'yes' | 'no' | null>(null)
+
+  // Prefill the proof name/phone from the student profile.
+  useEffect(() => {
+    if (!open) return
+    const student = (state.students ?? []).find((s) => s.id === studentId)
+    if (student) {
+      if (!proofName) setProofName(student.name || '')
+      if (!proofPhone) setProofPhone(student.phone || '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  const METHODS = enabledPaymentMethods(state)
+  const wechatQr = state.instructor.wechatQr
+  const wechatId = state.instructor.wechatId
+  const instructorEmt = state.instructor.emtEmail
+  const isMobile = useMemo(detectMobile, [])
+
+  const [isStudent, setIsStudent] = useState<'yes' | 'no' | null>('no')
   const [referralPhone, setReferralPhone] = useState('')
   const [referralValid, setReferralValid] = useState<boolean | null>(null)
 
@@ -153,80 +152,111 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
     }
   }, [course, isStudent, referralValid, t])
 
-  // Referral phone validation (debounced) — checks against known students.
-  const checkReferral = (phone: string): void => {
-    const p = phone.trim()
-    if (p.length < 7) { setReferralValid(null); return }
+  const checkReferral = (p: string): void => {
+    if (!p || p.trim().length < 7) { setReferralValid(null); return }
     const myPhone = (state.students.find((s) => s.id === studentId)?.phone || '').replace(/\s/g, '')
     if (p.replace(/\s/g, '') === myPhone) { setReferralValid(false); return }
     const found = (state.students ?? []).some((s) => s.id !== studentId && s.phone && s.phone.replace(/\s/g, '') === p.replace(/\s/g, ''))
     setReferralValid(found)
   }
 
-  // Payment methods the instructor enabled — the modal renders exactly these.
-  const METHODS = enabledPaymentMethods(state)
-
-  const wechatQr = state.instructor.wechatQr
-  const instructorEmt = state.instructor.emtEmail
-  const payCreds = state.instructor.payConfig
-  const instructorBank = state.instructor.bank
-  const bankConfigured =
-    !!instructorBank &&
-    (!!instructorBank.bankName || !!instructorBank.holderName || !!instructorBank.transit || !!instructorBank.institution || !!instructorBank.account)
-  const studentId = getSession().studentId ?? ''
-
-  const brand = useMemo(() => detectCardBrand(card.number), [card.number])
-
-  const cardValid = useMemo(
-    () =>
-      card.name.trim().length > 1 &&
-      luhnValid(card.number) &&
-      expiryValid(card.expiry) &&
-      card.cvc.replace(/\D/g, '').length >= 3 &&
-      card.postal.trim().length >= 3,
-    [card],
+  // § A previously REJECTED order for this course is re-submitted IN PLACE
+  // (never a new duplicate order).
+  const rejectedOrder = useMemo(
+    () => (state.payments ?? []).find((p) => p.studentId === studentId && p.courseId === course?.id && p.status === 'rejected') ?? null,
+    [state.payments, studentId, course],
   )
+  const finalPrice = pricePreview ? pricePreview.final : course ? course.price : 0
 
   const reset = (): void => {
     setMethod(null)
-    setCard(EMPTY_CARD)
-    setEmtEmailInput('')
-    setEmtRef('')
+    setShowProof(false)
+    setProofName('')
+    setProofPhone('')
+    setProofNote('')
+    setProofDataUrl(null)
+    setProofErr(null)
+    setCreatedOrder(null)
     setProcessing(false)
-    setCardError(false)
   }
 
-  const submit = async (): Promise<void> => {
-    if (!method || !studentId || !course) return
-    if (method === 'card' || method === 'debit') {
-      if (!cardValid) {
-        setCardError(true)
-        return
-      }
+  const copyText = async (text: string): Promise<void> => {
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      showToast('success', t('payment.copied'))
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+      showToast('success', t('payment.copied'))
     }
-    if (method === 'emt' && (emtEmailInput.trim().length < 5 || emtRef.trim().length < 3)) {
-      showToast('error', t('payment.emtInvalid'))
+  }
+
+  const onProofFile = (file: File | undefined): void => {
+    setProofErr(null)
+    if (!file) { setProofDataUrl(null); return }
+    if (!PROOF_TYPES.includes(file.type)) {
+      setProofErr(t('payment.proofTypeErr'))
+      setProofDataUrl(null)
       return
     }
+    if (file.size > MAX_PROOF_BYTES) {
+      setProofErr(t('payment.proofSizeErr'))
+      setProofDataUrl(null)
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setProofDataUrl(String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
+
+  /** § submit: wechat/emt with proof → SUBMITTED; cash → CASH_PENDING.
+   *  Never paid. Duplicate protection: existing pending/submitted blocks a new
+   *  order; a rejected order is re-submitted in place. */
+  const submit = async (): Promise<void> => {
+    if (!method || !studentId || !course) return
     if (method === 'wechat' && wechatRate === null) {
-      // § no rate → never show a made-up ¥ amount or accept the payment.
       showToast('error', t('payment.rateError'))
       return
     }
+    const needsProof = method === 'wechat' || method === 'emt'
+    if (needsProof && (!proofName.trim() || !proofPhone.trim())) {
+      setProofErr(t('payment.proofRequired'))
+      return
+    }
+    if (proofErr) return
     setProcessing(true)
-    // § Final Payment Fix: cash/wechat/emt create their own PENDING request —
-    // nothing is PAID until the instructor marks receipt.
-    const result = await addPayment(studentId, (course as Course).id, method, {
+    const base: { studentStatus: 'yes' | 'no'; referralPhone: string } = {
       studentStatus: isStudent === 'yes' ? 'yes' : 'no',
       referralPhone: referralPhone.trim(),
-    })
+    }
+    const result = rejectedOrder && needsProof
+      ? await submitPaymentProof(rejectedOrder.id, {
+          name: proofName.trim(),
+          phone: proofPhone.trim(),
+          note: proofNote.trim() || undefined,
+          proof: proofDataUrl,
+        })
+      : await addPayment(studentId, course.id, method, {
+          ...base,
+          ...(needsProof
+            ? { proof: proofDataUrl ?? undefined, name: proofName.trim(), phone: proofPhone.trim(), note: proofNote.trim() || undefined }
+            : {}),
+        })
     if (result.ok) {
-      const submittedKey =
-        method === 'cash' ? 'payment.cashSubmitted' : method === 'wechat' ? 'payment.wechatSubmitted' : method === 'emt' ? 'payment.emtSubmitted' : 'payment.submitted'
-      showToast('success', t(submittedKey))
-      onSubmitted?.()
-      onClose()
-      reset()
+      if ('payment' in result && result.payment) {
+        setCreatedOrder(result.payment)
+      } else {
+        const mine = (state.payments ?? []).filter((p) => p.studentId === studentId && p.courseId === course.id)
+        setCreatedOrder(mine[mine.length - 1] ?? null)
+      }
+      setProcessing(false)
     } else {
       setProcessing(false)
       const message =
@@ -234,27 +264,84 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
           ? t('payment.notPurchased')
           : result.error === 'Payment already pending.'
             ? t('payment.pending')
-            : t('common.toast.error')
+            : result.error || t('common.toast.error')
       showToast('error', message)
     }
   }
 
+  const handleClose = (): void => {
+    onSubmitted?.()
+    onClose()
+    reset()
+  }
+
   if (!course) return null
 
-  const isCardFlow = method === 'card' || method === 'debit'
+  const memo = `${proofName.trim() || (locale === 'zh' ? '学员' : 'Student')} - ${locale === 'zh' ? course.name.zh : course.name.en}`
 
   return (
-    <ModalFrame open={open} title={t('payment.title')} onClose={onClose}>
+    <ModalFrame open={open} title={t('payment.title')} onClose={handleClose}>
       <div className="student-payment">
+        {/* ===== result view after order creation ===== */}
+        {createdOrder ? (
+          <div className="student-payment__result">
+            <span className="student-payment__result-icon">
+              <Check size={22} />
+            </span>
+            <h3 className="student-payment__result-title">
+              {createdOrder.status === 'submitted'
+                ? t('payment.proofSubmitted')
+                : createdOrder.status === 'cash_pending'
+                  ? t('payment.cashOrderCreated')
+                  : t('payment.orderCreated')}
+            </h3>
+            <div className="student-payment__summary">
+              <div className="student-payment__priceline">
+                <span>{t('payment.orderNo')}</span>
+                <span className="tabular-nums">{createdOrder.order_no || createdOrder.id}</span>
+              </div>
+              <div className="student-payment__priceline">
+                <span>{t('instructor.schedule.course')}</span>
+                <span>{locale === 'zh' ? course.name.zh : course.name.en}</span>
+              </div>
+              <div className="student-payment__priceline">
+                <span>{t('instructor.payments.amount')}</span>
+                <span className="tabular-nums">{formatPrice(createdOrder.amount ?? finalPrice)} CAD</span>
+              </div>
+              <div className="student-payment__priceline">
+                <span>{t('instructor.payments.method')}</span>
+                <span>{paymentMethodLabel(createdOrder.method, locale)}</span>
+              </div>
+              <div className="student-payment__priceline">
+                <span>{t('instructor.payments.status')}</span>
+                <span className="student-payment__status-text">
+                  {createdOrder.status === 'submitted'
+                    ? t('payment.statusSubmitted')
+                    : createdOrder.status === 'cash_pending'
+                      ? t('payment.statusCashPending')
+                      : createdOrder.status === 'paid'
+                        ? t('payment.statusPaid')
+                        : createdOrder.status === 'rejected'
+                          ? t('payment.statusRejected')
+                          : t('payment.statusPending')}
+                </span>
+              </div>
+            </div>
+            <div className="student-payment__actions">
+              <Button variant="primary" onClick={handleClose}>
+                {t('common.close')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+        {/* ===== order summary ===== */}
         <div className="student-payment__course">
           <span className="student-payment__course-name">{locale === 'zh' ? course.name.zh : course.name.en}</span>
           <span className="student-payment__course-price tabular-nums">{formatPrice(course.price)}</span>
         </div>
-
-        {/* §18-§22: Student discount + referral */}
         <div className="student-payment__discounts">
           <p className="student-field-label">{t('payment.studentQuestion')}</p>
-          {/* §15: checkbox toggles — click Yes to enable, click again to cancel. */}
           <label className="ins-checkbox">
             <input
               type="checkbox"
@@ -263,7 +350,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
             />
             <span>{t('common.yes')}</span>
           </label>
-          {course?.studentDiscount ? (
+          {course.studentDiscount ? (
             <p className="student-payment__hint">
               {t('payment.studentDiscountInfo', {
                 value: course.studentDiscount.type === 'PERCENTAGE'
@@ -283,13 +370,8 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
               disabled={referralValid === true}
               onChange={(e) => { setReferralPhone(e.target.value); checkReferral(e.target.value) }}
             />
-            {/* §16: Remove Referral — clears eligibility and restores price. */}
             {referralValid === true ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setReferralPhone(''); setReferralValid(null) }}
-              >
+              <Button variant="ghost" size="sm" onClick={() => { setReferralPhone(''); setReferralValid(null) }}>
                 {t('payment.removeReferral')}
               </Button>
             ) : null}
@@ -320,6 +402,13 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
           ) : null}
         </div>
 
+        {rejectedOrder ? (
+          <p className="student-payment__hint is-bad">
+            {t('payment.rejectedResubmit')}
+            {rejectedOrder.rejectReason ? ` — ${rejectedOrder.rejectReason}` : ''}
+          </p>
+        ) : null}
+
         {method === null ? (
           <>
             <p className="student-field-label">{t('payment.choose')}</p>
@@ -331,7 +420,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
             ) : (
               <div className="student-payment__grid">
                 {METHODS.map((m) => (
-                  <button key={m} type="button" className="student-payment__opt" onClick={() => setMethod(m)}>
+                  <button key={m} type="button" className="student-payment__opt" onClick={() => { setMethod(m); setShowProof(false); setProofErr(null) }}>
                     <PaymentBrandFrame method={m} />
                     <span>{paymentMethodLabel(m, locale)}</span>
                   </button>
@@ -347,21 +436,14 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
 
             {method === 'wechat' ? (
               <div className="student-payment__wechat">
-                {wechatQr ? (
-                  <img src={wechatQr} alt={t('payment.wechat')} className="student-payment__qr" />
-                ) : (
-                  <div className="student-payment__qr student-payment__qr--empty">
-                    <PaymentMethodBrand method="wechat" size={36} />
-                    <span>{t('payment.wechatNotSet')}</span>
-                  </div>
-                )}
-                {/* § Final Payment Fix: CAD price stays in CAD; CNY is the display
-                    amount at real-time rate + 0.5. Never show a wrong ¥ figure. */}
+                <p className="student-payment__amount">
+                  {t('payment.payAmount')} <b className="tabular-nums">{formatPrice(finalPrice)} CAD</b>
+                </p>
                 {wechatRate !== null ? (
                   <div className="student-payment__rate">
                     <div className="student-payment__rate-row">
                       <span>{t('payment.rateCoursePrice')}</span>
-                      <b className="tabular-nums">CAD {formatPrice(pricePreview ? pricePreview.final : course.price)}</b>
+                      <b className="tabular-nums">CAD {formatPrice(finalPrice)}</b>
                     </div>
                     <div className="student-payment__rate-row">
                       <span>{t('payment.rateValue')}</span>
@@ -369,138 +451,146 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
                     </div>
                     <div className="student-payment__rate-row student-payment__rate-total">
                       <span>{t('payment.rateWechatAmount')}</span>
-                      <b className="tabular-nums">¥{((pricePreview ? pricePreview.final : course.price) * wechatRate).toFixed(2)}</b>
+                      <b className="tabular-nums">¥{(finalPrice * wechatRate).toFixed(2)}</b>
                     </div>
                   </div>
                 ) : (
                   <p className="student-payment__rate-err">{rateLoading ? t('payment.rateLoading') : t('payment.rateError')}</p>
                 )}
-                <p className="student-payment__scan">{t('payment.scan', { total: formatPrice(pricePreview ? pricePreview.final : course.price) })}</p>
+
+                {isMobile ? (
+                  /* ---- mobile: copy WeChat ID, then pay inside WeChat ---- */
+                  <div className="student-payment__mobile-wechat">
+                    <p className="student-payment__mobile-guide">
+                      <Smartphone size={15} />
+                      <span>{t('payment.wechatMobileGuide')}</span>
+                    </p>
+                    <div className="student-payment__wechat-id">
+                      <span>{t('payment.wechatId')}</span>
+                      <b>{wechatId || '—'}</b>
+                    </div>
+                    {wechatId ? (
+                      <Button variant="primary" onClick={() => void copyText(wechatId)} disabled={processing}>
+                        <Copy size={16} /> {t('payment.copyWechatId')}
+                      </Button>
+                    ) : (
+                      <p className="student-payment__hint is-bad">{t('payment.wechatIdNotSet')}</p>
+                    )}
+                    <a className="student-payment__open-wechat" href="weixin://" onClick={(e) => { e.preventDefault(); window.location.href = 'weixin://' }}>
+                      {t('payment.openWechat')}
+                    </a>
+                    {wechatQr ? (
+                      <div className="student-payment__qr-backup">
+                        <img src={wechatQr} alt={t('payment.wechat')} className="student-payment__qr student-payment__qr--small" />
+                        <span className="student-payment__qr-caption">{t('payment.wechatQrBackup')}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  /* ---- desktop: QR + scan ---- */
+                  <div className="student-payment__desktop-wechat">
+                    {wechatQr ? (
+                      <img src={wechatQr} alt={t('payment.wechat')} className="student-payment__qr" />
+                    ) : (
+                      <div className="student-payment__qr student-payment__qr--empty">
+                        <PaymentMethodBrand method="wechat" size={36} />
+                        <span>{t('payment.wechatNotSet')}</span>
+                      </div>
+                    )}
+                    <p className="student-payment__scan">{t('payment.wechatDesktopScan')}</p>
+                    {wechatId ? (
+                      <p className="student-payment__wechat-id">
+                        {t('payment.wechatId')} <b>{wechatId}</b>
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+
+                {!showProof ? (
+                  <div className="student-payment__actions">
+                    <Button variant="ghost" onClick={handleClose} disabled={processing}>{t('common.cancel')}</Button>
+                    <Button variant="primary" disabled={processing} onClick={() => { setShowProof(true); setProofErr(null) }}>
+                      {t('payment.iHavePaid')}
+                    </Button>
+                  </div>
+                ) : (
+                  <ProofForm
+                    name={proofName} onName={setProofName}
+                    phone={proofPhone} onPhone={setProofPhone}
+                    note={proofNote} onNote={setProofNote}
+                    dataUrl={proofDataUrl} onFile={onProofFile}
+                    err={proofErr}
+                    submitLabel={t('payment.proofSubmit')}
+                    processing={processing}
+                    onSubmit={() => void submit()}
+                  />
+                )}
               </div>
             ) : method === 'cash' ? (
               <div className="student-payment__info">
                 <PaymentMethodBrand method="cash" size={24} />
                 <p>
-                  {t('payment.cashFlow', { total: formatPrice(course.price) })}
+                  <b className="student-payment__amount">
+                    {t('payment.payAmount')} {formatPrice(finalPrice)} CAD
+                  </b>
+                  <span className="student-payment__hint">{t('payment.cashNote')}</span>
                   <span className="student-payment__hint">{t('payment.cashSteps')}</span>
-                  {bankConfigured ? (
-                    <span className="student-payment__bank">
-                      <span className="student-payment__bank-label">{t('payment.bankTo')}</span>
-                      {instructorBank?.bankName ? <span className="student-payment__bank-line">{instructorBank.bankName}</span> : null}
-                      {instructorBank?.holderName ? <span className="student-payment__bank-line">{instructorBank.holderName}</span> : null}
-                      {instructorBank?.transit || instructorBank?.institution || instructorBank?.account ? (
-                        <span className="student-payment__bank-line student-payment__bank-line--nums tabular-nums">
-                          {[instructorBank.transit, instructorBank.institution, instructorBank.account].filter(Boolean).join(' - ')}
-                        </span>
-                      ) : null}
-                    </span>
-                  ) : null}
                 </p>
-              </div>
-            ) : isCardFlow ? (
-              <div className="student-card-form">
-                <div className="student-card-form__brands">
-                  <VisaIcon size={22} />
-                  <MastercardIcon size={22} />
-                  <AmexIcon size={22} />
-                  <InteracIcon size={22} />
+                <div className="student-payment__actions">
+                  <Button variant="ghost" onClick={handleClose} disabled={processing}>{t('common.cancel')}</Button>
+                  <Button variant="primary" disabled={processing} onClick={() => void submit()}>
+                    {t('payment.cashConfirm')}
+                  </Button>
                 </div>
-                <label className="student-field-label" htmlFor="pay-name">
-                  {t('payment.cardName')}
-                </label>
-                <input
-                  id="pay-name"
-                  className="student-card-input"
-                  value={card.name}
-                  autoComplete="cc-name"
-                  onChange={(e) => setCard({ ...card, name: e.target.value })}
-                />
-                <label className="student-field-label" htmlFor="pay-number">
-                  {t('payment.cardNumber')}
-                </label>
-                <div className="student-card-number-row">
-                  <input
-                    id="pay-number"
-                    className="student-card-input"
-                    inputMode="numeric"
-                    autoComplete="cc-number"
-                    placeholder="1234 5678 9012 3456"
-                    value={card.number}
-                    onChange={(e) => setCard({ ...card, number: formatCardNumber(e.target.value) })}
-                  />
-                  {brand === 'visa' ? (
-                    <VisaIcon size={24} />
-                  ) : brand === 'mastercard' ? (
-                    <MastercardIcon size={24} />
-                  ) : brand === 'amex' ? (
-                    <AmexIcon size={24} />
-                  ) : brand === 'interac' ? (
-                    <InteracIcon size={24} />
-                  ) : null}
-                </div>
-                <div className="student-card-form__row">
-                  <div>
-                    <label className="student-field-label" htmlFor="pay-exp">
-                      {t('payment.cardExpiry')}
-                    </label>
-                    <input
-                      id="pay-exp"
-                      className="student-card-input"
-                      inputMode="numeric"
-                      autoComplete="cc-exp"
-                      placeholder="MM/YY"
-                      value={card.expiry}
-                      onChange={(e) => setCard({ ...card, expiry: formatExpiry(e.target.value) })}
-                    />
-                  </div>
-                  <div>
-                    <label className="student-field-label" htmlFor="pay-cvc">
-                      {t('payment.cardCvc')}
-                    </label>
-                    <input
-                      id="pay-cvc"
-                      className="student-card-input"
-                      inputMode="numeric"
-                      autoComplete="cc-csc"
-                      placeholder="123"
-                      maxLength={4}
-                      value={card.cvc}
-                      onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g, '') })}
-                    />
-                  </div>
-                </div>
-                <label className="student-field-label" htmlFor="pay-postal">
-                  {t('payment.cardPostal')}
-                </label>
-                <input
-                  id="pay-postal"
-                  className="student-card-input"
-                  autoComplete="postal-code"
-                  value={card.postal}
-                  onChange={(e) => setCard({ ...card, postal: e.target.value })}
-                />
-                {cardError ? <p className="student-payment__err">{t('payment.cardInvalid')}</p> : null}
-                <p className="student-payment__note">
-                  <Lock size={14} />
-                  <span>{stripeConfigured(payCreds) ? t('payment.stripeLive') : t('payment.testCardHint')}</span>
-                </p>
               </div>
             ) : method === 'emt' ? (
               <div className="student-payment__info">
                 <PaymentMethodBrand method="emt" size={24} />
-                <p>
-                  {t('payment.emtFlow', { total: formatPrice(course.price) })}
-                  {instructorEmt ? (
-                    <span className="student-payment__emt-target">
-                      {t('payment.emtTo')} <strong>{instructorEmt}</strong>
-                    </span>
-                  ) : null}
+                <p className="student-payment__amount">
+                  {t('payment.payAmount')} <b className="tabular-nums">{formatPrice(finalPrice)} CAD</b>
                 </p>
-              </div>
-            ) : method === 'paypal' ? (
-              <div className="student-payment__info">
-                <PaymentMethodBrand method="paypal" size={24} />
-                <p>{t('payment.paypalFlow')}</p>
+                <p className="student-payment__hint">{t('payment.emtFlowHint')}</p>
+                {instructorEmt ? (
+                  <div className="student-payment__emt-box">
+                    <span className="student-payment__emt-label">{t('payment.emtTo')}</span>
+                    <strong className="student-payment__emt-value">{instructorEmt}</strong>
+                    <div className="student-payment__actions--row">
+                      <Button variant="secondary" size="sm" onClick={() => void copyText(instructorEmt)}>
+                        <Copy size={14} /> {t('payment.emtCopyEmail')}
+                      </Button>
+                    </div>
+                    <span className="student-payment__emt-label">{t('payment.emtMemo')}</span>
+                    <strong className="student-payment__emt-value">{memo}</strong>
+                    <div className="student-payment__actions--row">
+                      <Button variant="secondary" size="sm" onClick={() => void copyText(memo)}>
+                        <Copy size={14} /> {t('payment.emtCopyMemo')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="student-payment__hint is-bad">{t('payment.emtNotSet')}</p>
+                )}
+                <p className="student-payment__hint">{t('payment.emtAfterHint')}</p>
+
+                {!showProof ? (
+                  <div className="student-payment__actions">
+                    <Button variant="ghost" onClick={handleClose} disabled={processing}>{t('common.cancel')}</Button>
+                    <Button variant="primary" disabled={processing} onClick={() => { setShowProof(true); setProofErr(null) }}>
+                      {t('payment.iHaveEmt')}
+                    </Button>
+                  </div>
+                ) : (
+                  <ProofForm
+                    name={proofName} onName={setProofName}
+                    phone={proofPhone} onPhone={setProofPhone}
+                    note={proofNote} onNote={setProofNote}
+                    dataUrl={proofDataUrl} onFile={onProofFile}
+                    err={proofErr}
+                    submitLabel={t('payment.proofSubmit')}
+                    processing={processing}
+                    onSubmit={() => void submit()}
+                  />
+                )}
               </div>
             ) : (
               <div className="student-payment__info">
@@ -509,54 +599,63 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
               </div>
             )}
 
-            {method === 'emt' ? (
-              <div className="student-card-form">
-                <label className="student-field-label" htmlFor="emt-email">
-                  {t('payment.emtEmail')}
-                </label>
-                <input
-                  id="emt-email"
-                  className="student-card-input"
-                  type="email"
-                  value={emtEmailInput}
-                  onChange={(e) => setEmtEmailInput(e.target.value)}
-                />
-                <label className="student-field-label" htmlFor="emt-ref">
-                  {t('payment.emtReference')}
-                </label>
-                <input
-                  id="emt-ref"
-                  className="student-card-input"
-                  value={emtRef}
-                  onChange={(e) => setEmtRef(e.target.value)}
-                />
-              </div>
-            ) : null}
-
             <div className="student-payment__note">
               <ShieldCheck size={15} />
               <span>{t('payment.instructorConfirm')}</span>
             </div>
-
-            <div className="student-payment__actions">
-              <Button variant="ghost" onClick={onClose} disabled={processing}>
-                {t('common.cancel')}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={processing || (isCardFlow && !cardValid)}
-                onClick={submit}
-              >
-                {processing
-                  ? t('payment.processing')
-                  : method === 'cash' || method === 'wechat'
-                    ? `${t('payment.iHavePaid')} · ${formatPrice(course.price)}`
-                    : `${t('payment.payNow')} · ${formatPrice(course.price)}`}
-              </Button>
-            </div>
+          </>
+        )}
           </>
         )}
       </div>
     </ModalFrame>
+  )
+}
+
+/** § payment overhaul: proof form — name / phone / note / optional screenshot. */
+function ProofForm({
+  name, onName, phone, onPhone, note, onNote, dataUrl, onFile, err, submitLabel, processing, onSubmit,
+}: {
+  name: string
+  onName: (v: string) => void
+  phone: string
+  onPhone: (v: string) => void
+  note: string
+  onNote: (v: string) => void
+  dataUrl: string | null
+  onFile: (f: File | undefined) => void
+  err: string | null
+  submitLabel: string
+  processing: boolean
+  onSubmit: () => void
+}): JSX.Element {
+  const t = useT()
+  return (
+    <div className="student-card-form student-proof">
+      <p className="student-field-label">
+        {t('payment.proofName')} *
+      </p>
+      <input id="proof-name" className="student-card-input" value={name} onChange={(e) => onName(e.target.value)} />
+      <p className="student-field-label">
+        {t('payment.proofPhone')} *
+      </p>
+      <input id="proof-phone" className="student-card-input" type="tel" value={phone} onChange={(e) => onPhone(e.target.value)} />
+      <p className="student-field-label">
+        {t('payment.proofNote')}
+      </p>
+      <input id="proof-note" className="student-card-input" value={note} onChange={(e) => onNote(e.target.value)} placeholder={t('payment.proofNotePlaceholder')} />
+      <p className="student-field-label">{t('payment.proofUpload')}</p>
+      <label className="student-payment__proof-upload">
+        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => onFile(e.target.files?.[0])} />
+        <span>{dataUrl ? '✓ ' : ''}{t('payment.proofChooseFile')}</span>
+      </label>
+      {dataUrl ? <img src={dataUrl} alt="" className="student-payment__proof-preview" /> : null}
+      {err ? <p className="student-payment__err">{err}</p> : null}
+      <div className="student-payment__actions">
+        <Button variant="primary" disabled={processing} onClick={onSubmit}>
+          {processing ? t('payment.processing') : submitLabel}
+        </Button>
+      </div>
+    </div>
   )
 }

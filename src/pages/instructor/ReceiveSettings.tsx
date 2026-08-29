@@ -11,7 +11,7 @@
 // ============================================================================
 
 import { useRef, useState } from 'react'
-import { setBank, setEmtEmail, setPayConfig, setWechatQr, useAppState } from '../../data/store'
+import { setBank, setEmtEmail, setPayConfig, setWechatId, setWechatQr, useAppState } from '../../data/store'
 import type { InstructorBank, PayApiConfig } from '../../data/store'
 import { useT } from '../../i18n'
 import { Landmark, Mail, Pencil, QrCode, Settings2, Upload } from 'lucide-react'
@@ -100,6 +100,12 @@ export default function ReceiveSettings(): JSX.Element {
   const currentBank = state.instructor.bank ?? {}
   const currentApi = state.instructor.payConfig ?? {}
 
+  // § payment overhaul: WeChat ID (微信号) for mobile students.
+  const [editingWechatId, setEditingWechatId] = useState(false)
+  const [wechatIdDraft, setWechatIdDraft] = useState('')
+  const startEditWechatId = (): void => { setWechatIdDraft(state.instructor.wechatId ?? ''); setEditingWechatId(true) }
+  const saveWechatId = (): void => { setWechatId(wechatIdDraft.trim()); setEditingWechatId(false); toast.push({ tone: 'success', title: t('common.toast.saved') }) }
+
   return (
     <>
       {/* WeChat receive QR settings */}
@@ -127,6 +133,31 @@ export default function ReceiveSettings(): JSX.Element {
             </Button>
           </div>
         </div>
+        {/* § payment overhaul: WeChat ID — mobile students copy & pay in WeChat */}
+        {!editingWechatId ? (
+          <div className="ins-settings-row">
+            <div>
+              <p className="ins-settings-value">{state.instructor.wechatId || '—'}</p>
+              <p className="ins-settings-hint">{t('instructor.settings.wechatIdHint')}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={startEditWechatId}>
+              <Pencil size={13} /> {t('common.edit')}
+            </Button>
+          </div>
+        ) : (
+          <div className="ins-settings-row">
+            <input
+              className="ins-input"
+              value={wechatIdDraft}
+              placeholder="my_wechat_id"
+              onChange={(e) => setWechatIdDraft(e.target.value)}
+            />
+            <div className="ins-pay-actions">
+              <Button variant="ghost" size="sm" onClick={() => setEditingWechatId(false)}>{t('common.cancel')}</Button>
+              <Button variant="primary" size="sm" onClick={saveWechatId}>{t('common.save')}</Button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* EMT receiving email */}

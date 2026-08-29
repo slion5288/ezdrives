@@ -357,7 +357,8 @@ export function unitStatus(
 export function hasPendingPayment(source: AppState, studentId: string, courseId: string): boolean {
   return (source.payments ?? []).some(
     (p) => p.studentId === studentId && p.courseId === courseId &&
-      (p.status === 'pending' || p.status === 'cash_pending' || p.status === 'wechat_pending' || p.status === 'emt_pending'),
+      (p.status === 'pending' || p.status === 'cash_pending' || p.status === 'wechat_pending' ||
+       p.status === 'emt_pending' || p.status === 'submitted'),
   )
 }
 
@@ -570,6 +571,13 @@ export function setEmtEmail(email: string): void {
   })
 }
 
+/** § payment overhaul: instructor saves their WeChat ID (微信号). */
+export function setWechatId(wechatId: string): void {
+  mutate((draft) => {
+    draft.instructor.wechatId = wechatId.trim() || undefined
+  })
+}
+
 /** Instructor saves their bank account details. */
 export function setBank(bank: InstructorBank): void {
   mutate((draft) => {
@@ -760,13 +768,22 @@ export async function addPayment(
   studentId: string,
   courseId: string,
   method: PaymentMethod,
-  opts: { studentStatus?: 'yes' | 'no'; referralPhone?: string } = {},
+  opts: {
+    studentStatus?: 'yes' | 'no'
+    referralPhone?: string
+    /** § payment overhaul: WeChat / EMT proof submitted in the same call. */
+    proof?: string
+    name?: string
+    phone?: string
+    note?: string
+  } = {},
 ): Promise<{ ok: true; payment: Payment } | { ok: false; error: string }> {
   if (!session.token) return { ok: false, error: 'not_authenticated' }
   const res = await apiAction(session.token, 'addPayment', {
     studentId, courseId, method,
     studentStatus: opts.studentStatus || 'no',
     referralPhone: opts.referralPhone || '',
+    ...(opts.proof ? { proof: opts.proof, name: opts.name || '', phone: opts.phone || '', note: opts.note || '' } : {}),
   })
   if (res.ok && res.state) {
     await applyServerState(res)
@@ -789,9 +806,9 @@ export async function confirmPayment(id: string): Promise<{ ok: boolean; error?:
 }
 
 /** Instructor rejects the payment (online pending, cash pending, or cash approved). */
-export async function rejectPayment(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function rejectPayment(id: string, reason?: string): Promise<{ ok: boolean; error?: string }> {
   if (!session.token) return { ok: false, error: 'Not authenticated' }
-  const res = await apiAction(session.token, 'rejectPayment', { id })
+  const res = await apiAction(session.token, 'rejectPayment', { id, ...(reason ? { reason } : {}) })
   if (res.ok && res.state) {
     await applyServerState(res)
     return { ok: true }
@@ -803,6 +820,20 @@ export async function rejectPayment(id: string): Promise<{ ok: boolean; error?: 
 export async function approveCashPayment(id: string): Promise<{ ok: boolean; error?: string }> {
   if (!session.token) return { ok: false, error: 'Not authenticated' }
   const res = await apiAction(session.token, 'approveCashPayment', { id })
+  if (res.ok && res.state) {
+    await applyServerState(res)
+    return { ok: true }
+  }
+  return { ok: false, error: res.error }
+}
+
+/** § payment overhaul: student submits WeChat / EMT payment proof → 'submitted'. */
+export async function submitPaymentProof(
+  id: string,
+  info: { name: string; phone: string; note?: string; proof?: string | null },
+): Promise<{ ok: boolean; error?: string }> {
+  if (!session.token) return { ok: false, error: 'Not authenticated' }
+  const res = await apiAction(session.token, 'submitPaymentProof', { id, ...info })
   if (res.ok && res.state) {
     await applyServerState(res)
     return { ok: true }
