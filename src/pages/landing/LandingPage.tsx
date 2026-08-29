@@ -56,24 +56,11 @@ function SectionHeading({ title, subtitle }: { title: string; subtitle?: string 
   )
 }
 
-/** True under the 768px breakpoint (used to switch the courses rail to the view-all card). */
-function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState<boolean>(() => window.matchMedia('(max-width: 768px)').matches)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)')
-    const onChange = (): void => setMobile(mq.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return mobile
-}
-
 export default function LandingPage(): JSX.Element {
   const t = useT()
   const locale = useLocale()
   const state = useAppState()
   const { instructor } = state
-  const isMobile = useIsMobile()
   const [playingVideo, setPlayingVideo] = useState<TeachingVideo | null>(null)
 
   // Visitors (no session) fetch the real public homepage data instead of the
@@ -122,12 +109,11 @@ export default function LandingPage(): JSX.Element {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  /** Every active course — desktop shows them all in a horizontal rail.
-   *  §Trial: the Trial Lesson (体验课) always comes first. */
+  /** Every active course, sorted for display (trial first, then drag-order).
+   *  § user decision: the homepage shows ONLY the 3 most popular courses
+   *  (the instructor picks the order by dragging in 课程管理). */
   const allCourses = visitor && !publicReady ? [] : sortCoursesForDisplay(state.courses.filter((c) => c.active))
-  /** §C: no per-card "popular" badges or duplicate Book buttons on the homepage —
-   *  every card links to the course; one view-all CTA below the rail. */
-  const shownCourses = isMobile ? allCourses.slice(0, 3) : allCourses
+  const shownCourses = allCourses.slice(0, 3)
   /** Hero price: the trial lesson's price (default $30 per the course list). */
   const trialPrice = useMemo(() => {
     const trial = allCourses.find((c) => courseTypeOf(c) === 'TRIAL_LESSON')

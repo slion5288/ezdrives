@@ -52,12 +52,16 @@ export function courseTypeOf(c: Course): CourseType {
 }
 
 /** Public course display order: the Trial Lesson (体验课) always comes first,
- *  then every other course keeps its original (insertion) order. */
+ *  then every other course by the instructor's drag-order (sortOrder), then
+ *  original insertion order for legacy courses without a sortOrder. */
 export function sortCoursesForDisplay(courses: Course[]): Course[] {
   return [...courses].sort((a, b) => {
     const ta = courseTypeOf(a) === 'TRIAL_LESSON' ? 0 : 1
     const tb = courseTypeOf(b) === 'TRIAL_LESSON' ? 0 : 1
-    return ta - tb
+    if (ta !== tb) return ta - tb
+    const oa = a.sortOrder ?? Number.MAX_SAFE_INTEGER
+    const ob = b.sortOrder ?? Number.MAX_SAFE_INTEGER
+    return oa - ob
   })
 }
 

@@ -337,6 +337,8 @@ export const messages = {
   'instructor.courses.delete': 'Delete course',
   'instructor.courses.deleteConfirm': 'Delete this course? It will be hidden but kept for history.',
   'instructor.courses.empty': 'No courses yet',
+  'instructor.courses.orderHint': 'Drag course cards to set the homepage order (the trial lesson stays first; the homepage shows the top 3 courses).',
+  'instructor.courses.trialFirst': 'Always first',
   'instructor.courses.saved': 'Course saved',
   'instructor.courses.deleted': 'Course deleted',
   'instructor.videos.title': 'Teaching videos',

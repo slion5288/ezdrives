@@ -339,6 +339,8 @@ export const messages: Record<MessageKey, string> = {
   'instructor.courses.delete': '删除课程',
   'instructor.courses.deleteConfirm': '确定删除该课程吗？课程将下架但保留历史记录。',
   'instructor.courses.empty': '暂无课程',
+  'instructor.courses.orderHint': '按住课程卡片拖拽可调整首页显示顺序（体验课固定第一位，首页展示前 3 个课程）。',
+  'instructor.courses.trialFirst': '固定第一位',
   'instructor.courses.saved': '课程已保存',
   'instructor.courses.deleted': '课程已删除',
   'instructor.videos.title': '教学视频',

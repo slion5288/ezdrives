@@ -7,12 +7,12 @@
 // Each course can configure Student / Referral discounts.
 // ============================================================================
 
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import type { AppState, Course, CourseLesson, CourseType, DiscountConfig, LicenseClass } from '../../data/store'
-import { courseTypeOf, deleteCourse, getSession, licenseOf, saveCourse, toggleCourse } from '../../data/store'
+import { courseTypeOf, deleteCourse, getSession, licenseOf, saveCourse, sortCoursesForDisplay, toggleCourse } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
-import { Camera, GraduationCap, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Camera, GripVertical, GraduationCap, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Badge, ConfirmDialog, EmptyState, Modal, Toggle } from './ui'
 import { useToast } from '../../components/shared'
 import { formatMoney } from './helpers'
@@ -356,6 +356,29 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
   const showLicensePicker = form ? LICENSE_TYPES.includes(form.courseType) : false
   const showHourlyRate = form?.courseType === 'TRIAL_LESSON'
 
+  // § user decision: drag to reorder — the homepage shows the top 3 courses in
+  // this order (trial lesson stays locked at #1).
+  const sortedCourses = useMemo(() => sortCoursesForDisplay(state.courses), [state.courses])
+  const [dragId, setDragId] = useState<string | null>(null)
+
+  const handleDrop = (targetId: string): void => {
+    if (!dragId || dragId === targetId) { setDragId(null); return }
+    const from = sortedCourses.findIndex((c) => c.id === dragId)
+    const to = sortedCourses.findIndex((c) => c.id === targetId)
+    if (from < 0 || to < 0) { setDragId(null); return }
+    const next = [...sortedCourses]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    // assign homepage order; the trial is always #1 (business rule)
+    next.forEach((c, i) => {
+      if (c.sortOrder === i) return
+      const reordered = { ...c, sortOrder: i }
+      if (courseTypeOf(c) === 'TRIAL_LESSON') reordered.sortOrder = 0
+      saveCourse(reordered)
+    })
+    setDragId(null)
+  }
+
   return (
     <div className="ins-courses">
       <div className="ins-page-actions">
@@ -369,13 +392,27 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
           <EmptyState icon={<GraduationCap size={24} />} title={t('instructor.courses.empty')} />
         </div>
       ) : (
-        <div className="ins-course-grid">
-          {state.courses.map((course) => {
+        <div>
+          <p className="ins-course-order-hint">{t('instructor.courses.orderHint')}</p>
+          <div className="ins-course-grid">
+          {sortedCourses.map((course) => {
             const ct = courseTypeOf(course)
             const lic = licenseOf(course)
+            const isTrial = ct === 'TRIAL_LESSON'
             return (
-              <div key={course.id} className={`ins-course-card${course.active ? '' : ' is-inactive'}`}>
+              <div
+                key={course.id}
+                className={`ins-course-card${course.active ? '' : ' is-inactive'}${dragId === course.id ? ' is-dragging' : ''}${isTrial ? ' is-locked' : ''}`}
+                draggable={!isTrial}
+                onDragStart={(e) => { setDragId(course.id); e.dataTransfer.effectAllowed = 'move' }}
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                onDrop={() => handleDrop(course.id)}
+                onDragEnd={() => setDragId(null)}
+              >
                 <div className="ins-course-head">
+                  <span className="ins-course-grip" aria-hidden="true">
+                    {isTrial ? <span className="ins-course-lock">{t('instructor.courses.trialFirst')}</span> : <GripVertical size={15} />}
+                  </span>
                   <span className="ins-course-name">{locale === 'zh' ? course.name.zh : course.name.en}</span>
                   <div className="ins-course-badges">
                     <Badge tone="info">{courseTypeLabel(ct, locale === 'zh')}</Badge>
@@ -421,6 +458,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
               </div>
             )
           })}
+          </div>
         </div>
       )}
 

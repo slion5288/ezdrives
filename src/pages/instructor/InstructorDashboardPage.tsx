@@ -67,9 +67,16 @@ export default function InstructorDashboardPage(): JSX.Element {
   const t = useT()
   const locale = useLocale()
   const [tab, setTab] = useState<InstructorTab>('overview')
+  const [scheduleFocus, setScheduleFocus] = useState<Date | undefined>(undefined)
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [ready, setReady] = useState<boolean>(() => isStateLoaded())
   const [loadError, setLoadError] = useState(false)
+
+  /** § user decision: switch tab with an optional calendar focus date. */
+  const go = (next: InstructorTab, focusDate?: Date): void => {
+    setScheduleFocus(focusDate)
+    setTab(next)
+  }
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -196,8 +203,8 @@ export default function InstructorDashboardPage(): JSX.Element {
             </div>
           </div>
           <div className="ins-content">
-            {tab === 'overview' ? <OverviewPage state={state} onNavigate={setTab} /> : null}
-            {tab === 'schedule' ? <SchedulePage state={state} /> : null}
+            {tab === 'overview' ? <OverviewPage state={state} onNavigate={go} /> : null}
+            {tab === 'schedule' ? <SchedulePage state={state} initialFocus={scheduleFocus} /> : null}
             {tab === 'courses' ? <CoursesPage state={state} /> : null}
             {tab === 'settings' ? <SettingsPage state={state} /> : null}
             {tab === 'students' ? <StudentsPage state={state} /> : null}

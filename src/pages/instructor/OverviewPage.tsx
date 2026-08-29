@@ -37,7 +37,7 @@ function deltaPct(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 100)
 }
 
-export default function OverviewPage({ state, onNavigate }: { state: AppState; onNavigate: (tab: InstructorTab) => void }): JSX.Element {
+export default function OverviewPage({ state, onNavigate }: { state: AppState; onNavigate: (tab: InstructorTab, focusDate?: Date) => void }): JSX.Element {
   const t = useT()
   const locale = useLocale()
 
@@ -54,35 +54,17 @@ export default function OverviewPage({ state, onNavigate }: { state: AppState; o
     .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, 6)
 
+  /** § user decision: 查看日程 jumps the schedule calendar to the day of the
+   *  NEXT appointment (not today). */
+  const nextFocus = upcoming.length > 0 ? fromLocalISO(upcoming[0].start) : undefined
+
   return (
     <div className="ins-overview">
-      <div className="ins-stats-grid">
-        <StatCard
-          label={t('instructor.overview.lessons')}
-          value={String(stats.lessons)}
-          delta={{ text: deltaText(deltaPct(stats.lessons, prev.lessons)), up: stats.lessons >= prev.lessons }}
-          hint={vsLastMonth}
-        />
-        <StatCard
-          label={t('instructor.overview.revenue')}
-          value={`${formatMoney(stats.revenue)} ${t('common.cad')}`}
-          delta={{ text: deltaText(deltaPct(stats.revenue, prev.revenue)), up: stats.revenue >= prev.revenue }}
-          hint={vsLastMonth}
-        />
-        <StatCard
-          label={t('instructor.overview.newStudents')}
-          value={String(stats.newStudents)}
-          delta={{ text: deltaText(deltaPct(stats.newStudents, prev.newStudents)), up: stats.newStudents >= prev.newStudents }}
-          hint={vsLastMonth}
-        />
-        <StatCard label={t('instructor.overview.courseMix')} value={String(distribution.length)} />
-      </div>
-
-      {/* Upcoming appointments — first block, right below the stats */}
+      {/* § user decision: upcoming appointments FIRST — they matter most */}
       <section className="ins-panel">
         <div className="ins-panel-head">
           <h2 className="ins-panel-title">{t('instructor.overview.appointments')}</h2>
-          <button type="button" className="ins-link-btn" onClick={() => onNavigate('schedule')}>
+          <button type="button" className="ins-link-btn" onClick={() => onNavigate('schedule', nextFocus)}>
             {t('instructor.overview.viewSchedule')}
           </button>
         </div>
@@ -116,6 +98,29 @@ export default function OverviewPage({ state, onNavigate }: { state: AppState; o
           </ul>
         )}
       </section>
+
+      {/* § user decision: stats follow the upcoming list */}
+      <div className="ins-stats-grid">
+        <StatCard
+          label={t('instructor.overview.lessons')}
+          value={String(stats.lessons)}
+          delta={{ text: deltaText(deltaPct(stats.lessons, prev.lessons)), up: stats.lessons >= prev.lessons }}
+          hint={vsLastMonth}
+        />
+        <StatCard
+          label={t('instructor.overview.revenue')}
+          value={`${formatMoney(stats.revenue)} ${t('common.cad')}`}
+          delta={{ text: deltaText(deltaPct(stats.revenue, prev.revenue)), up: stats.revenue >= prev.revenue }}
+          hint={vsLastMonth}
+        />
+        <StatCard
+          label={t('instructor.overview.newStudents')}
+          value={String(stats.newStudents)}
+          delta={{ text: deltaText(deltaPct(stats.newStudents, prev.newStudents)), up: stats.newStudents >= prev.newStudents }}
+          hint={vsLastMonth}
+        />
+        <StatCard label={t('instructor.overview.courseMix')} value={String(distribution.length)} />
+      </div>
 
       <div className="ins-chart-grid">
         <section className="ins-panel">

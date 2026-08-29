@@ -168,14 +168,16 @@ function TimePickerModal({
 
 // --- Schedule page --------------------------------------------------------
 
-export default function SchedulePage({ state }: { state: AppState }): JSX.Element {
+export default function SchedulePage({ state, initialFocus }: { state: AppState; initialFocus?: Date }): JSX.Element {
   const t = useT()
   const locale = useLocale()
   const toast = useToast()
 
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()))
+  // § user decision: when arriving from 总览 (查看日程), the calendar opens
+  // on the day of the NEXT appointment — not today.
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(initialFocus ?? new Date()))
   const [view, setView] = useState<'day' | 'week'>('day')
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
+  const [selectedDate, setSelectedDate] = useState<Date>(() => initialFocus ?? new Date())
   const [detail, setDetail] = useState<Appointment | null>(null)
   const [showReschedule, setShowReschedule] = useState(false)
   const [showCancel, setShowCancel] = useState(false)

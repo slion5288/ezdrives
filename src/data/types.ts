@@ -60,6 +60,8 @@ export interface Course {
   referralDiscount?: DiscountConfig | null
   /** Trial: base hourly rate the 50% rule derives from (instructor-level). */
   hourlyRate?: number
+  /** § homepage display order (drag-to-reorder in 课程管理). Trial stays first. */
+  sortOrder?: number
 }
 
 export interface Vehicle {
