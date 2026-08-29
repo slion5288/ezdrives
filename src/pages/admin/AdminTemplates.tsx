@@ -1,12 +1,13 @@
 // ============================================================================
 // EZDRIVES — AdminTemplates (notification templates manager, admin tab)
-// Lists every email template; edit subject/body (plain + HTML), preview with
-// sample data, send a test email, enable/disable, and view the send log.
-// Integrated into the existing /admin dashboard (no second admin system).
+// § user decision: the admin edits CHINESE ONLY (subject_zh / body_zh);
+// English is auto-translated on save (same chain as the rest of the site) and
+// every email carries the company logo + contact footer automatically.
+// Lists ALL templates; preview / test / logs stay available.
 // ============================================================================
 
 import { useEffect, useState } from 'react'
-import { Copy, Eye, Mail, RefreshCw, Send, ShieldCheck } from 'lucide-react'
+import { Eye, Mail, RefreshCw, Send, ShieldCheck } from 'lucide-react'
 import { apiAdminGetTemplates, apiAdminGetLogs, apiAdminPutTemplate, apiAdminTemplateAction } from '../../data/api'
 import './admin.css'
 import { Button } from '../../components/shared/Button'
@@ -18,6 +19,8 @@ interface Template {
   subject: string
   html_body: string
   text_body: string
+  subject_zh?: string
+  body_zh?: string
   enabled: boolean
   is_system: boolean
   updated_at: string
@@ -27,15 +30,16 @@ interface LogEntry { id: string; type: string; recipient_email: string; subject:
 
 const zh = (key: string): string => {
   const map: Record<string, string> = {
-    'tpl.title': '通知模板',
-    'tpl.hint': '修改邮件内容后保存即生效，无需重新部署。{{变量}} 会在发送时替换为真实数据。',
+    'tpl.title': '通知模板（邮件）',
+    'tpl.hint': '只填中文即可：保存时英文自动翻译，所有邮件自动附带公司 logo 与联系信息。{{变量}} 会在发送时替换为真实数据。',
     'tpl.status': 'Email 状态',
-    'tpl.notConfigured': '⚠️ Email 服务未配置（Cloudflare Email Sending binding 缺失或未完成设置）——邮件不会发送，但业务不受影响。请按 CLOUDFLARE_EMAIL_SETUP.md 配置。',
+    'tpl.notConfigured': '⚠️ Email 服务未配置——邮件不会发送，但业务不受影响。请配置 Cloudflare Email Sending。',
     'tpl.configured': '已连接',
     'tpl.from': '发件人',
     'tpl.name': '名称',
     'tpl.type': '类型',
-    'tpl.subject': '主题',
+    'tpl.subjectZh': '中文主题',
+    'tpl.bodyZh': '中文正文',
     'tpl.enabled': '启用',
     'tpl.system': '系统',
     'tpl.updated': '更新时间',
@@ -43,6 +47,7 @@ const zh = (key: string): string => {
     'tpl.preview': '预览',
     'tpl.save': '保存',
     'tpl.saved': '已保存',
+    'tpl.enAuto': '英文将在保存时自动翻译',
     'tpl.variables': '可用变量（点击复制）',
     'tpl.copy': '已复制',
     'tpl.unknownVar': '⚠️ 包含不存在的变量',
@@ -91,10 +96,16 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
     setPreview(null)
   }
 
+  /** § Chinese-only save → server translates zh→en and rebuilds the email. */
   const save = async (): Promise<void> => {
     if (!draft) return
     setBusy(true)
-    const res = await apiAdminPutTemplate(token, { id: draft.id, subject: draft.subject, html_body: draft.html_body, text_body: draft.text_body, enabled: draft.enabled })
+    const res = await apiAdminPutTemplate(token, {
+      id: draft.id,
+      subject_zh: draft.subject_zh || draft.subject || '',
+      body_zh: draft.body_zh || draft.text_body || '',
+      enabled: draft.enabled,
+    })
     setBusy(false)
     if (res.ok) {
       setNotice(zh('tpl.saved'))
@@ -160,7 +171,7 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
                 <tr>
                   <th>{zh('tpl.type')}</th>
                   <th>{zh('tpl.from')}</th>
-                  <th>{zh('tpl.subject')}</th>
+                  <th>{zh('tpl.subjectZh')}</th>
                   <th>{zh('tpl.logStatus')}</th>
                   <th>{zh('tpl.updated')}</th>
                 </tr>
@@ -197,7 +208,7 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
                 </div>
                 <div className="admin-tpl-type">{t.type}</div>
               </div>
-              <div className="admin-tpl-subject">{t.subject}</div>
+              <div className="admin-tpl-subject">{t.subject_zh || t.subject || ''}</div>
               <span className={`admin-tpl-state${t.enabled ? ' is-on' : ''}`}>{t.enabled ? zh('tpl.enabled') : '—'}</span>
               <span className="admin-tpl-date">{t.updated_at ? t.updated_at.slice(0, 16) : ''}</span>
               <div className="admin-tpl-actions">
@@ -221,16 +232,13 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
               </div>
             </div>
             <div className="admin-field">
-              <label className="admin-label" htmlFor="tpl-subject">{zh('tpl.subject')}</label>
-              <input id="tpl-subject" className="admin-input" value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} />
+              <label className="admin-label" htmlFor="tpl-subject-zh">{zh('tpl.subjectZh')}</label>
+              <input id="tpl-subject-zh" className="admin-input" value={draft.subject_zh ?? ''} onChange={(e) => setDraft({ ...draft, subject_zh: e.target.value })} />
             </div>
             <div className="admin-field admin-field--wide">
-              <label className="admin-label" htmlFor="tpl-html">{zh('tpl.subject')} · HTML</label>
-              <textarea id="tpl-html" className="admin-textarea" rows={8} value={draft.html_body} onChange={(e) => setDraft({ ...draft, html_body: e.target.value })} />
-            </div>
-            <div className="admin-field admin-field--wide">
-              <label className="admin-label" htmlFor="tpl-text">{zh('tpl.subject')} · Text</label>
-              <textarea id="tpl-text" className="admin-textarea" rows={4} value={draft.text_body} onChange={(e) => setDraft({ ...draft, text_body: e.target.value })} />
+              <label className="admin-label" htmlFor="tpl-body-zh">{zh('tpl.bodyZh')}</label>
+              <textarea id="tpl-body-zh" className="admin-textarea" rows={8} value={draft.body_zh ?? ''} onChange={(e) => setDraft({ ...draft, body_zh: e.target.value })} />
+              <div className="admin-text-preview">✍️ {zh('tpl.enAuto')}</div>
             </div>
             <div className="admin-field">
               <label className="admin-label" htmlFor="tpl-enabled">{zh('tpl.enabled')}</label>
@@ -253,7 +261,6 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
               <div className="admin-tpl-var-list">
                 {variables.map((v) => (
                   <button key={v} type="button" className="admin-tpl-var" onClick={() => copyVar(v)}>
-                    <Copy size={11} style={{ verticalAlign: '-1px', marginRight: 4 }} />
                     {'{{'}{v}{'}}'}
                   </button>
                 ))}
@@ -303,4 +310,3 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
     </div>
   )
 }
-

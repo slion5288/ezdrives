@@ -7,7 +7,7 @@ const SECURE_TYPES = new Set(['PASSWORD_RESET', 'IMPORTANT_ACCOUNT'])
 
 export async function onRequestGet({ env, request }) {
   if (!(await authAdmin(env, request))) return fail('Not authenticated', 401)
-  const rows = await env.DB.prepare('SELECT id, type, name, subject, html_body, text_body, enabled, is_system, updated_at FROM notification_templates ORDER BY type').all()
+  const rows = await env.DB.prepare('SELECT id, type, name, subject, html_body, text_body, subject_zh, body_zh, enabled, is_system, updated_at FROM notification_templates ORDER BY type').all()
   const configured = !!((env.CLOUDFLARE_EMAIL_API_TOKEN && env.CLOUDFLARE_ACCOUNT_ID) || (env.EMAIL && typeof env.EMAIL.send === 'function'))
   return json({
     ok: true,
@@ -22,6 +22,22 @@ export async function onRequestGet({ env, request }) {
   })
 }
 
+/** Build the bilingual subject/html/text from Chinese-only content + EN. */
+function buildBilingual(zhSubject, zhBody, enSubject, enBody) {
+  const nl = (s) => String(s || '').replace(/\r?\n/g, '<br/>')
+  const subject = `${enSubject} / ${zhSubject}`
+  const htmlBody =
+    `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:auto;color:#1C1917">` +
+    `<h2 style="color:#A21CAF;margin:0 0 12px">${enSubject}</h2>` +
+    `<div style="font-size:15px;line-height:1.7">${nl(enBody)}</div>` +
+    `<hr style="border:none;border-top:1px solid #E5DFD5;margin:20px 0"/>` +
+    `<h2 style="color:#A21CAF;margin:0 0 12px">${zhSubject}</h2>` +
+    `<div style="font-size:15px;line-height:1.7">${nl(zhBody)}</div>` +
+    `</div>`
+  const textBody = `${enSubject}\n\n${enBody}\n\n---\n\n${zhSubject}\n${zhBody}`
+  return { subject, htmlBody, textBody }
+}
+
 export async function onRequestPut({ env, request }) {
   if (!(await authAdmin(env, request))) return fail('Not authenticated', 401)
   const body = await readJson(request)
@@ -30,12 +46,31 @@ export async function onRequestPut({ env, request }) {
   const existing = await env.DB.prepare('SELECT * FROM notification_templates WHERE id = ?').bind(id).first()
   if (!existing) return fail('Template not found.')
 
-  const subject = String(body.subject ?? existing.subject).slice(0, 500)
-  const htmlBody = String(body.html_body ?? existing.html_body).slice(0, 20000)
-  const textBody = String(body.text_body ?? existing.text_body).slice(0, 10000)
   const enabled = body.enabled === undefined ? !!existing.enabled : !!body.enabled
   if (!enabled && SECURE_TYPES.has(existing.type)) return fail('This security-critical template cannot be disabled.')
 
+  // § user decision: the admin edits CHINESE ONLY; English is auto-translated
+  // here (same chain as the rest of the site) before the bilingual email is
+  // rebuilt. Legacy raw editing (subject/html_body/text_body) still works when
+  // no Chinese fields are provided.
+  if (typeof body.subject_zh === 'string' && typeof body.body_zh === 'string') {
+    const zhSubject = body.subject_zh.trim().slice(0, 200)
+    const zhBody = body.body_zh.trim().slice(0, 5000)
+    if (!zhSubject) return fail('请填写中文主题。')
+    const { translateZhToEn } = await import('../../../lib/translate.js')
+    const [enSubject, enBody] = await translateZhToEn(env, [zhSubject, zhBody])
+    if (!enSubject || !enBody) return fail('英文自动翻译失败，请重试。')
+    const built = buildBilingual(zhSubject, zhBody, enSubject, enBody)
+    await env.DB.prepare(
+      'UPDATE notification_templates SET subject_zh = ?, body_zh = ?, subject = ?, html_body = ?, text_body = ?, enabled = ?, updated_at = ? WHERE id = ?',
+    ).bind(zhSubject, zhBody, built.subject, built.htmlBody, built.textBody, enabled ? 1 : 0, new Date().toISOString(), id).run()
+    return json({ ok: true })
+  }
+
+  // Legacy raw path (subject/html_body/text_body).
+  const subject = String(body.subject ?? existing.subject).slice(0, 500)
+  const htmlBody = String(body.html_body ?? existing.html_body).slice(0, 20000)
+  const textBody = String(body.text_body ?? existing.text_body).slice(0, 10000)
   await env.DB.prepare(
     'UPDATE notification_templates SET subject = ?, html_body = ?, text_body = ?, enabled = ?, updated_at = ? WHERE id = ?',
   ).bind(subject, htmlBody, textBody, enabled ? 1 : 0, new Date().toISOString(), id).run()

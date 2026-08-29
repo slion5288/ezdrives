@@ -854,6 +854,7 @@ export const messages = {
   'admin.instructorsEmpty': 'No instructor cards yet — add one below.',
   'admin.translateFail': 'English translation failed. Please try again.',
   'admin.enAuto': 'English (auto-translated)',
+  'admin.saveAutoEn': 'English is auto-translated on save',
   'admin.placeholder': 'Empty = restore default',
   'admin.bioHint': 'Type Chinese only — English is machine-translated on save.',
   'admin.password.change': 'Change password',

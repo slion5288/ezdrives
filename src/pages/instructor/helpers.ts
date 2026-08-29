@@ -7,11 +7,10 @@
 import type { AppState, Appointment, Course, Student } from '../../data/store'
 import { addDays, dateKey, fromLocalISO, startOfDay } from '../../data/timeEngine'
 
-export type InstructorTab = 'today' | 'overview' | 'schedule' | 'courses' | 'students' | 'payments' | 'notifications' | 'settings'
+export type InstructorTab = 'overview' | 'schedule' | 'courses' | 'students' | 'payments' | 'notifications' | 'settings'
 
 /** Tab id → i18n key of the tab label (tabs share the page-title keys). */
 export const TAB_KEYS: Record<InstructorTab, string> = {
-  today: 'instructor.today.title',
   overview: 'instructor.overview.title',
   schedule: 'instructor.schedule.title',
   courses: 'instructor.courses.title',
@@ -20,11 +19,6 @@ export const TAB_KEYS: Record<InstructorTab, string> = {
   students: 'instructor.students.title',
   payments: 'instructor.payments.title',
 }
-
-/** § redesign: the phone bottom bar shows at most 5 items —
- *  今天 / 日程 / 收款 / 学员 / 更多 (the rest live in the 更多 sheet). */
-export const MAIN_TABS: InstructorTab[] = ['today', 'schedule', 'payments', 'students']
-export const MORE_TABS: InstructorTab[] = ['overview', 'courses', 'notifications', 'settings']
 
 /** Monday-based start of the week containing `d`. */
 export function startOfWeek(d: Date): Date {

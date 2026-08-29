@@ -22,7 +22,6 @@ import { apiAdminChangePassword, apiAdminGetContent, apiAdminLogin, apiAdminPutC
 import { getAdminToken, setAdminToken } from '../../data/store'
 import type { HomeInstructor } from '../../data/store'
 import { messages as zhMessages } from '../../i18n/locales/zh'
-import { messages as enMessages } from '../../i18n/locales/en'
 import { ThemeToggle } from '../../components/shared/ThemeToggle'
 import { Logo } from '../../components/shared/Logo'
 import { useToast } from '../../components/shared'
@@ -92,24 +91,37 @@ interface TextField {
 }
 
 const TEXT_FIELDS: TextField[] = [
+  { key: 'landing.badge', label: '顶部徽章（持牌认证）' },
   { key: 'landing.hero.title', label: '首页主标题' },
   { key: 'landing.hero.subtitle', label: '首页副标题', area: true },
+  { key: 'landing.cta.book', label: '首页主按钮（预约课程）' },
+  { key: 'landing.steps.title', label: '「如何预约」标题' },
+  { key: 'landing.steps.subtitle', label: '「如何预约」副标题' },
   { key: 'landing.steps.1.title', label: '步骤1 · 标题' },
   { key: 'landing.steps.1.body', label: '步骤1 · 内容', area: true },
   { key: 'landing.steps.2.title', label: '步骤2 · 标题' },
   { key: 'landing.steps.2.body', label: '步骤2 · 内容', area: true },
   { key: 'landing.steps.3.title', label: '步骤3 · 标题' },
   { key: 'landing.steps.3.body', label: '步骤3 · 内容', area: true },
+  { key: 'landing.courses.title', label: '课程栏目标题' },
   { key: 'landing.courses.subtitle', label: '课程栏目副标题' },
+  { key: 'landing.videos.title', label: '视频栏目标题' },
   { key: 'landing.videos.subtitle', label: '视频栏目副标题' },
+  { key: 'landing.g1.title', label: 'G1 模拟题库 · 标题' },
+  { key: 'landing.g1.body', label: 'G1 模拟题库 · 说明', area: true },
+  { key: 'landing.g1.cta', label: 'G1 模拟题库 · 按钮' },
   { key: 'instructor.name', label: '教练 · 姓名（英文不变）', special: 'instructorName' },
   { key: 'instructor.bio', label: '教练 · 简介', area: true, special: 'instructorBio' },
+  { key: 'landing.instructors.title', label: '教练栏目标题' },
+  { key: 'landing.instructors.subtitle', label: '教练栏目副标题' },
+  { key: 'landing.testimonials.title', label: '学员评价 · 栏目标题' },
   { key: 'landing.testimonials.1.quote', label: '评价1 · 内容', area: true },
   { key: 'landing.testimonials.1.author', label: '评价1 · 署名' },
   { key: 'landing.testimonials.2.quote', label: '评价2 · 内容', area: true },
   { key: 'landing.testimonials.2.author', label: '评价2 · 署名' },
   { key: 'landing.testimonials.3.quote', label: '评价3 · 内容', area: true },
   { key: 'landing.testimonials.3.author', label: '评价3 · 署名' },
+  { key: 'landing.faq.title', label: '常见问题 · 标题' },
   { key: 'landing.faq.1.q', label: '常见问题1 · 问题' },
   { key: 'landing.faq.1.a', label: '常见问题1 · 回答', area: true },
   { key: 'landing.faq.2.q', label: '常见问题2 · 问题' },
@@ -284,13 +296,7 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
     if (f.special === 'instructorBio') return typeof pubInstructor?.bio === 'string' ? pubInstructor.bio : (pubInstructor?.bio?.zh ?? '')
     return (zhMessages as Record<string, string>)[f.key] ?? ''
   }
-  const defEn = (f: TextField): string => {
-    if (f.special === 'instructorName') return pubInstructor?.name ?? ''
-    if (f.special === 'instructorBio') return typeof pubInstructor?.bio === 'string' ? pubInstructor.bio : (pubInstructor?.bio?.en ?? '')
-    return (enMessages as Record<string, string>)[f.key] ?? ''
-  }
   const currentZh = (f: TextField): string => overrides[f.key]?.zh ?? defZh(f)
-  const currentEn = (f: TextField): string => overrides[f.key]?.en ?? defEn(f)
 
   const setOverrideZh = (key: string, value: string): void =>
     setOverrides((prev) => ({ ...prev, [key]: { en: prev[key]?.en ?? '', zh: value } }))
@@ -509,7 +515,7 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                       onChange={(e) => setOverrideZh(field.key, e.target.value)}
                     />
                   )}
-                  <div className="admin-text-preview">{zh('admin.enAuto')}: {currentEn(field) || '—'}</div>
+                  <div className="admin-text-preview">{zh('admin.enAuto')} ✓ {zh('admin.saveAutoEn')}</div>
                 </div>
               ))}
             </div>
@@ -614,7 +620,7 @@ function AdminDashboard({ token, onLogout }: { token: string; onLogout: () => vo
                   <div className="admin-bio-hint">{zh('admin.bioHint')}</div>
                   <label className="admin-label" htmlFor={`admin-ins-bio-${idx}`}>{zh('admin.bioHint')}</label>
                   <textarea id={`admin-ins-bio-${idx}`} className="admin-textarea" rows={2} placeholder={zh('admin.placeholder')} value={inst.bio?.zh ?? ''} onChange={(e) => setInstructorBio(idx, 'zh', e.target.value)} />
-                  <div className="admin-text-preview">{zh('admin.enAuto')}: {inst.bio?.en || '—'}</div>
+                  <div className="admin-text-preview">{zh('admin.enAuto')} ✓ {zh('admin.saveAutoEn')}</div>
                   <div className="admin-instructor__actions">
                     <Button variant="danger" onClick={() => setInstructors((prev) => prev.filter((_, i) => i !== idx))}>
                       <Trash2 size={15} /> {zh('admin.instructor.remove')}

@@ -237,22 +237,6 @@ export function WeekCalendar({
   const showNow = dayKeys.includes(todayKey) && nowMin >= range.start && nowMin < range.end
   const nowTop = (nowMin - range.start) * minH
 
-  /** § P2: mobile booking — 7-day strip (DayStrip) + TIME PILLS instead of a
-   *  weekly grid. Computed for the single selected day in availability mode. */
-  const dayPills = useMemo(() => {
-    if (mode !== 'availability' || !singleDay) return null
-    const key = dateKey(singleDay)
-    const dayApps = state.appointments
-      .filter((a) => liveAppointment(a) && dateKey(fromLocalISO(a.start)) === key)
-      .sort((a, b) => a.start.localeCompare(b.start))
-    const slots = getLessonStarts(singleDay, state, courseDurationMin ?? 60, studentId).map((start) => ({
-      start,
-      end: new Date(start.getTime() + (courseDurationMin ?? 60) * 60000),
-      available: true,
-    }))
-    return { key, slots, dayApps }
-  }, [mode, singleDay, state, courseDurationMin, studentId])
-
   const hourMarks = useMemo(() => {
     const marks: number[] = []
     for (let m = range.start; m < range.end; m += 60) marks.push(m)
@@ -269,7 +253,7 @@ export function WeekCalendar({
 
   const rootStyle = { '--min-h': `${minH}px` } as CSSProperties
 
-  if (!hasAnyContent && !(mode === 'availability' && singleDay)) {
+  if (!hasAnyContent) {
     return (
       <div className="ios-week">
         <div className="ios-week__empty">
@@ -279,62 +263,6 @@ export function WeekCalendar({
       </div>
     )
   }
-
-  // § P2: mobile pills list — replaces the grid under 768px in the student
-  // booking view (the grid stays for desktop and the instructor schedule).
-  const pills = dayPills ? (
-    <div className="ios-week__pills" aria-label={t('calendar.today')}>
-      {dayPills.slots.length === 0 && dayPills.dayApps.length === 0 ? (
-        <p className="ios-week__pills-empty">{t('calendar.empty.body')}</p>
-      ) : (
-        <>
-          {dayPills.slots.map((slot) => {
-            const id = slotId(slot)
-            const selected = selectedSlotId === id
-            return onSelectSlot ? (
-              <button
-                key={id}
-                type="button"
-                className={`ios-week__pill${selected ? ' is-selected' : ''}`}
-                onClick={() => onSelectSlot(slot)}
-                aria-label={`${hourLabel(slot.start, locale)} · ${t('student.booking.available')}`}
-              >
-                {hourLabel(slot.start, locale)}
-              </button>
-            ) : null
-          })}
-          {dayPills.dayApps.map((appt) => {
-            const isMine = myStudentId !== undefined && appt.studentId === myStudentId
-            const done = fromLocalISO(appt.end).getTime() < now.getTime()
-            const clickable =
-              (mode === 'schedule' || (mode === 'availability' && isMine)) && onSelectAppointment !== undefined
-            return (
-              <div
-                key={appt.id}
-                role={clickable ? 'button' : undefined}
-                tabIndex={clickable ? 0 : undefined}
-                className={`ios-week__pillcard${isMine ? ' is-mine' : ' is-other'}${done ? ' is-done' : ''}`}
-                onClick={clickable && onSelectAppointment ? () => onSelectAppointment(appt) : undefined}
-              >
-                <span className="ios-week__pillcard-time tabular-nums">
-                  {formatHM(fromLocalISO(appt.start))} – {formatHM(fromLocalISO(appt.end))}
-                </span>
-                <span className="ios-week__pillcard-title">
-                  {done
-                    ? isMine
-                      ? `✓ ${courseLabel(appt.courseId, appt.lessonIndex)}`
-                      : t('student.booking.completed')
-                    : isMine
-                      ? courseLabel(appt.courseId, appt.lessonIndex)
-                      : t('student.booking.slotTaken')}
-                </span>
-              </div>
-            )
-          })}
-        </>
-      )}
-    </div>
-  ) : null
 
   return (
     <div className={`ios-week${compact ? ' ios-week--compact' : ''}`} style={rootStyle}>
@@ -376,8 +304,6 @@ export function WeekCalendar({
             )
           })}
         </div>
-
-        {pills}
 
         <div className="ios-week__body">
           <div className="ios-week__gutter" style={{ height: bodyH }}>

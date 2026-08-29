@@ -856,6 +856,7 @@ export const messages: Record<MessageKey, string> = {
   'admin.instructorsEmpty': '暂无教练卡片——点击「添加教练」。',
   'admin.translateFail': '英文翻译失败，请稍后重试。',
   'admin.enAuto': '英文（自动翻译）',
+  'admin.saveAutoEn': '保存时自动翻译为英文',
   'admin.placeholder': '留空 = 恢复默认',
   'admin.bioHint': '只填中文，保存时自动翻译成英文。',
   'admin.password.change': '修改密码',

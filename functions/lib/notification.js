@@ -248,14 +248,32 @@ export async function sendNotification(env, event) {
     return { ok: true, status: 'skipped' }
   }
 
+  // 4b) § user decision: EVERY email carries the company logo + contact info.
+  //      The footer is appended here centrally so no template can miss it.
+  const domain = env.EMAIL_FROM_DOMAIN || 'ezdrives.net'
+  const contactPhone = context.instructor_phone || COMPANY.phone || ''
+  const contactEmail = context.company_email || COMPANY.email
+  const htmlFooter =
+    `<div style="margin-top:28px;padding-top:20px;border-top:1px solid #E5DFD5;text-align:center">` +
+    `<img src="https://${domain}/logo.png" alt="${COMPANY.name}" style="max-height:44px;max-width:180px;margin-bottom:10px"/>` +
+    `<p style="margin:4px 0;font-size:13px;color:#8A857C">${COMPANY.name} · ${domain}</p>` +
+    (contactPhone ? `<p style="margin:4px 0;font-size:13px;color:#8A857C">${context.instructor_name ? context.instructor_name + ' · ' : ''}${contactPhone}</p>` : '') +
+    `<p style="margin:4px 0;font-size:13px;color:#8A857C">${contactEmail} · <a href="https://${domain}" style="color:#A21CAF">https://${domain}</a></p>` +
+    `</div>`
+  const textFooter = `\n\n---\n${COMPANY.name} · ${domain}` +
+    (contactPhone ? `\n${context.instructor_name ? context.instructor_name + ' · ' : ''}${contactPhone}` : '') +
+    `\n${contactEmail} · https://${domain}`
+  const htmlWithFooter = `${htmlR.text}${htmlFooter}`
+  const textWithFooter = `${textR.text}${textFooter}`
+
   // 5) Send.
   const from = { email: env.EMAIL_FROM_DOMAIN ? `notifications@${env.EMAIL_FROM_DOMAIN}` : COMPANY.email, name: COMPANY.name }
   const res = await dispatch(env, {
     from,
     to: recipient,
     subject: subjectR.text,
-    html: htmlR.text,
-    text: textR.text,
+    html: htmlWithFooter,
+    text: textWithFooter,
   })
 
   // 6) Log.
