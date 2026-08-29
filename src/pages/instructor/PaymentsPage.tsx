@@ -157,8 +157,12 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
             <button
               key={s}
               type="button"
-              className={`ins-pay-filter${statusFilter === s ? ' is-active' : ''}`}
-              onClick={() => setStatusFilter(s)}
+              className={`ins-pay-filter${statusFilter === s && !(s === 'all' && methodFilter !== 'all') ? ' is-active' : ''}`}
+              onClick={() => {
+                // §: tapping ANY 全部 resets BOTH filters → back to the full list
+                if (s === 'all') { setStatusFilter('all'); setMethodFilter('all') }
+                else setStatusFilter(s)
+              }}
             >
               {s === 'all' ? t('instructor.payments.filterAll') : t(`instructor.payments.filter.${s}`)}
             </button>
@@ -169,8 +173,11 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
             <button
               key={m}
               type="button"
-              className={`ins-pay-filter${methodFilter === m ? ' is-active' : ''}`}
-              onClick={() => setMethodFilter(m)}
+              className={`ins-pay-filter${methodFilter === m && !(m === 'all' && statusFilter !== 'all') ? ' is-active' : ''}`}
+              onClick={() => {
+                if (m === 'all') { setStatusFilter('all'); setMethodFilter('all') }
+                else setMethodFilter(m)
+              }}
             >
               {m === 'all' ? t('instructor.payments.methodAll') : paymentMethodLabel(m, locale)}
             </button>

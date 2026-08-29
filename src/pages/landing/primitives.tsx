@@ -10,6 +10,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {Car,Check,Clock,Star} from 'lucide-react'
 import { useT } from '../../i18n'
+import { Button } from '../../components/shared/Button'
 import { COURSE_IMAGES, LOGO_DATA_URL } from '../../data/assets'
 
 // --- Button (DESIGN §4.1) ---
@@ -175,9 +176,9 @@ export function CourseCard({
           {t('vehicles.thisVehicle')}
         </li>
       </ul>
-      <span className="landing-courses__cta" aria-hidden="true">
-        {t('landing.courses.details')} →
-      </span>
+      <Button variant="primary" to={to} className="landing-courses__cta">
+        {t('courses.book')}
+      </Button>
     </Link>
   )
 }

@@ -54,6 +54,50 @@ export default function StudentsPage({ state }: { state: AppState }): JSX.Elemen
 
   return (
     <div className="ins-students">
+      {/* § mobile: card list (the table below is hidden on phones) */}
+      <div className="ins-student-cards">
+        {rows.map(({ student, courses, lessons, spend }) => (
+          <div key={student.id} className="ins-student-card">
+            <div className="ins-student-card__head">
+              <Avatar name={student.name} color={student.avatarColor} size={34} />
+              <span className="ins-student-card__name">{student.name}</span>
+            </div>
+            <div className="ins-student-card__row">
+              <span className="ins-student-card__label">{t('student.profile.phone')}</span>
+              <span className="ins-student-card__value tabular-nums">{maskPhone(student.phone)}</span>
+            </div>
+            <div className="ins-student-card__row">
+              <span className="ins-student-card__label">{t('student.profile.address')}</span>
+              <span className="ins-student-card__value">{student.address || '—'}</span>
+            </div>
+            <div className="ins-student-card__row">
+              <span className="ins-student-card__label">{t('student.profile.email')}</span>
+              <span className="ins-student-card__value">{student.email || '—'}</span>
+            </div>
+            <div className="ins-student-card__row">
+              <span className="ins-student-card__label">{t('instructor.students.courses')}</span>
+              <span className="ins-student-card__value">
+                <span className="ins-student-card__courses">
+                  {courses.length > 0 ? (
+                    courses.map((c) => <span key={c} className="ins-student-card__course">{c}</span>)
+                  ) : (
+                    <span>{t('instructor.students.noCourses')}</span>
+                  )}
+                </span>
+              </span>
+            </div>
+            <div className="ins-student-card__row">
+              <span className="ins-student-card__label">{t('instructor.students.lessons')}</span>
+              <span className="ins-student-card__value tabular-nums">{lessons}</span>
+            </div>
+            <div className="ins-student-card__row">
+              <span className="ins-student-card__label">{t('instructor.students.spend')}</span>
+              <span className="ins-student-card__value tabular-nums">{formatMoney(spend)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="ins-table-wrap">
         <table className="ins-table">
           <thead>

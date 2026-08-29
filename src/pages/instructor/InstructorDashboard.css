@@ -323,11 +323,15 @@
 
 /* --- Stat cards ----------------------------------------------------------- */
 
+.ins-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
 .ins-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
-  margin-bottom: var(--space-5);
 }
 
 .ins-stat-card {
@@ -2592,6 +2596,7 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   gap: 6px;
 }
 .ins-pay-filter {
+  min-height: 40px;
   padding: 6px 12px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
@@ -2926,4 +2931,34 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* --- § mobile: student list as cards (table stays on desktop) --- */
+.ins-student-cards { display: none; }
+@media (max-width: 760px) {
+  .ins-students .ins-table-wrap { display: none; }
+  .ins-student-cards { display: flex; flex-direction: column; gap: var(--space-3); }
+  .ins-student-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+  .ins-student-card__head { display: flex; align-items: center; gap: var(--space-3); }
+  .ins-student-card__name { font-weight: var(--font-weight-semibold); color: var(--color-text); }
+  .ins-student-card__row { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--font-size-sm); color: var(--color-text-muted); }
+  .ins-student-card__label { color: var(--color-text-soft); flex-shrink: 0; }
+  .ins-student-card__value { text-align: right; overflow-wrap: anywhere; }
+  .ins-student-card__courses { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .ins-student-card__course {
+    font-size: var(--font-size-xs);
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
 }

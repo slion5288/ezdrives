@@ -5,11 +5,11 @@
 // CTA band · footer. Every string via useT(); all visual values from tokens.
 // ============================================================================
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {Calendar, CalendarCheck, Car, CheckCircle2, ChevronDown, GraduationCap, Mail, Navigation, Phone, Play, Quote, ShieldCheck, Star, Users, Zap, } from 'lucide-react'
+import {Calendar, CalendarCheck, Car, CheckCircle2, ChevronDown, GraduationCap, Mail, Navigation, Pause, Phone, Play, Quote, ShieldCheck, Users, Zap, } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
-import { courseTypeOf, getSession, initPublicHome, isPublicReady, sortCoursesForDisplay, trialPriceOf, useAppState } from '../../data/store'
+import { getSession, initPublicHome, isPublicReady, sortCoursesForDisplay, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
 import { G1_IMAGE, HERO_IMAGES } from '../../data/assets'
@@ -19,30 +19,60 @@ import LandingSubHeader from './LandingSubHeader'
 import './LandingPage.css'
 import { Button } from '../../components/shared/Button'
 
-// --- Hero: ONE static Tesla photo (no auto-rotating carousel) ---
-// Uses the real photo placed in /hero/ (hero-1.jpg — see public/hero/README.txt);
-// falls back to the bundled base64 image on error.
-const HERO_FILES = ['/hero/hero-1.jpg']
+// --- Hero: full-bleed carousel (admin hero images first, bundled fallback) ---
+const HERO_FILES = ['/hero/hero-1.jpg', '/hero/hero-2.jpg', '/hero/hero-3.jpg', '/hero/hero-4.jpg', '/hero/hero-5.jpg', '/hero/hero-6.jpg']
 
-function HeroMedia(): JSX.Element {
-  const slide = HERO_IMAGES[0]
-  // § file:// (double-clicked Preview.html): use a relative hero path — the
-  // make-preview step copies public/hero next to Preview.html. Online: /hero/…
-  const src =
-    typeof window !== 'undefined' && window.location.protocol === 'file:'
-      ? './hero/hero-1.jpg'
-      : HERO_FILES[0]
+function HeroCarousel({ slides }: { slides?: string[] }): JSX.Element {
+  const t = useT()
+  const locale = useLocale()
+  const [idx, setIdx] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const slideCount = slides?.length ?? HERO_FILES.length
+  useEffect(() => {
+    try {
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    } catch { /* ignore */ }
+    if (paused) return
+    const id = window.setInterval(() => setIdx((i) => (i + 1) % slideCount), 5000)
+    return () => window.clearInterval(id)
+  }, [slideCount, paused])
+  const files = slides ?? HERO_FILES
   return (
     <div className="landing-hero__media" aria-hidden="true">
-      <img
-        className="landing-hero__slide landing-hero__slide--static"
-        src={src}
-        onError={(e) => {
-          const target = e.currentTarget
-          if (target.src !== slide.src) target.src = slide.src
-        }}
-        alt=""
-      />
+      {files.map((file, i) => {
+        const slide = HERO_IMAGES[i % HERO_IMAGES.length]
+        return (
+          <div key={i} className={`landing-hero__slide${i === idx ? ' is-active' : ''}`}>
+            <img
+              src={file}
+              onError={(e) => {
+                const target = e.currentTarget
+                if (target.src !== slide.src) target.src = slide.src
+              }}
+              alt={locale === 'zh' ? slide.alt.zh : slide.alt.en}
+            />
+          </div>
+        )
+      })}
+      <div className="landing-hero__dots">
+        {Array.from({ length: slideCount }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`landing-hero__dot${i === idx ? ' is-active' : ''}`}
+            onClick={() => setIdx(i)}
+            aria-label={t('landing.hero.slide', { n: i + 1 })}
+          />
+        ))}
+        <button
+          type="button"
+          className="landing-hero__pause"
+          onClick={() => setPaused((v) => !v)}
+          aria-label={paused ? t('landing.hero.resume') : t('landing.hero.pause')}
+        >
+          {paused ? <Play size={13} fill="currentColor" /> : <Pause size={13} fill="currentColor" />}
+        </button>
+      </div>
     </div>
   )
 }
@@ -86,8 +116,8 @@ export default function LandingPage(): JSX.Element {
     return o ? (locale === 'zh' ? o.zh : o.en) : t(key)
   }
 
-  /** Admin-edited hero slides (data URLs) — preserved for admin content
-   *  compatibility; the hero renders a single static photo regardless. */
+  /** Admin-edited hero slides (data URLs) — shown first in the carousel. */
+  const heroSlides = state.homeContent?.heroImages?.filter((v): v is string => typeof v === 'string' && v.length > 0)
   const instructorsList = state.homeContent?.instructors?.length ? state.homeContent.instructors : null
   // While the public data is still loading, hide the seed instructor placeholder.
   const placeholderInstructor = visitor && !publicReady
@@ -114,14 +144,6 @@ export default function LandingPage(): JSX.Element {
    *  (the instructor picks the order by dragging in 课程管理). */
   const allCourses = visitor && !publicReady ? [] : sortCoursesForDisplay(state.courses.filter((c) => c.active))
   const shownCourses = allCourses.slice(0, 3)
-  /** § P1#30: trust bar shows REAL numbers (students / lessons / rating). */
-  const realStudents = state.students?.length ?? 0
-  const realLessons = (state.appointments ?? []).filter((a) => a.status !== 'cancelled').length
-  /** Hero price: the trial lesson's price (default $30 per the course list). */
-  const trialPrice = useMemo(() => {
-    const trial = allCourses.find((c) => courseTypeOf(c) === 'TRIAL_LESSON')
-    return trial ? trialPriceOf(trial) : 30
-  }, [allCourses])
   /** Videos with the homepage toggle on, ordered by the instructor. */
   const homeVideos = (visitor && !publicReady ? [] : state.videos)
     .filter((v) => v.active)
@@ -133,40 +155,19 @@ export default function LandingPage(): JSX.Element {
       <LandingSubHeader />
 
       <main>
-        {/* ---- Hero: one static Tesla photo + headline + trial price + ONE CTA ---- */}
+        {/* ---- Hero: carousel + headline + ONE CTA (no price line, no trust bar) ---- */}
         <section className="landing-hero">
-          <HeroMedia />
+          <HeroCarousel slides={heroSlides} />
           <div className="landing-hero__content container">
             <LandingBadge tone="success" dot className="landing-hero__badge">
               {t('landing.badge')} · {t('landing.instructors.years', { years: instructorYears })}
             </LandingBadge>
             <h1 className="landing-hero__title">{c('landing.hero.title')}</h1>
             <p className="landing-hero__subtitle">{c('landing.hero.subtitle')}</p>
-            <div className="landing-hero__price">
-              <span className="landing-hero__price-amount tabular-nums">${trialPrice}</span>
-              <span className="landing-hero__price-note">{t('landing.hero.trialFrom')}</span>
-              <span className="landing-hero__price-tax">{t('landing.priceTaxNote')}</span>
-            </div>
             <div className="landing-hero__ctas">
               <Button size="lg" to="/student/book">
                 {t('landing.cta.book')}
               </Button>
-            </div>
-            <div className="landing-hero__trust">
-              <span className="landing-hero__trust-item">
-                <Users size={18} strokeWidth={2} className="landing-hero__trust-icon" />
-                {t('landing.trust.studentsCount', { count: realStudents })}
-              </span>
-              <span className="landing-hero__trust-sep" aria-hidden="true" />
-              <span className="landing-hero__trust-item">
-                <CalendarCheck size={18} strokeWidth={2} className="landing-hero__trust-icon" />
-                {t('landing.trust.lessonsCount', { count: realLessons })}
-              </span>
-              <span className="landing-hero__trust-sep" aria-hidden="true" />
-              <span className="landing-hero__trust-item">
-                <Star size={18} strokeWidth={2} className="landing-hero__trust-icon" />
-                {t('landing.trust.ratingCount', { rating: instructorRating.toFixed(1) })}
-              </span>
             </div>
           </div>
         </section>

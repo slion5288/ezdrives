@@ -1057,6 +1057,7 @@ html[data-theme='dark'] .landing-badge--info {
 }
 
 .landing-courses__card {
+  text-decoration: none;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1074,6 +1075,7 @@ html[data-theme='dark'] .landing-badge--info {
 }
 
 .landing-courses__card:hover {
+  text-decoration: none;
   transform: translateY(-2px);
   box-shadow: var(--shadow-pop);
   border-color: var(--color-border-strong);
