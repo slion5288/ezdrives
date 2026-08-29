@@ -233,7 +233,9 @@ function AdminLogin({ onLoggedIn }: { onLoggedIn: (token: string) => void }): JS
             <input id="admin-pass" className="admin-input" type="password" value={password} autoComplete="current-password" onChange={(e) => { setPassword(e.target.value); setError(null) }} />
           </div>
           {error ? <p className="admin-login__error">{error}</p> : null}
-          <Button variant="primary" disabled={busy}>
+          {/* § P0 fix: the shared Button defaults to type="button" — without
+              type="submit" clicking 登录 did nothing. */}
+          <Button type="submit" variant="primary" disabled={busy}>
             {busy ? zh('auth.login.loading') : zh('admin.login.submit')}
           </Button>
           <Link to="/" className="admin-login__back">
