@@ -149,6 +149,12 @@ export default function LandingPage(): JSX.Element {
   const instructorBio = placeholderInstructor
     ? ''
     : overrides['instructor.bio'] ? pick(overrides['instructor.bio']) : pick(instructor.bio)
+  // § never flash the demo instructor's years / rating / contact while the real
+  // public data loads (or on failure) — neutral values instead.
+  const instructorYears = placeholderInstructor ? 0 : instructor.yearsExperience
+  const instructorRating = placeholderInstructor ? 0 : instructor.rating
+  const instructorEmail = placeholderInstructor ? '' : instructor.email
+  const instructorPhone = placeholderInstructor ? '' : instructor.phone
 
   /** Smooth-scroll to an in-page section (works under HashRouter). */
   const goToSection = (id: string): void => {
@@ -186,7 +192,7 @@ export default function LandingPage(): JSX.Element {
           <HeroCarousel slides={heroSlides} />
           <div className="landing-hero__content container">
             <LandingBadge tone="success" dot className="landing-hero__badge">
-              {t('landing.badge')} · {t('landing.instructors.years', { years: instructor.yearsExperience })}
+              {t('landing.badge')} · {t('landing.instructors.years', { years: instructorYears })}
             </LandingBadge>
             <h1 className="landing-hero__title">{c('landing.hero.title')}</h1>
             <p className="landing-hero__subtitle">{c('landing.hero.subtitle')}</p>
@@ -416,8 +422,8 @@ export default function LandingPage(): JSX.Element {
                 </span>
                 <h3 className="landing-instructor__name">{instructorName}</h3>
                 <span className="landing-instructor__rating-row">
-                  <StarRating value={instructor.rating} label={t('landing.trust.rating')} size={15} />
-                  <span className="landing-instructor__rating tabular-nums">{instructor.rating.toFixed(1)}</span>
+                  <StarRating value={instructorRating} label={t('landing.trust.rating')} size={15} />
+                  <span className="landing-instructor__rating tabular-nums">{instructorRating.toFixed(1)}</span>
                 </span>
                 <LandingBadge tone="success" className="landing-instructor__badge">
                   <ShieldCheck size={12} />
@@ -437,7 +443,7 @@ export default function LandingPage(): JSX.Element {
                   </LandingBadge>
                   <LandingBadge tone="neutral">
                     <ShieldCheck size={12} />
-                    {t('landing.instructors.years', { years: instructor.yearsExperience })}
+                    {t('landing.instructors.years', { years: instructorYears })}
                   </LandingBadge>
                 </div>
                 <div className="landing-instructor__vehicles">
@@ -549,13 +555,13 @@ export default function LandingPage(): JSX.Element {
             </div>
             <div className="landing-footer__col">
               <h4>{t('landing.footer.contact')}</h4>
-              <a href={`mailto:${instructor.email}`}>
+              <a href={`mailto:${instructorEmail}`}>
                 <Mail size={15} />
-                {instructor.email}
+                {instructorEmail}
               </a>
-              <a href={`tel:${instructor.phone.replace(/\s/g, '')}`}>
+              <a href={`tel:${instructorPhone.replace(/\s/g, '')}`}>
                 <Phone size={15} />
-                {maskPhone(instructor.phone)}
+                {maskPhone(instructorPhone)}
               </a>
               <span className="landing-footer__contact-line">
                 <MapPin size={15} />

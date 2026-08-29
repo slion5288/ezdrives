@@ -246,8 +246,32 @@ export async function initPublicHome(): Promise<boolean> {
   } catch (e) {
     console.error('[store] initPublicHome error:', e)
   }
-  // Failure path: never show the demo seed to visitors.
-  state = { ...seed(), courses: [], videos: [], vehicles: [] }
+  // Failure path: never show the demo seed to visitors. Strip EVERY piece of
+  // demo data (students, bookings, payments, instructor, home content) and
+  // leave a blank shell — the UI renders an empty/neutral state instead of
+  // fake "Michael Reeves / G1 Practice" development data.
+  state = {
+    ...seed(),
+    students: [],
+    courses: [],
+    videos: [],
+    vehicles: [],
+    appointments: [],
+    payments: [],
+    enrollments: [],
+    notifications: [],
+    homeContent: null,
+    instructor: {
+      name: '',
+      phone: '',
+      email: '',
+      bio: { en: '', zh: '' },
+      rating: 0,
+      yearsExperience: 0,
+      avatarColor: '#A21CAF',
+      breakMin: 0,
+    },
+  }
   publicReady = true
   notifyListeners()
   return false

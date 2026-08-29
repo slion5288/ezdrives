@@ -13,3 +13,10 @@
   Cache-Control: no-cache
 /index.html
   Cache-Control: no-cache
+
+# Service worker + manifest must never be browser-cached, otherwise a cache
+# policy fix (or any SW change) would take up to days to reach clients.
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache

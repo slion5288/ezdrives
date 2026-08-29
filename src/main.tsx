@@ -39,8 +39,12 @@ createRoot(rootEl).render(
 )
 
 // PWA: register the service worker (production only — dev reloads are handled by vite).
+// updateViaCache: 'none' → the SW script itself is never served from browser
+// cache, so cache-policy fixes reach every client on the next visit.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('[pwa] sw register failed:', err))
+    navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .catch((err) => console.warn('[pwa] sw register failed:', err))
   })
 }
