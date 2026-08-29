@@ -172,6 +172,9 @@ export const messages: Record<MessageKey, string> = {
   'student.booking.title': '我的课程',
   'student.booking.subtitle': '选择课程后，点击日历上的可选时间方框即可预约。灰色时段不可约，已预约课程以卡片显示。',
   'student.booking.pickSlot': '选择时段',
+  // §: 不可预约当天（教练需要时间准备）
+  'student.booking.today': '无法预约当天时间，请选择明天或之后的时间。',
+  'student.booking.manageHint': '您已有一节已预约课程。点击日历中对应的课程卡片可查看、改期或取消。',
   'student.booking.pickCourse': '选择课程',
   'student.booking.summary': '预约摘要',
   'student.booking.date': '日期',

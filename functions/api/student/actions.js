@@ -55,6 +55,13 @@ function isPast(startISO, clientNow) {
   return fromLocal(startISO).getTime() < ref - 60000
 }
 
+/** True when two local wall-clock ISO strings fall on the same calendar day. */
+function sameLocalDay(aISO, bISO) {
+  const a = fromLocal(aISO)
+  const b = fromLocal(bISO)
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+}
+
 function effectiveInterval(dateISO, rules, exceptions) {
   const ex = exceptions.find((x) => x.date === dateKeyOf(dateISO))
   if (ex && ex.closed) return null
@@ -409,6 +416,8 @@ export async function onRequestPost({ env, request }) {
     const start = fromLocal(startISO)
     if (isNaN(start.getTime())) return fail('Invalid start time.')
     if (isPast(startISO, clientNow)) return fail('past')
+    // §: no same-day booking — the instructor needs time to prepare.
+    if (sameLocalDay(startISO, clientNow)) return fail('today')
 
     const interval = effectiveInterval(startISO, state.weeklyRules, state.exceptions)
     if (!interval) return fail('closed')
@@ -679,6 +688,9 @@ export async function onRequestPost({ env, request }) {
     const start = fromLocal(newStartISO)
     if (isNaN(start.getTime())) return fail('Invalid start time.')
     if (isPast(newStartISO, clientNow)) return fail('past')
+    // §: students may not move a lesson to today (instructor prep time); the
+    // instructor may still reschedule same-day.
+    if (!isInstructor && sameLocalDay(newStartISO, clientNow)) return fail('today')
     const interval = effectiveInterval(newStartISO, state.weeklyRules, state.exceptions)
     if (!interval) return fail('closed')
     if (minuteOf(newStartISO) < interval.startMin || minuteOf(newStartISO) + durMin > interval.endMin) return fail('closed')

@@ -245,8 +245,9 @@ export function getLessonStarts(
   }
   for (let m = cursor; m + D <= interval.endMin; m += D) starts.push(m)
 
+  // §: students may only book from TOMORROW on — same-day slots are never
+  // offered (the instructor needs time to prepare). Today returns no starts.
   const now = new Date()
   const isToday = dayStart.getTime() === startOfDay(now).getTime()
-  const nowMin = now.getHours() * 60 + now.getMinutes()
-  return starts.filter((m) => !isToday || m >= nowMin).map((m) => addMinutes(dayStart, m))
+  return starts.filter(() => !isToday).map((m) => addMinutes(dayStart, m))
 }

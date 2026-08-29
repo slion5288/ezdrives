@@ -170,6 +170,9 @@ export const messages = {
   'student.booking.title': 'My lessons',
   'student.booking.subtitle': 'Choose a course, then tap a start-time box on the calendar. Grey hours are closed; booked lessons are cards.',
   'student.booking.pickSlot': 'Pick a slot',
+  // §: same-day booking is never allowed (instructor needs time to prepare)
+  'student.booking.today': 'Same-day booking is not available. Please choose tomorrow or later.',
+  'student.booking.manageHint': 'You have a booked lesson. Tap its card on the calendar to view, reschedule or cancel it.',
   'student.booking.pickCourse': 'Choose a course',
   'student.booking.summary': 'Booking summary',
   'student.booking.date': 'Date',

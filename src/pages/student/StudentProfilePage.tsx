@@ -73,7 +73,9 @@ function RescheduleModal({
             ? t('calendar.dayClosed')
             : result.error === 'past'
               ? t('student.booking.past')
-              : t('common.toast.error')
+              : result.error === 'today'
+                ? t('student.booking.today')
+                : t('common.toast.error')
       showToast('error', message)
     }
   }

@@ -9,11 +9,11 @@
 // selected lessons are booked back-to-back from that start.
 // ============================================================================
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Check, CalendarClock, Coffee } from 'lucide-react'
-import { bookAppointment, bookPackageLessons, courseTypeOf, getSession, lessonStatus, packageProgress, paymentEligibility, uploadCertificateDocs, useAppState } from '../../data/store'
+import { bookAppointment, bookPackageLessons, cancelAppointment, courseTypeOf, getSession, lessonStatus, packageProgress, paymentEligibility, rescheduleAppointment, uploadCertificateDocs, useAppState } from '../../data/store'
 import type { Course, Slot } from '../../data/store'
-import { formatHM, fromLocalISO, toLocalISO } from '../../data/timeEngine'
+import { addDays, dateKey, formatHM, fromLocalISO, getEffectiveInterval, parseDateKey, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
 import type { Appointment } from '../../data/store'
 import { MapPin, Phone, X } from 'lucide-react'
@@ -86,10 +86,36 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
 
   // Tap-in-list selection: 0 / 1 / 2 consecutive lessons from autoLesson.
   const [selCount, setSelCount] = useState(1)
-  const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()))
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
+
+  /** §: an upcoming live booking for this course — one at a time. While it
+   *  exists the student manages it from the calendar popup (cancel/reschedule)
+   *  and the confirm-booking button is hidden. */
+  const hasActiveBooking = (state.appointments ?? []).some(
+    (a) =>
+      a.studentId === studentId && a.courseId === course.id &&
+      (a.status === 'confirmed' || a.status === 'pending') &&
+      fromLocalISO(a.start).getTime() > Date.now(),
+  )
+
+  /** §: initial calendar view — jump straight to the next booked lesson's day
+   *  when one exists; otherwise the calendar starts at today. */
+  const initialTarget = (): Date => {
+    const appts = (state.appointments ?? [])
+      .filter(
+        (a) =>
+          a.studentId === studentId && a.courseId === course.id &&
+          (a.status === 'confirmed' || a.status === 'pending') &&
+          fromLocalISO(a.start).getTime() > Date.now(),
+      )
+      .sort((a, b) => a.start.localeCompare(b.start))
+    return appts.length > 0 ? fromLocalISO(appts[0].start) : new Date()
+  }
+  const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(initialTarget()))
+  const [selectedDate, setSelectedDate] = useState<Date>(() => initialTarget())
   const [selectedStart, setSelectedStart] = useState<Slot | null>(null)
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null)
+  const [showResched, setShowResched] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   /** Appointments just created — shows the "add to calendar" prompt. */
   const [justBooked, setJustBooked] = useState<Appointment[] | null>(null)
 
@@ -138,6 +164,8 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
         return t('calendar.dayClosed')
       case 'past':
         return t('student.booking.past')
+      case 'today':
+        return t('student.booking.today')
       case 'not_purchased':
         return t('payment.notPurchased')
       case 'cash_approved_first_lesson':
@@ -173,6 +201,57 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
       setJustBooked([result.appointment])
     } else {
       showToast('error', bookingErrorMessage(String(result.error)))
+    }
+  }
+
+  /** §: cancel a booked lesson from the calendar popup (same as instructor). */
+  const confirmCancelAppt = async (): Promise<void> => {
+    if (!detailAppt) return
+    const result = await cancelAppointment(detailAppt.id)
+    if (result.ok) {
+      showToast('success', t('common.toast.deleted'))
+      setShowCancelConfirm(false)
+      setDetailAppt(null)
+      setSelectedStart(null)
+      // §: no booking left → the calendar returns to the current week.
+      const remaining = (state.appointments ?? []).some(
+        (a) =>
+          a.id !== detailAppt.id && a.studentId === studentId && a.courseId === course.id &&
+          (a.status === 'confirmed' || a.status === 'pending') &&
+          fromLocalISO(a.start).getTime() > Date.now(),
+      )
+      if (!remaining) {
+        setWeekStart(mondayOf(new Date()))
+        setSelectedDate(new Date())
+      }
+    } else {
+      showToast('error', result.error === 'past' ? t('student.booking.past') : t('common.toast.error'))
+      setShowCancelConfirm(false)
+    }
+  }
+
+  /** §: reschedule a booked lesson from the calendar popup (same as instructor). */
+  const confirmResched = async (startISO: string): Promise<void> => {
+    if (!detailAppt) return
+    const result = await rescheduleAppointment(detailAppt.id, startISO)
+    if (result.ok) {
+      showToast('success', t('common.toast.saved'))
+      setShowResched(false)
+      setDetailAppt(null)
+      setSelectedStart(null)
+    } else {
+      const message =
+        result.error === 'conflict'
+          ? t('student.booking.slotTaken')
+          : result.error === 'closed'
+            ? t('calendar.dayClosed')
+            : result.error === 'past'
+              ? t('student.booking.past')
+              : result.error === 'today'
+                ? t('student.booking.today')
+                : t('common.toast.error')
+      showToast('error', message)
+      setShowResched(false)
     }
   }
 
@@ -213,8 +292,14 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
               <span>{t('student.booking.cashApprovedUnitUsed')}</span>
             </div>
           ) : null}
+          {/* §: a booked lesson exists — manage it from the calendar popup */}
+          {hasActiveBooking ? (
+            <div className="course-booking__notice">
+              <span>{t('student.booking.manageHint')}</span>
+            </div>
+          ) : null}
           {/* TOP: per-student sequential lesson progress — tap to select 1 or 2 consecutive */}
-      {isPackage && course.lessons ? (
+      {isPackage && course.lessons && !hasActiveBooking ? (
         <div className="course-booking__select">
           <div className="course-booking__select-head">
             <span className="student-field-label">{t('student.booking.progressRef')}</span>
@@ -313,7 +398,9 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
         studentId={studentId}
         myStudentId={studentId}
         selectedSlotId={selectedStart ? slotId(selectedStart) : undefined}
-        onSelectSlot={(slot) => setSelectedStart(slot)}
+        // §: with an active booking the student manages it from the popup —
+        // new start boxes are not offered (confirm button is hidden too).
+        onSelectSlot={hasActiveBooking ? undefined : (slot) => setSelectedStart(slot)}
         onSelectAppointment={(appt) => setDetailAppt(appt)}
       />
 
@@ -360,11 +447,58 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
                 </span>
               </div>
             </div>
+            {/* §: manage the booked lesson — cancel or change time (same as instructor) */}
+            {detailAppt.status === 'confirmed' || detailAppt.status === 'pending' ? (
+              <div className="student-detail-card__actions">
+                <Button variant="dangerGhost" size="sm" onClick={() => setShowCancelConfirm(true)}>
+                  {t('student.dashboard.cancel')}
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => setShowResched(true)}>
+                  <CalendarClock size={15} /> {t('instructor.schedule.reschedule')}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
 
-      {/* Confirm footer */}
+      {/* §: reschedule — precise 15-min picker, same logic as the instructor's */}
+      {showResched && detailAppt ? (
+        <StudentRescheduleModal
+          state={state}
+          appointment={detailAppt}
+          onClose={() => setShowResched(false)}
+          onConfirm={confirmResched}
+        />
+      ) : null}
+
+      {/* §: cancel confirmation */}
+      {showCancelConfirm && detailAppt ? (
+        <div className="student-detail-scrim" onMouseDown={() => setShowCancelConfirm(false)}>
+          <div className="student-detail-card" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="student-detail-card__head">
+              <span className="student-detail-card__title">{t('student.dashboard.cancelConfirmTitle')}</span>
+              <button type="button" className="student-icon-btn" onClick={() => setShowCancelConfirm(false)} aria-label={t('common.close')}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="student-detail-card__body">
+              <p className="student-confirm-body">{t('student.dashboard.cancelConfirmBody')}</p>
+              <div className="student-detail-card__actions">
+                <Button variant="secondary" onClick={() => setShowCancelConfirm(false)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button variant="danger" onClick={() => void confirmCancelAppt()}>
+                  {t('student.dashboard.cancel')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Confirm footer — §: hidden while an active booking exists (manage via popup) */}
+      {!hasActiveBooking ? (
       <div className="course-booking__foot">
         <div className="course-booking__summary">
           {selectedStart ? (
@@ -386,6 +520,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
             : t('student.booking.confirm')}
         </Button>
       </div>
+      ) : null}
         </>
       )}
 
@@ -473,6 +608,142 @@ function CertificateUploadCard({
       )}
       {front ? <img src={front} alt="" className="cert-upload__preview" /> : null}
       {back ? <img src={back} alt="" className="cert-upload__preview" /> : null}
+    </div>
+  )
+}
+
+/**
+ * §: student reschedule — precise 15-min date+time picker, the SAME UI/logic
+ * as the instructor's TimePickerModal (conflict + break aware). Students may
+ * only move a lesson to TOMORROW or later (never same-day).
+ */
+function StudentRescheduleModal({
+  state,
+  appointment,
+  onClose,
+  onConfirm,
+}: {
+  state: ReturnType<typeof useAppState>
+  appointment: Appointment
+  onClose: () => void
+  onConfirm: (startISO: string) => void
+}): JSX.Element {
+  const t = useT()
+  const course = (state.courses ?? []).find((c) => c.id === appointment.courseId)
+  const windowMin = course ? (course.type === 'package' ? 60 : course.durationMin) : 60
+  const minDate = dateKey(addDays(new Date(), 1)) // tomorrow — same-day is never offered
+  const [date, setDate] = useState<string>(() => {
+    const orig = dateKey(fromLocalISO(appointment.start))
+    return orig >= minDate ? orig : minDate
+  })
+  const [time, setTime] = useState('09:00')
+
+  const day = parseDateKey(date)
+  const interval = getEffectiveInterval(day, state.weeklyRules, state.exceptions)
+  const nowMs = Date.now()
+  const br = Math.max(0, state.instructor.breakMin ?? 0) * 60000
+  const todayKey = dateKey(new Date())
+
+  /** Free 15-min start minutes — same algorithm as the instructor's picker,
+   *  plus: same-day minutes are skipped for students. */
+  const futureMinutes: number[] = []
+  if (interval) {
+    for (let m = interval.startMin; m + windowMin <= interval.endMin; m += 15) {
+      const s = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(m / 60), m % 60, 0).getTime()
+      if (s <= nowMs) continue
+      if (dateKey(new Date(s)) === todayKey) continue // § no same-day
+      const e = s + windowMin * 60000
+      let blocked = false
+      for (const a of state.appointments) {
+        if (a.status !== 'confirmed' && a.status !== 'pending') continue
+        if (a.id === appointment.id) continue
+        const aS = fromLocalISO(a.start).getTime()
+        const aE = fromLocalISO(a.end).getTime()
+        const sameStudent = a.studentId === appointment.studentId
+        const effEnd = sameStudent ? aE : aE + br
+        if (s < effEnd && e > aS) {
+          blocked = true
+          break
+        }
+      }
+      if (!blocked) futureMinutes.push(m)
+    }
+  }
+
+  // Auto-select the first free minute whenever the date changes (instructor parity).
+  useEffect(() => {
+    const next = futureMinutes[0]
+    if (next !== undefined) {
+      const hh = String(Math.floor(next / 60)).padStart(2, '0')
+      const mm = String(next % 60).padStart(2, '0')
+      setTime(`${hh}:${mm}`)
+    } else {
+      setTime('09:00')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, state.weeklyRules, state.exceptions])
+
+  const startISO = `${date}T${time}:00`
+  const endISO = toLocalISO(new Date(fromLocalISO(startISO).getTime() + windowMin * 60000))
+  const hasConflict = (state.appointments ?? []).some(
+    (a) =>
+      a.id !== appointment.id &&
+      (a.status === 'confirmed' || a.status === 'pending') &&
+      fromLocalISO(a.start).getTime() < fromLocalISO(endISO).getTime() &&
+      fromLocalISO(a.end).getTime() > fromLocalISO(startISO).getTime(),
+  )
+  const canConfirm = futureMinutes.length > 0 && !hasConflict
+
+  return (
+    <div className="student-detail-scrim" onMouseDown={onClose}>
+      <div className="student-detail-card student-detail-card--picker" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="student-detail-card__head">
+          <span className="student-detail-card__title">{t('student.dashboard.rescheduleTitle')}</span>
+          <button type="button" className="student-icon-btn" onClick={onClose} aria-label={t('common.close')}>
+            <X size={18} />
+          </button>
+        </div>
+        <div className="student-detail-card__body">
+          <p className="student-confirm-body">{t('student.dashboard.rescheduleBody')}</p>
+          <div className="student-field">
+            <label className="student-field-label" htmlFor="stu-resched-date">{t('instructor.workinghours.date')}</label>
+            <input
+              id="stu-resched-date"
+              type="date"
+              className="student-input"
+              value={date}
+              min={minDate}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div className="student-field">
+            <label className="student-field-label" htmlFor="stu-resched-time">{t('instructor.schedule.pickNewTime')}</label>
+            <select
+              id="stu-resched-time"
+              className="student-input"
+              value={time}
+              disabled={futureMinutes.length === 0}
+              onChange={(e) => setTime(e.target.value)}
+            >
+              {futureMinutes.map((m) => (
+                <option key={m} value={`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`}>
+                  {`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`}
+                </option>
+              ))}
+            </select>
+            {futureMinutes.length === 0 ? <p className="student-field-hint">{t('calendar.dayClosed')}</p> : null}
+            {hasConflict ? <p className="student-field-error">{t('student.booking.slotTaken')}</p> : null}
+          </div>
+          <div className="student-detail-card__actions">
+            <Button variant="secondary" onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="primary" disabled={!canConfirm} onClick={() => onConfirm(startISO)}>
+              {t('common.confirm')}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
