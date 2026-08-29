@@ -488,7 +488,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
             </div>
             <div className="ins-field">
               <label className="ins-field-label" htmlFor="course-name-en">{t('instructor.courses.nameEn')}</label>
-              <input id="course-name-en" className="ins-input" value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} placeholder="Auto-translated" />
+              <input id="course-name-en" className="ins-input" value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} placeholder={t('instructor.courses.autoTranslated')} />
             </div>
             <div className="ins-field ins-field--wide">
               <label className="ins-field-label" htmlFor="course-desc-zh">{t('instructor.courses.descZh')}</label>
@@ -496,7 +496,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
             </div>
             <div className="ins-field ins-field--wide">
               <label className="ins-field-label" htmlFor="course-desc-en">{t('instructor.courses.descEn')}</label>
-              <textarea id="course-desc-en" className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} placeholder="Auto-translated" />
+              <textarea id="course-desc-en" className="ins-input" rows={2} value={form.descEn} onChange={(e) => setForm({ ...form, descEn: e.target.value })} placeholder={t('instructor.courses.autoTranslated')} />
             </div>
             <p className="ins-field-hint ins-field--wide">{t('instructor.courses.autoTranslate')}</p>
 
@@ -583,7 +583,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                       />
                       <input
                         className="ins-input"
-                        placeholder="Auto-translated EN"
+                        placeholder={t('instructor.courses.autoTranslatedEn')}
                         aria-label={t('instructor.courses.lessonNameEn') + ` (${i + 1})`}
                         value={lesson.nameEn}
                         onChange={(e) => patchLesson(i, { nameEn: e.target.value })}
@@ -597,7 +597,7 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
                       />
                       <input
                         className="ins-input"
-                        placeholder="Desc EN"
+                        placeholder={t('instructor.courses.descEnPh')}
                         aria-label={t('instructor.courses.lessonDescEn') + ` (${i + 1})`}
                         value={lesson.descEn}
                         onChange={(e) => patchLesson(i, { descEn: e.target.value })}
