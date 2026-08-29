@@ -1084,9 +1084,6 @@ html[data-theme='dark'] .landing-badge--info {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
-.landing-courses__card:hover .landing-courses__cta {
-  color: var(--color-accent);
-}
 
 .landing-courses__badge {
   position: absolute;
@@ -1164,18 +1161,10 @@ html[data-theme='dark'] .landing-badge--info {
 }
 
 .landing-courses__cta {
+  /* § alignment: layout only — colors come from the shared primary Button
+     (gradient background + WHITE text, no underline). */
   margin-top: auto;
   width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: 44px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-strong);
-  color: var(--color-text);
-  font-weight: var(--font-weight-semibold);
-  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 
 /* --- Instructor --- */

@@ -1761,7 +1761,7 @@
 .course-booking {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5); /* § alignment: standard block gap */
   margin-top: var(--space-3);
 }
 /* § unified multi-course calendar: course chip selector */
