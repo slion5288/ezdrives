@@ -38,6 +38,9 @@ export interface WeekCalendarProps {
   selectedSlotId?: string
   /** Student booking mode: mark this student's own bookings as "mine". */
   myStudentId?: string
+  /** § unified student view: color the student's own event cards per course
+   *  (multi-course calendar) instead of the default "mine" green. */
+  colorMineByCourse?: boolean
   /** Instructor mode: show the student's name on event cards. */
   showStudentName?: boolean
   /** Batch mode: show per-appointment checkboxes (schedule mode). */
@@ -78,6 +81,8 @@ function courseColor(state: AppState, courseId: string): string {
   const idx = state.courses.findIndex((c) => c.id === courseId)
   return COURSE_COLORS[idx >= 0 ? idx % COURSE_COLORS.length : 0]
 }
+/** Export for the multi-course student panel (chip dots match card colors). */
+export { courseColor }
 
 /** Timeline window covering every slot and appointment of the week, ±1h, clamped 6:00–22:00. */
 function weekRange(weekSlots: Record<string, Slot[]>, appts: Appointment[]): { start: number; end: number } {
@@ -178,6 +183,7 @@ export function WeekCalendar({
   onSelectAppointment,
   selectedSlotId,
   myStudentId,
+  colorMineByCourse = false,
   showStudentName = false,
   batchMode = false,
   selectedIds,
@@ -423,7 +429,8 @@ export function WeekCalendar({
                       height: p.height,
                       left: `${p.leftPct}%`,
                       width: `calc(${p.widthPct}% - 4px)`,
-                      '--ev-color': isMine || mode === 'availability' ? undefined : courseColor(state, appt.courseId),
+                      '--ev-color':
+                        mode === 'schedule' || colorMineByCourse ? courseColor(state, appt.courseId) : undefined,
                     } as CSSProperties
                     const title =
                       done

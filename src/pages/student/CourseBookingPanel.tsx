@@ -9,16 +9,16 @@
 // selected lessons are booked back-to-back from that start.
 // ============================================================================
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, CalendarClock, Coffee } from 'lucide-react'
-import { bookAppointment, bookPackageLessons, cancelAppointment, courseTypeOf, getSession, lessonStatus, packageProgress, paymentEligibility, rescheduleAppointment, uploadCertificateDocs, useAppState } from '../../data/store'
+import { bookAppointment, bookPackageLessons, cancelAppointment, courseRepeatable, courseTypeOf, getSession, lessonStatus, packageProgress, paymentEligibility, purchaseCount, rescheduleAppointment, uploadCertificateDocs, useAppState } from '../../data/store'
 import type { Course, Slot } from '../../data/store'
 import { addDays, dateKey, formatHM, fromLocalISO, getEffectiveInterval, parseDateKey, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
 import type { Appointment } from '../../data/store'
 import { MapPin, Phone, X } from 'lucide-react'
 import { DayStrip } from '../../components/calendar/DayStrip'
-import { slotId, WeekCalendar } from '../../components/calendar/WeekCalendar'
+import { courseColor, slotId, WeekCalendar } from '../../components/calendar/WeekCalendar'
 import { lessonLabel } from '../../data/store'
 import { formatDateLabel, formatPrice, mondayOf } from './studentFormat'
 import { useToast } from '../../components/shared'
@@ -30,10 +30,14 @@ import type { IcsEvent } from '../../utils/ics'
 const ICS_FILENAME = 'ezdrives-lessons.ics'
 
 interface CourseBookingPanelProps {
-  course: Course
+  /** All purchased courses — ONE unified calendar shows them together. */
+  courses: Course[]
+  /** The course currently selected for booking (chips above the calendar). */
+  selectedCourseId: string
+  onSelectCourse: (courseId: string) => void
 }
 
-export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Element {
+export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }: CourseBookingPanelProps): JSX.Element {
   const t = useT()
   const locale = useLocale()
   const state = useAppState()
@@ -41,28 +45,32 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
 
   const session = getSession()
   const studentId = session.studentId ?? ''
+  // The selected course; fall back to the first one defensively.
+  const course = courses.find((c) => c.id === selectedCourseId) ?? courses[0]
+  if (!course) return <></>
+  const courseId = course.id
   const isPackage = course.type === 'package'
   const duration = isPackage ? 60 : course.durationMin
 
   // §28 Purchase gate: 'full' (paid) / 'first' (cash approved → Lesson 1 or
   // first unit only) / 'none' (not purchased or request still pending).
-  const elig = studentId !== '' ? paymentEligibility(state, studentId, course.id) : 'none'
+  const elig = studentId !== '' ? paymentEligibility(state, studentId, courseId) : 'none'
   const purchased = elig !== 'none'
   const cashApprovedOnly = elig === 'first'
   const cashPending = studentId !== '' && (state.payments ?? []).some(
-    (p) => p.studentId === studentId && p.courseId === course.id && p.status === 'cash_pending',
+    (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'cash_pending',
   )
   const onlinePending = studentId !== '' && (state.payments ?? []).some(
-    (p) => p.studentId === studentId && p.courseId === course.id && p.status === 'pending',
+    (p) => p.studentId === studentId && p.courseId === courseId && p.status === 'pending',
   )
 
   const lessonStatuses = useMemo(
-    () => (isPackage && course.lessons ? course.lessons.map((_, i) => lessonStatus(state, studentId, course.id, i)) : []),
-    [isPackage, course, state, studentId],
+    () => (isPackage && course.lessons ? course.lessons.map((_, i) => lessonStatus(state, studentId, courseId, i)) : []),
+    [isPackage, course, state, studentId, courseId],
   )
   const progress = useMemo(
-    () => (isPackage ? packageProgress(state, studentId, course.id) : undefined),
-    [isPackage, state, studentId, course.id],
+    () => (isPackage ? packageProgress(state, studentId, courseId) : undefined),
+    [isPackage, state, studentId, courseId],
   )
 
   /** First undone lesson — sequential, cannot be chosen freely.
@@ -81,29 +89,29 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
   /** §28 CASH_APPROVED individual: only the first unit — no active appointment may exist. */
   const individualFirstUsed = cashApprovedOnly && !isPackage &&
     (state.appointments ?? []).some(
-      (a) => a.studentId === studentId && a.courseId === course.id && a.status !== 'cancelled',
+      (a) => a.studentId === studentId && a.courseId === courseId && a.status !== 'cancelled',
     )
 
   // Tap-in-list selection: 0 / 1 / 2 consecutive lessons from autoLesson.
   const [selCount, setSelCount] = useState(1)
 
-  /** §: an upcoming live booking for this course — one at a time. While it
-   *  exists the student manages it from the calendar popup (cancel/reschedule)
+  /** §: an upcoming live booking for the SELECTED course — one at a time. While
+   *  it exists the student manages it from the calendar popup (cancel/reschedule)
    *  and the confirm-booking button is hidden. */
   const hasActiveBooking = (state.appointments ?? []).some(
     (a) =>
-      a.studentId === studentId && a.courseId === course.id &&
+      a.studentId === studentId && a.courseId === courseId &&
       (a.status === 'confirmed' || a.status === 'pending') &&
       fromLocalISO(a.start).getTime() > Date.now(),
   )
 
   /** §: initial calendar view — jump straight to the next booked lesson's day
-   *  when one exists; otherwise the calendar starts at today. */
+   *  (across ALL of the student's courses) when one exists; otherwise today. */
   const initialTarget = (): Date => {
     const appts = (state.appointments ?? [])
       .filter(
         (a) =>
-          a.studentId === studentId && a.courseId === course.id &&
+          a.studentId === studentId &&
           (a.status === 'confirmed' || a.status === 'pending') &&
           fromLocalISO(a.start).getTime() > Date.now(),
       )
@@ -118,6 +126,49 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   /** Appointments just created — shows the "add to calendar" prompt. */
   const [justBooked, setJustBooked] = useState<Appointment[] | null>(null)
+
+  /** § unified view: switching the selected course re-centres the calendar —
+   *  to that course's next booked day, or back to today when it has none.
+   *  Runs only on real course switches (the initial all-courses jump stays). */
+  const prevCourseRef = useRef(courseId)
+  useEffect(() => {
+    if (prevCourseRef.current === courseId) return
+    prevCourseRef.current = courseId
+    const appts = (state.appointments ?? [])
+      .filter(
+        (a) =>
+          a.studentId === studentId && a.courseId === courseId &&
+          (a.status === 'confirmed' || a.status === 'pending') &&
+          fromLocalISO(a.start).getTime() > Date.now(),
+      )
+      .sort((a, b) => a.start.localeCompare(b.start))
+    const target = appts.length > 0 ? fromLocalISO(appts[0].start) : new Date()
+    setWeekStart(mondayOf(target))
+    setSelectedDate(target)
+    setSelectedStart(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId])
+
+  /** § initial all-courses jump — deferred until the real bookings arrive, so
+   *  a seed/first paint (empty appointments) never locks the view on today. */
+  const jumpedRef = useRef(false)
+  useEffect(() => {
+    if (jumpedRef.current) return
+    const live = (state.appointments ?? [])
+      .filter(
+        (a) =>
+          a.studentId === studentId &&
+          (a.status === 'confirmed' || a.status === 'pending') &&
+          fromLocalISO(a.start).getTime() > Date.now(),
+      )
+      .sort((a, b) => a.start.localeCompare(b.start))
+    if (live.length === 0) return
+    jumpedRef.current = true
+    const target = fromLocalISO(live[0].start)
+    setWeekStart(mondayOf(target))
+    setSelectedDate(target)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.appointments])
 
   /** One .ics event for an appointment (per this course panel). */
   const apptToEvent = (appt: Appointment): IcsEvent => {
@@ -213,16 +264,23 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
       setShowCancelConfirm(false)
       setDetailAppt(null)
       setSelectedStart(null)
-      // §: no booking left → the calendar returns to the current week.
-      const remaining = (state.appointments ?? []).some(
-        (a) =>
-          a.id !== detailAppt.id && a.studentId === studentId && a.courseId === course.id &&
-          (a.status === 'confirmed' || a.status === 'pending') &&
-          fromLocalISO(a.start).getTime() > Date.now(),
-      )
-      if (!remaining) {
+      // §: no booking left anywhere → the calendar returns to the current week;
+      // otherwise it re-centres on the next upcoming booking (any course).
+      const remaining = (state.appointments ?? [])
+        .filter(
+          (a) =>
+            a.id !== detailAppt.id && a.studentId === studentId &&
+            (a.status === 'confirmed' || a.status === 'pending') &&
+            fromLocalISO(a.start).getTime() > Date.now(),
+        )
+        .sort((a, b) => a.start.localeCompare(b.start))
+      if (remaining.length === 0) {
         setWeekStart(mondayOf(new Date()))
         setSelectedDate(new Date())
+      } else {
+        const target = fromLocalISO(remaining[0].start)
+        setWeekStart(mondayOf(target))
+        setSelectedDate(target)
       }
     } else {
       showToast('error', result.error === 'past' ? t('student.booking.past') : t('common.toast.error'))
@@ -257,6 +315,42 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
 
   return (
     <div className="course-booking">
+      {/* § unified view: ONE calendar for all purchased courses — pick which
+          course to book next via the chips; every course's bookings are shown
+          in the same calendar (color-coded). */}
+      <div className="course-booking__courses">
+        <span className="course-booking__courses-label">{t('student.booking.selectCourse')}</span>
+        <div className="course-booking__courses-list">
+          {courses.map((c) => {
+            const active = c.id === courseId
+            const hasBook = (state.appointments ?? []).some(
+              (a) =>
+                a.studentId === studentId && a.courseId === c.id &&
+                (a.status === 'confirmed' || a.status === 'pending') &&
+                fromLocalISO(a.start).getTime() > Date.now(),
+            )
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className={`course-booking__chip${active ? ' course-booking__chip--active' : ''}`}
+                onClick={() => onSelectCourse(c.id)}
+              >
+                <span className="course-booking__chip-dot" style={{ background: courseColor(state, c.id) }} aria-hidden="true" />
+                <span>{locale === 'zh' ? c.name.zh : c.name.en}</span>
+                {hasBook ? <span className="course-booking__chip-booked" title={t('student.booking.hasBooking')}>●</span> : null}
+              </button>
+            )
+          })}
+        </div>
+        <span className="course-booking__courses-sub">
+          {course.type === 'package'
+            ? t('courses.lessons', { count: course.lessons?.length ?? 10 })
+            : courseRepeatable(course)
+              ? t('student.dashboard.units', { count: purchaseCount(state, studentId, courseId) })
+              : t('courses.duration', { duration: course.durationMin })}
+        </span>
+      </div>
       {/* §39/§46: Full Course Certificate — document upload workflow, no driving calendar */}
       {courseTypeOf(course) === 'FULL_COURSE_CERTIFICATE' ? (
         <CertificateUploadCard course={course} studentId={studentId} t={t} />
@@ -397,6 +491,7 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
         courseDurationMin={duration}
         studentId={studentId}
         myStudentId={studentId}
+        colorMineByCourse
         selectedSlotId={selectedStart ? slotId(selectedStart) : undefined}
         // §: with an active booking the student manages it from the popup —
         // new start boxes are not offered (confirm button is hidden too).
@@ -418,8 +513,13 @@ export function CourseBookingPanel({ course }: CourseBookingPanelProps): JSX.Ele
               <div className="student-detail-row">
                 <span className="student-detail-label">{t('instructor.schedule.course')}</span>
                 <span className="student-detail-value">
-                  {locale === 'zh' ? course.name.zh : course.name.en}
-                  {detailAppt.lessonIndex !== undefined ? <span className="student-detail-sub">{lessonLabel(course, detailAppt.lessonIndex, locale)}</span> : null}
+                  {(() => {
+                    const dc = (state.courses ?? []).find((c) => c.id === detailAppt.courseId)
+                    const dcName = dc ? (locale === 'zh' ? dc.name.zh : dc.name.en) : detailAppt.courseId
+                    return dc && detailAppt.lessonIndex !== undefined
+                      ? `${dcName} · ${lessonLabel(dc, detailAppt.lessonIndex, locale)}`
+                      : dcName
+                  })()}
                 </span>
               </div>
               <div className="student-detail-row">

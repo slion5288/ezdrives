@@ -1,22 +1,25 @@
 // ============================================================================
 // EZDRIVES — StudentDashboardPage (预约时间)
-// For every PURCHASED course (instructor confirmed the payment), shows its
-// booking panel directly — the calendar with booked cards + selectable
-// start-time boxes; package courses list all lessons (✓ done, tap to select
-// 1–2 consecutive). No notifications here — those live under 通知.
+// ONE unified calendar for ALL purchased courses (not one calendar per course):
+// every booked lesson shows as a color-coded card (one color per course); a
+// course chip row above the calendar picks which course to book next — its
+// availability start boxes, package lesson list and the confirm button follow
+// the selection. Booked lessons are managed from the calendar popup
+// (cancel / reschedule, same interaction as the instructor).
 // ============================================================================
 
-import { courseRepeatable, getSession, isCoursePurchased, purchaseCount, useAppState } from '../../data/store'
-import { useLocale, useT } from '../../i18n'
+import { useState } from 'react'
+import { getSession, isCoursePurchased, useAppState } from '../../data/store'
+import { useT } from '../../i18n'
 import { CalendarPlus } from 'lucide-react'
 import { StudentShell } from './StudentShell'
 import { CourseBookingPanel } from './CourseBookingPanel'
+import { fromLocalISO } from '../../data/timeEngine'
 import './student.css'
 import { Button } from '../../components/shared/Button'
 
 export default function StudentDashboardPage(): JSX.Element {
   const t = useT()
-  const locale = useLocale()
   const state = useAppState()
 
   const session = getSession()
@@ -26,6 +29,25 @@ export default function StudentDashboardPage(): JSX.Element {
   const activeCourses = (state.courses ?? []).filter((c) => c.active)
   // Purchased = the instructor confirmed the payment (支付已确认) — booked or not.
   const purchased = activeCourses.filter((c) => isCoursePurchased(state, studentId, c.id))
+
+  // Default selection: the first purchased course WITHOUT an upcoming booking
+  // (so the student can book right away); fall back to the first course.
+  const defaultCourseId = ((): string => {
+    const now = Date.now()
+    const free = purchased.find(
+      (c) =>
+        !(state.appointments ?? []).some(
+          (a) =>
+            a.studentId === studentId && a.courseId === c.id &&
+            (a.status === 'confirmed' || a.status === 'pending') &&
+            fromLocalISO(a.start).getTime() > now,
+        ),
+    )
+    return (free ?? purchased[0])?.id ?? ''
+  })()
+
+  const [selCourseId, setSelCourseId] = useState<string>(() => defaultCourseId)
+  const effectiveId = purchased.some((c) => c.id === selCourseId) ? selCourseId : defaultCourseId
 
   return (
     <StudentShell>
@@ -52,21 +74,11 @@ export default function StudentDashboardPage(): JSX.Element {
           </div>
         ) : (
           <div className="student-lessons-list">
-            {purchased.map((course) => (
-              <section key={course.id} className="student-card">
-                <div className="student-card-header">
-                  <h2 className="student-card-title">{locale === 'zh' ? course.name.zh : course.name.en}</h2>
-                  <span className="student-card-subtitle">
-                    {course.type === 'package'
-                      ? t('courses.lessons', { count: course.lessons?.length ?? 10 })
-                      : courseRepeatable(course)
-                        ? t('student.dashboard.units', { count: purchaseCount(state, studentId, course.id) })
-                        : t('courses.duration', { duration: course.durationMin })}
-                  </span>
-                </div>
-                <CourseBookingPanel key={`panel-${course.id}`} course={course} />
-              </section>
-            ))}
+            <CourseBookingPanel
+              courses={purchased}
+              selectedCourseId={effectiveId}
+              onSelectCourse={setSelCourseId}
+            />
           </div>
         )}
       </div>
