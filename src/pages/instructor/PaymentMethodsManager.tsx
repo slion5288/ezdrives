@@ -7,7 +7,7 @@
 // ============================================================================
 
 import { useState } from 'react'
-import { ALL_PAYMENT_METHODS, enabledPaymentMethods, getState, paymentMethodLabel, setPaymentMethods, useAppState } from '../../data/store'
+import { ACTIVE_PAYMENT_METHODS, enabledPaymentMethods, getState, paymentMethodLabel, setPaymentMethods, useAppState } from '../../data/store'
 import type { PaymentMethod } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { CreditCard } from 'lucide-react'
@@ -32,9 +32,9 @@ export default function PaymentMethodsManager(): JSX.Element {
         toast.push({ tone: 'error', title: t('instructor.settings.atLeastOne') })
         return
       }
-      setPaymentMethods(ALL_PAYMENT_METHODS.filter((m) => current.has(m) && m !== method))
+      setPaymentMethods(ACTIVE_PAYMENT_METHODS.filter((m) => current.has(m) && m !== method))
     } else {
-      setPaymentMethods(ALL_PAYMENT_METHODS.filter((m) => current.has(m) || m === method))
+      setPaymentMethods(ACTIVE_PAYMENT_METHODS.filter((m) => current.has(m) || m === method))
     }
     setDirty(true)
     toast.push({ tone: 'success', title: t('instructor.settings.paymentsSaved') })
@@ -50,7 +50,8 @@ export default function PaymentMethodsManager(): JSX.Element {
       </div>
       <p className="ins-qr-hint">{t('instructor.settings.paymentsHint')}</p>
       <div className="ins-paymethod-grid">
-        {ALL_PAYMENT_METHODS.map((method) => {
+        {/* § P1#23: only the real methods (cash/wechat/emt) are shown */}
+        {ACTIVE_PAYMENT_METHODS.map((method) => {
           const on = enabled.has(method)
           return (
             <div key={method} className={`ins-paymethod-card${on ? ' is-on' : ''}`}>
