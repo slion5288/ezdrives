@@ -1,45 +1,48 @@
 /* ============================================================================
    EZDRIVES — Design Tokens
-   Source of truth: docs/DESIGN.md §2–§3. Brand = blue→purple gradient
-   (logo: EZDRIVES). Light theme = defaults on :root; dark theme = overrides
-   on html[data-theme='dark']. Components must ONLY consume var(--...) tokens
-   — never literal colors/spacing.
+   Modern minimal, mobile-first. Warm paper background, ink text, spruce-green
+   solid accents (no gradients), system fonts, 16px body, 44px tap targets.
+   Light theme = defaults on :root; dark theme = overrides on
+   html[data-theme='dark']. Components must ONLY consume var(--...) tokens —
+   never literal colors/spacing.
    ============================================================================ */
 
 :root {
-  /* --- Color: light theme --- */
-  --color-bg: #F6F8F9;                 /* app background (cool gray-white) */
+  /* --- Color: light theme (warm paper + brand logo colors) --- */
+  --color-bg: #F4F1EC;                 /* app background — warm paper */
   --color-surface: #FFFFFF;            /* cards, panels, modals, dropdowns */
-  --color-surface-2: #EDF1F3;          /* inset wells, hover fills, table headers, slot-grid bg */
-  --color-text: #101828;               /* primary text, headings */
-  --color-text-muted: #475467;         /* secondary body text */
-  --color-text-soft: #8A94A6;          /* placeholders, disabled, captions (≥14px only) */
-  --color-accent: #A21CAF;             /* brand magenta-violet (logo #D300E6) — primary actions */
+  --color-surface-2: #ECE7DE;          /* inset wells, hover fills, table headers */
+  --color-text: #1C1917;               /* primary text — ink */
+  --color-text-muted: #57534E;         /* secondary body text */
+  --color-text-soft: #8A857C;          /* placeholders, disabled, captions (≥14px only) */
+  /* § user decision: accent follows the EZDRIVES LOGO colors (blue→purple
+     gradient brand, magenta-violet primary) — not green. */
+  --color-accent: #A21CAF;             /* brand magenta-violet (logo) — primary actions */
   --color-accent-hover: #86158F;       /* accent hover/pressed */
   --color-accent-soft: rgba(162, 28, 175, 0.10); /* accent tint: selected nav, chips */
-  /* EZDRIVES brand gradient: blue → purple */
+  /* EZDRIVES brand gradient: blue → purple (logo colors) */
   --gradient-brand: linear-gradient(135deg, #8B5CF6 0%, #D300E6 100%);
   --gradient-brand-hover: linear-gradient(135deg, #7C3AED 0%, #BA00E8 100%);
-  --color-on-brand: #FFFFFF;           /* text/glyphs on the brand gradient or accent */
-  --color-success: #22A06B;            /* availability green — bookable slots, confirmed */
-  --color-danger: #E5484D;             /* errors, cancel, destructive actions, iOS today */
-  --color-danger-soft: #FDECEE;        /* danger tint backgrounds */
-  --color-warning: #F5A524;            /* warnings, pending */
+  --color-on-brand: #FFFFFF;           /* text/glyphs on the accent */
+  --color-success: #1E8E5A;            /* availability green — bookable slots, confirmed */
+  --color-danger: #C93C34;             /* errors, cancel, destructive actions */
+  --color-danger-soft: #F9E9E7;        /* danger tint backgrounds */
+  --color-warning: #B7791F;            /* warnings, pending */
   --color-info: #A21CAF;               /* informational accents, body links */
-  --color-border: #E3E8EC;             /* default hairlines */
-  --color-border-strong: #CBD3DA;      /* inputs, hover borders */
-  --color-focus-ring: rgba(162, 28, 175, 0.62);   /* 2px focus outline + 2px offset */
-  --color-overlay: rgba(16, 24, 40, 0.45);       /* modal scrim */
+  --color-border: #E5DFD5;             /* default hairlines */
+  --color-border-strong: #D3CBBE;      /* inputs, hover borders */
+  --color-focus-ring: rgba(162, 28, 175, 0.55);   /* 2px focus outline + 2px offset */
+  --color-overlay: rgba(28, 25, 23, 0.5);       /* modal scrim */
 
-  /* --- Elevation --- */
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 2px 6px rgba(16, 24, 40, 0.05);
-  --shadow-pop: 0 8px 20px -4px rgba(16, 24, 40, 0.14), 0 2px 6px -2px rgba(16, 24, 40, 0.08);
+  /* --- Elevation (warm-tinted shadows) --- */
+  --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.05), 0 2px 6px rgba(28, 25, 23, 0.06);
+  --shadow-pop: 0 8px 20px -4px rgba(28, 25, 23, 0.16), 0 2px 6px -2px rgba(28, 25, 23, 0.1);
 
   /* --- Radius --- */
-  --radius-sm: 6px;    /* chips, badges, small inputs */
-  --radius-md: 10px;   /* buttons, inputs, toggles */
-  --radius-lg: 14px;   /* cards, dropdowns, tables */
-  --radius-xl: 20px;   /* modals, hero panels */
+  --radius-sm: 8px;    /* chips, badges, small inputs */
+  --radius-md: 12px;   /* buttons, inputs, toggles */
+  --radius-lg: 16px;   /* cards, dropdowns, tables */
+  --radius-xl: 22px;   /* modals, hero panels */
 
   /* --- Spacing --- */
   --space-1: 4px;
@@ -55,22 +58,22 @@
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
 
-  /* --- Typography --- */
+  /* --- Typography: system stack (PingFang on Apple, system UI elsewhere) --- */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC",
     "Microsoft YaHei", "Noto Sans SC", sans-serif;
 
   --font-size-xs: 12px;
-  --font-size-sm: 13px;
-  --font-size-base: 14px;
-  --font-size-md: 15px;
-  --font-size-lg: 16px;
-  --font-size-xl: 18px;
-  --font-size-2xl: 20px;
-  --font-size-3xl: 24px;
-  --font-size-4xl: 32px;
-  --font-size-5xl: 40px;
-  --font-size-6xl: 56px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;   /* body text */
+  --font-size-md: 17px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+  --font-size-4xl: 38px;
+  --font-size-5xl: 48px;
+  --font-size-6xl: 60px;
 
   --line-height-xs: 1.4;
   --line-height-sm: 1.45;
@@ -93,32 +96,32 @@
 }
 
 html[data-theme='dark'] {
-  /* --- Color: dark theme --- */
-  --color-bg: #0D1216;
-  --color-surface: #151C22;
-  --color-surface-2: #1F2830;
-  --color-text: #F2F6F8;
-  --color-text-muted: #C2CBD4;
-  --color-text-soft: #7C8894;
-  --color-accent: #DD4DE8;             /* brand magenta-violet (brighter on dark) */
+  /* --- Color: dark theme (warm dark) --- */
+  --color-bg: #16140F;
+  --color-surface: #1F1C16;
+  --color-surface-2: #2A2620;
+  --color-text: #F2EFE9;
+  --color-text-muted: #C6BFB2;
+  --color-text-soft: #857E72;
+  --color-accent: #DD4DE8;             /* brand magenta-violet, brighter on dark */
   --color-accent-hover: #E879F9;
   --color-accent-soft: rgba(221, 77, 232, 0.18);
   --gradient-brand: linear-gradient(135deg, #9D5CF7 0%, #E14CF0 100%);
   --gradient-brand-hover: linear-gradient(135deg, #8C4DF6 0%, #D43FE8 100%);
   --color-on-brand: #FFFFFF;
-  --color-success: #34D399;
-  --color-danger: #F97066;
-  --color-danger-soft: rgba(249, 112, 102, 0.14);
-  --color-warning: #FDB022;
+  --color-success: #34B386;
+  --color-danger: #F0736A;
+  --color-danger-soft: rgba(240, 115, 106, 0.14);
+  --color-warning: #E3A63C;
   --color-info: #DD4DE8;
-  --color-border: #263039;
-  --color-border-strong: #3A4651;
-  --color-focus-ring: rgba(221, 77, 232, 0.65);
-  --color-overlay: rgba(3, 7, 10, 0.65);
+  --color-border: #332E27;
+  --color-border-strong: #4A443B;
+  --color-focus-ring: rgba(221, 77, 232, 0.6);
+  --color-overlay: rgba(10, 9, 7, 0.68);
 
   /* --- Elevation: same token names, black-tinted layering for dark bg --- */
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.3);
-  --shadow-pop: 0 8px 20px -4px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.32);
+  --shadow-pop: 0 8px 20px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.38);
 
   color-scheme: dark;
 }

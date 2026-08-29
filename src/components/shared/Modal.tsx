@@ -26,9 +26,14 @@ export interface ModalProps {
   maxWidth?: number
   /** Render nothing when false (default true). */
   open?: boolean
+  /** 'dialog' = centered modal (default); 'drawer' = bottom sheet on mobile,
+   *  centered panel on desktop. */
+  variant?: 'dialog' | 'drawer'
+  /** Max panel height for the drawer body (defaults to 88vh on mobile). */
+  maxHeight?: number | string
 }
 
-export function Modal({ title, onClose, children, footer, maxWidth, open = true }: ModalProps): JSX.Element | null {
+export function Modal({ title, onClose, children, footer, maxWidth, open = true, variant = 'dialog', maxHeight }: ModalProps): JSX.Element | null {
   const t = useT()
   const dialogRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
@@ -76,14 +81,17 @@ export function Modal({ title, onClose, children, footer, maxWidth, open = true 
   if (!open) return null
 
   return (
-    <div className="modal-overlay" onMouseDown={onClose}>
+    <div className={`modal-overlay${variant === 'drawer' ? ' modal-overlay--drawer' : ''}`} onMouseDown={onClose}>
       <div
         ref={dialogRef}
-        className="modal"
+        className={`modal${variant === 'drawer' ? ' modal--drawer' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        style={maxWidth ? { maxWidth } : undefined}
+        style={{
+          ...(maxWidth ? { maxWidth } : undefined),
+          ...(variant === 'drawer' && maxHeight ? { maxHeight } : undefined),
+        }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="modal__header">

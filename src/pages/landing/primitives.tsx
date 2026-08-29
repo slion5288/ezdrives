@@ -11,7 +11,6 @@ import { Link } from 'react-router-dom'
 import {Car,Check,Clock,Star} from 'lucide-react'
 import { useT } from '../../i18n'
 import { COURSE_IMAGES, LOGO_DATA_URL } from '../../data/assets'
-import { Button } from '../../components/shared/Button'
 
 // --- Button (DESIGN §4.1) ---
 
@@ -116,33 +115,28 @@ export interface CourseCardCourse {
   durationMin: number
   examCar?: boolean
   imageUrl?: string
+  /** Package: the 10-hour lesson list (its presence marks a total price). */
+  lessons?: { name?: { en: string; zh: string } }[]
 }
 
 export function CourseCard({
   course,
-  popular,
   to,
   t,
   pick,
   media = false,
 }: {
   course: CourseCardCourse
-  popular: boolean
   to: string
   t: (key: string, vars?: Record<string, string | number>) => string
   pick: (pair: { en: string; zh: string }) => string
   media?: boolean
 }): JSX.Element {
   return (
-    <div className={popular ? 'landing-courses__card landing-courses__card--popular' : 'landing-courses__card'}>
+    <Link to={to} className="landing-courses__card" aria-label={pick(course.name)}>
       {course.examCar && (
         <LandingBadge tone="info" className="landing-courses__badge">
           {t('landing.courses.examCar')}
-        </LandingBadge>
-      )}
-      {popular && (
-        <LandingBadge tone="warning" className="landing-courses__badge">
-          {t('landing.courses.popular')}
         </LandingBadge>
       )}
       {media && (course.imageUrl || COURSE_IMAGES[course.id]) ? (
@@ -158,12 +152,19 @@ export function CourseCard({
       <p className="landing-courses__desc">{pick(course.description)}</p>
       <div className="landing-courses__meta">
         <span className="landing-courses__price">${course.price}</span>
-        <span className="landing-courses__per">{t('courses.perLesson')}</span>
+        {/* § P2: a package is a TOTAL price, never "$700 per lesson" */}
+        <span className="landing-courses__per">
+          {Array.isArray(course.lessons) && course.lessons.length > 0
+            ? t('courses.packageTotal', { count: course.lessons.length })
+            : t('courses.perLesson')}
+        </span>
         <span className="landing-courses__dur">
           <Clock size={14} />
           {t('courses.duration', { duration: course.durationMin })}
         </span>
       </div>
+      {/* §: every price is CAD with HST included — stated once per card */}
+      <p className="landing-courses__tax">{t('landing.priceTaxNote')}</p>
       <ul className="landing-courses__features">
         <li>
           <Check size={15} strokeWidth={2.5} />
@@ -174,9 +175,9 @@ export function CourseCard({
           {t('vehicles.thisVehicle')}
         </li>
       </ul>
-      <Button variant="primary" to={to} className="landing-courses__cta">
-        {t('courses.book')}
-      </Button>
-    </div>
+      <span className="landing-courses__cta" aria-hidden="true">
+        {t('landing.courses.details')} →
+      </span>
+    </Link>
   )
 }

@@ -7,6 +7,7 @@
 
 import {ArrowLeft,BookOpen,GraduationCap} from 'lucide-react'
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useLocale, useT } from '../../i18n'
 import { getSession, initPublicHome, isPublicReady, sortCoursesForDisplay, useAppState } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
@@ -30,15 +31,6 @@ export default function CoursesPage(): JSX.Element {
   // only (empty until fetched, or forever when the fetch failed).
   const visitor = !getSession().token
   const courses = visitor && !isPublicReady() ? [] : sortCoursesForDisplay(state.courses.filter((c) => c.active))
-  // §C: primary button = first course of each (courseType+license) group.
-  const firstOfGroup = (c: { id: string; course_type?: string; type?: string; license_class?: string; examCar?: boolean }): boolean => {
-    const key = `${c.course_type ?? (c.examCar ? 'ROAD_TEST_CAR' : c.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${c.license_class ?? (c.examCar ? 'NONE' : c.type === 'package' ? 'G2' : 'G2')}`
-    const idx = courses.findIndex((x) => {
-      const kx = `${x.course_type ?? (x.examCar ? 'ROAD_TEST_CAR' : x.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${x.license_class ?? (x.examCar ? 'NONE' : x.type === 'package' ? 'G2' : 'G2')}`
-      return kx === key
-    })
-    return idx === courses.findIndex((x) => x.id === c.id)
-  }
 
   return (
     <div className="landing-page landing-page--sub">
@@ -66,7 +58,6 @@ export default function CoursesPage(): JSX.Element {
                   <CourseCard
                     key={course.id}
                     course={course}
-                    popular={firstOfGroup(course)}
                     to={`/student/book?course=${course.id}`}
                     t={t}
                     pick={pick}
@@ -110,6 +101,13 @@ export default function CoursesPage(): JSX.Element {
         <div className="container">
           <div className="landing-footer__bottom">
             <span>{t('landing.footer.rights')}</span>
+            <span className="landing-footer__legal">
+              <Link to="/legal/privacy">{t('legal.privacy')}</Link>
+              <span aria-hidden="true">·</span>
+              <Link to="/legal/terms">{t('legal.terms')}</Link>
+              <span aria-hidden="true">·</span>
+              <Link to="/legal/cancellation">{t('legal.cancellation')}</Link>
+            </span>
           </div>
         </div>
       </footer>

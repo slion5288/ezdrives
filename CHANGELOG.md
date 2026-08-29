@@ -1,3 +1,24 @@
+## Change 27 — 现代简约手机优先改版 + P0/P1/P2 修复（未部署）
+
+- **用户要求**：不改变任何业务流程的前提下，把全站改为现代简约、手机优先（暖纸底 #F4F1EC / 墨色字 / 杉绿 #0F5C4C 纯色按钮 / 系统字体 / 正文 16px / 点击区 ≥44px），并修复 P0/P1/P2 线上问题。**未推送到 ezdrives.net**（按用户要求待明确指示）。
+- **设计改版**：
+  - tokens.css 全新暖纸/墨色/杉绿体系（移除品红紫渐变；gradient 令牌保留为纯色以便所有旧用法直接生效）；dark 主题改为暖暗色。
+  - 首页 hero：单张 Tesla 静态图 + 现有中文主标题 + $30（体验课价）+ 一个按钮；删除自动轮播/圆点/暂停。
+  - 课程卡：删除每卡 Book 按钮与 Most popular 徽章，整卡可点；价格下注明「CAD · HST included」；套餐价不再写成 per lesson。
+  - 底部导航（学员/教练）从玻璃漂浮改为实体条；教练端手机底栏 5 项：今天/日程/收款/学员/更多（更多内含总览/课程/通知/设置）；新增「今天」页（下一节课+电话 tel:+地图导航，非图表）。
+  - 支付弹窗移动端改为底部抽屉（桌面居中）；EMT 面板 390px 不再溢出。
+  - 移动端预约日历：7 天条 + 时间胶囊（不再用一周网格）；当天不可约显示原因。
+- **P0**：
+  - README 移除教练密码并改密（本地 D1 已改；prod 待部署后更新——见报告）。
+  - /api/public/home 不再返回微信收款码/微信号/e-Transfer 邮箱/个人邮箱/手机号；homeContent.heroImages（data-URL 大图）不再下发。
+  - 废除教练 PUT /api/state 整库覆盖 → POST /api/instructor/actions 细粒度接口 + state_version（meta 表，0011）；30 秒轮询不再可能把学员取消/支付写回。
+  - 支付确认必须先核对订单号+凭证再确认（确认步骤独立，拒绝流程与确认完全分离防误触）。
+- **P1**：?course= 深链对游客预选课程；隐私政策/服务条款/24 小时取消规则三页；忘记密码（手机号+短信验证码重置）；10 小时套餐英文缺失不再静默（提示「英文未生成，可重试」且仍可保存）；课程编辑弹窗保存按钮常驻（modal footer 固定）；年资/城市统一（KWCG，faq/标签/地址占位同步）；电话不脱敏 + tel: + 地图导航；支付页 common.yes 生键补齐；enrollment 改为付款成功（cash 批准/paid）时才创建（0011 后 addPayment 不再生成名额）；服务端强制套餐按顺序 + 最多连 2 节。
+- **P2**：套餐总价标签；通知点击跳转到对应课程页；当天不可约原因提示；7 天条+时间胶囊日历。
+- **Cron**：functions/cron.js（onRequestSchedule）+ wrangler.toml [triggers]（每 30 分钟课前 2 小时提醒 + 每日 07:00 课表邮件，America/Toronto，0012 模板）；另提供带 CRON_SECRET 的 POST /api/cron 手动触发。
+- **修改文件**：tokens.css、global 体系（shared.css）、LandingPage.tsx/css、primitives.tsx、CoursesPage×2、StudentShell/css、InstructorDashboardPage.tsx/css、TodayPage.tsx（新）、PaymentsPage.tsx、PaymentModal.tsx、CourseBookingPanel.tsx、WeekCalendar.tsx、calendar.css、StudentBookingPage.tsx、StudentNotificationsPage.tsx、StudentShared.tsx、LoginPage.tsx/css、store.ts、api.ts、state.js、db.js、notification.js、actions.js、instructor/actions.js（新）、auth/forgot.js（新）、auth/reset.js（新）、cron.js（新）、cron.js(api)（新）、migrations 0011/0012、i18n ×2、index.html（www→apex 提示）、manifest、make-preview.mjs、README。
+- **测试**：API 17/17；业务流程回归（买课→确认→预约→取消/改期→套餐顺序→pair 取消→EMT 凭证→enrollment 时机→同日拒绝）ALL PASS；UI 回归 33/33（390/1280，中英）；Preview.html file:// 双击 10/10（hero 文件夹就位）。
+
 # CHANGELOG.md — 需求变更记录
 
 > 每条变更：我的要求 → 涉及页面/功能 → 修改文件 → 是否影响旧功能 → 测试结果。

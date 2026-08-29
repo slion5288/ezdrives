@@ -100,6 +100,38 @@ function ownsCourse(payments, studentId, courseId) {
     (p.status === 'confirmed' || p.status === 'paid' || p.status === 'cash_approved'))
 }
 
+/**
+ * § P1: the first package lesson that is still free (not booked / not done) —
+ * packages MUST be booked strictly in order, server-enforced.
+ * Returns the 0-based lesson index or null when nothing is free.
+ */
+function firstFreeLessonIndex(state, studentId, courseId, course) {
+  const lessons = (course && Array.isArray(course.lessons)) ? course.lessons : []
+  const enrollment = (state.enrollments || []).find((e) => e.studentId === studentId && e.courseId === courseId)
+  const nowMs = Date.now()
+  const liveFor = (i, seq) => (state.appointments || []).some(
+    (a) => a.studentId === studentId && a.courseId === courseId &&
+      (a.lessonIndex === i || a.lessonSequence === seq) && (a.status === 'confirmed' || a.status === 'pending'),
+  )
+  for (let i = 0; i < lessons.length; i++) {
+    const seq = i + 1
+    if (enrollment) {
+      const snap = (enrollment.lessons || []).find((l) => l.sequence_number === seq)
+      if (snap && snap.status === 'completed') continue
+    }
+    if (liveFor(i, seq)) continue
+    const past = (state.appointments || []).some(
+      (a) => a.studentId === studentId && a.courseId === courseId &&
+        (a.lessonIndex === i || a.lessonSequence === seq) &&
+        (a.status === 'confirmed' || a.status === 'pending') &&
+        fromLocal(a.start).getTime() < nowMs,
+    )
+    if (past) continue
+    return i
+  }
+  return null
+}
+
 function hasPending(payments, studentId, courseId) {
   return payments.some((p) => p.studentId === studentId && p.courseId === courseId &&
     (p.status === 'pending' || p.status === 'cash_pending' || p.status === 'wechat_pending' ||
@@ -134,6 +166,58 @@ async function nextSeq(env, table, prefix, count = 1) {
   const row = await env.DB.prepare(`SELECT id FROM ${table} ORDER BY CAST(SUBSTR(id, ${prefix.length + 1}) AS INTEGER) DESC LIMIT 1`).first()
   const max = row ? Number(row.id.slice(prefix.length)) : 0
   return Array.from({ length: count }, (_, i) => prefix + (max + 1 + i))
+}
+
+/**
+ * § P1: create the package Enrollment + lesson snapshot ONLY when the payment
+ * actually succeeds (cash approved / paid / confirmed) — never at purchase.
+ * Idempotent: existing enrollments for (student, course) are left untouched.
+ */
+async function ensureEnrollment(env, state, payment, course, pricing) {
+  const resolvedType = course ? (course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')) : ''
+  if (resolvedType !== 'TEN_HOUR_PACKAGE') return null
+  if (!course || !Array.isArray(course.lessons) || course.lessons.length === 0) return null
+  const courseType = 'TEN_HOUR_PACKAGE'
+  const existing = (state.enrollments || []).find((e) => e.studentId === payment.studentId && e.courseId === payment.courseId)
+  if (existing) return existing
+  const licenseClass = course.license_class || 'NONE'
+  const [enrollSeq] = await nextSeq(env, 'enrollments', 'e')
+  const enrollmentId = 'e' + enrollSeq
+  const now = nowISO()
+  const enrollment = {
+    id: enrollmentId,
+    studentId: payment.studentId,
+    courseId: payment.courseId,
+    courseName: { en: course.name.en, zh: course.name.zh },
+    courseType,
+    licenseClass,
+    originalPrice: pricing ? pricing.originalPrice : payment.original_price ?? course.price,
+    discount: {
+      type: pricing ? pricing.discountType : (payment.discount_type || 'NONE'),
+      discountType: 'PERCENTAGE',
+      discountValue: payment.discount_value ?? 0,
+      discountAmount: payment.discount_amount ?? 0,
+      finalPrice: payment.final_price ?? course.price,
+      currency: 'CAD',
+    },
+    lessons: course.lessons.map((l, i) => ({
+      sequence_number: (l.sequence_number ?? i + 1),
+      name: { en: l.name.en, zh: l.name.zh },
+      description: { en: l.description.en, zh: l.description.zh },
+      is_free_mock_test: l.is_free_mock_test || i === course.lessons.length - 1, // last lesson is the free mock
+      status: 'available',
+    })),
+    createdAt: now,
+    completedLessonCount: 0,
+    status: 'active',
+  }
+  await env.DB.prepare('INSERT INTO enrollments (id, student_id, course_id, status, payload) VALUES (?, ?, ?, ?, ?)')
+    .bind(enrollmentId, payment.studentId, payment.courseId, 'active', JSON.stringify(enrollment))
+    .run()
+  state.enrollments = state.enrollments || []
+  state.enrollments.push(enrollment)
+  payment.enrollmentId = enrollmentId
+  return enrollment
 }
 
 /**
@@ -363,11 +447,9 @@ export async function onRequestPost({ env, request }) {
           ? { en: `${user.name} submitted an e-Transfer for ${course.name.en} ($${pricing.finalPrice}). Mark received once the money arrives.`, zh: `${user.name} 提交了对${course.name.zh}的 EMT 转账（${pricing.finalPrice} 加元）。收到款项后请标记已收款。` }
           : { en: `${user.name} requested to pay for ${course.name.en} ($${pricing.finalPrice}). Open to confirm.`, zh: `${user.name} 请求支付${course.name.zh}（${pricing.finalPrice} 加元）。点击查看并确认收款。` }
 
-    // ---- Package: create Enrollment + Lesson Snapshot (§11/§12) ----
-    // (courseType + licenseClass already resolved above for the purchase check.)
-    const licenseClass = course.license_class || 'NONE'
-    let enrollmentId
-    let enrollment
+    // ---- § P1: enrollment is created ONLY when the payment succeeds
+    // (cash approved / paid / confirmed) — never at purchase time. Unpaid
+    // requests must not generate bookable package slots. ----
     const inserts = [
       env.DB.prepare('INSERT INTO payments (id, student_id, status, payload) VALUES (?, ?, ?, ?)')
         .bind(paymentId, studentId, effectiveStatus, JSON.stringify(payment)),
@@ -387,54 +469,12 @@ export async function onRequestPost({ env, request }) {
         })),
     ]
 
-    if (courseType === 'TEN_HOUR_PACKAGE' && Array.isArray(course.lessons)) {
-      const [enrollSeq] = await nextSeq(env, 'enrollments', 'e')
-      enrollmentId = 'e' + enrollSeq
-      enrollment = {
-        id: enrollmentId,
-        studentId,
-        courseId,
-        courseName: { en: course.name.en, zh: course.name.zh },
-        courseType,
-        licenseClass,
-        originalPrice: pricing.originalPrice,
-        discount: {
-          type: pricing.discountType,
-          discountType: pricing.discountType === 'NONE' ? 'PERCENTAGE' : pricing.discountSource === 'student' ? course.studentDiscount?.type || 'PERCENTAGE' : course.referralDiscount?.type || 'PERCENTAGE',
-          discountValue: pricing.discountValue,
-          discountAmount: pricing.discountAmount,
-          finalPrice: pricing.finalPrice,
-          currency: 'CAD',
-        },
-        referrer: referral && referral.valid ? { referrerStudentId: referral.studentId, referralPhone } : null,
-        lessons: course.lessons.map((l, i) => ({
-          sequence_number: (l.sequence_number ?? i + 1),
-          name: { en: l.name.en, zh: l.name.zh },
-          description: { en: l.description.en, zh: l.description.zh },
-          is_free_mock_test: l.is_free_mock_test || i === course.lessons.length, // last lesson (11) is the free mock
-          status: 'available',
-        })),
-        createdAt: now,
-        completedLessonCount: 0,
-        status: 'active',
-      }
-      inserts.push(
-        env.DB.prepare('INSERT INTO enrollments (id, student_id, course_id, status, payload) VALUES (?, ?, ?, ?, ?)')
-          .bind(enrollmentId, studentId, courseId, 'active', JSON.stringify(enrollment)),
-      )
-      payment.enrollmentId = enrollmentId
-    }
-
     await env.DB.batch(inserts)
     state.payments.push(payment)
     state.notifications.unshift(
       { id: notifId, role: 'student', recipientId: studentId, type: 'payment_pending', title: studentPendingTitle, body: studentPendingBody, read: false, at: now, paymentId },
       { id: notifId2, role: 'instructor', recipientId: 'instructor', type: 'payment_pending', title: instructorPendingTitle, body: instructorPendingBody, read: false, at: now, paymentId },
     )
-    if (enrollment) {
-      state.enrollments = state.enrollments || []
-      state.enrollments.unshift(enrollment)
-    }
     // Best-effort purchase emails (§5-§6): instructor gets NEW_PURCHASE.
     try {
       const { sendNotification } = await import('../../lib/notification.js')
@@ -582,6 +622,12 @@ export async function onRequestPost({ env, request }) {
         return fail('Invalid lesson selection.')
       }
       if (firstLessonIndex + count > lessonCount) return fail('Not enough lessons in this package.')
+      // § P1: strict sequential order + max 2 consecutive, server-enforced —
+      // a student can never skip ahead to a later lesson.
+      if (count > 2) return fail('At most 2 consecutive lessons can be booked at once.')
+      const firstFree = firstFreeLessonIndex(state, studentId, courseId, course)
+      if (firstFree === null) return fail('No free lessons in this package.')
+      if (firstLessonIndex !== firstFree) return fail('Lessons must be booked in order.')
     }
     const courseType = course.course_type || (course.examCar ? 'ROAD_TEST_CAR' : course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')
     if (eligibility === 'first') {
@@ -1114,13 +1160,23 @@ export async function onRequestPost({ env, request }) {
       ...(next.rejectReason ? { rejectReason: next.rejectReason } : {}),
     }
     const [nId] = await nextSeq(env, 'notifications', 'n')
-    await env.DB.batch([
+    const stmts = [
       env.DB.prepare('UPDATE payments SET status = ?, payload = ? WHERE id = ?').bind(next.status, JSON.stringify(updated), paymentId),
       env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
         .bind(nId, 'student', payment.studentId, JSON.stringify({
           id: nId, role: 'student', recipientId: payment.studentId, type: next.notifType, title: next.title, body: next.body, read: false, at: now, paymentId,
         })),
-    ])
+    ]
+    // § P1: the package enrollment is created exactly when the payment
+    // succeeds — CASH_APPROVED unlocks lesson 1, paid/confirmed unlock all.
+    if (next.status === 'confirmed' || next.status === 'cash_approved' || next.status === 'paid') {
+      const enr = await ensureEnrollment(env, state, payment, course, null)
+      if (enr) updated.enrollmentId = enr.id
+    }
+    await env.DB.batch(stmts)
+    if (updated.enrollmentId) {
+      await env.DB.prepare('UPDATE payments SET payload = ? WHERE id = ?').bind(JSON.stringify(updated), paymentId).run()
+    }
     state.payments = state.payments.map((p) => (p.id === paymentId ? updated : p))
     state.notifications.unshift({ id: nId, role: 'student', recipientId: payment.studentId, type: next.notifType, title: next.title, body: next.body, read: false, at: now, paymentId })
     // Best-effort student email: PURCHASE_CONFIRMED / PAYMENT_REJECTED /

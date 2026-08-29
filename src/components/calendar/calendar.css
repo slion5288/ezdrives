@@ -788,3 +788,86 @@
     font-size: var(--font-size-sm);
   }
 }
+
+/* --- § P2: mobile booking — time pills (7-day strip + pills, no week grid) --- */
+.ios-week__pills {
+  display: none;
+}
+@media (max-width: 768px) {
+  .ios-week__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .ios-week__pills-empty {
+    width: 100%;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-soft);
+    text-align: center;
+    padding: var(--space-3);
+  }
+  .ios-week__pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 76px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  }
+  .ios-week__pill:hover {
+    border-color: var(--color-accent);
+  }
+  .ios-week__pill.is-selected {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-on-brand);
+  }
+  .ios-week__pillcard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 52px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    font-size: var(--font-size-sm);
+  }
+  .ios-week__pillcard.is-mine {
+    border-left: 3px solid var(--color-accent);
+    background: var(--color-surface);
+  }
+  .ios-week__pillcard.is-other {
+    border-left: 3px solid var(--color-warning);
+    background: var(--color-surface-2);
+    color: var(--color-text-muted);
+  }
+  .ios-week__pillcard.is-done {
+    opacity: 0.6;
+  }
+  .ios-week__pillcard-time {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    white-space: nowrap;
+  }
+  .ios-week__pillcard-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Hide the timeline grid on mobile in the student booking view */
+  .ios-week__body,
+  .ios-week__gutter {
+    display: none;
+  }
+}

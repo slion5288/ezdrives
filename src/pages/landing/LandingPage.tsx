@@ -7,9 +7,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {Calendar, CalendarCheck, Car, CheckCircle2, ChevronDown, GraduationCap, Mail, MapPin, Phone, Pause, Play, Quote, ShieldCheck, Star, Users, Zap, } from 'lucide-react'
+import {Calendar, CalendarCheck, Car, CheckCircle2, ChevronDown, GraduationCap, Mail, Navigation, Phone, Play, Quote, ShieldCheck, Star, Users, Zap, } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
-import { getSession, initPublicHome, isPublicReady, maskPhone, sortCoursesForDisplay, useAppState } from '../../data/store'
+import { courseTypeOf, getSession, initPublicHome, isPublicReady, sortCoursesForDisplay, trialPriceOf, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
 import { G1_COUNTS } from '../../data/g1'
 import { G1_IMAGE, HERO_IMAGES } from '../../data/assets'
@@ -19,69 +19,30 @@ import LandingSubHeader from './LandingSubHeader'
 import './LandingPage.css'
 import { Button } from '../../components/shared/Button'
 
-// --- Hero carousel: full-bleed HD slides (Apple-style headline) ---
+// --- Hero: ONE static Tesla photo (no auto-rotating carousel) ---
+// Uses the real photo placed in /hero/ (hero-1.jpg — see public/hero/README.txt);
+// falls back to the bundled base64 image on error.
+const HERO_FILES = ['/hero/hero-1.jpg']
 
-// Uses the real photos placed in /hero/ (hero-1.jpg … hero-6.jpg — see
-// public/hero/README.txt); falls back to the bundled base64 images on error.
-const HERO_FILES = ['/hero/hero-1.jpg', '/hero/hero-2.jpg', '/hero/hero-3.jpg', '/hero/hero-4.jpg', '/hero/hero-5.jpg', '/hero/hero-6.jpg']
-
-function HeroCarousel({ slides }: { slides?: string[] }): JSX.Element {
-  const t = useT()
-  const locale = useLocale()
-  const [idx, setIdx] = useState(0)
-  const [paused, setPaused] = useState(false)
-  const reduceMotion = useMemo(() => {
-    try {
-      return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-    } catch {
-      return false
-    }
-  }, [])
-  const slideCount = slides?.length ?? HERO_FILES.length
-  useEffect(() => {
-    // Respect reduced-motion: never auto-advance.
-    if (reduceMotion) return
-    if (paused) return
-    const id = window.setInterval(() => setIdx((i) => (i + 1) % slideCount), 5000)
-    return () => window.clearInterval(id)
-  }, [slideCount, paused, reduceMotion])
+function HeroMedia(): JSX.Element {
+  const slide = HERO_IMAGES[0]
+  // § file:// (double-clicked Preview.html): use a relative hero path — the
+  // make-preview step copies public/hero next to Preview.html. Online: /hero/…
+  const src =
+    typeof window !== 'undefined' && window.location.protocol === 'file:'
+      ? './hero/hero-1.jpg'
+      : HERO_FILES[0]
   return (
     <div className="landing-hero__media" aria-hidden="true">
-      {(slides ?? HERO_FILES).map((file, i) => {
-        const slide = HERO_IMAGES[i % HERO_IMAGES.length]
-        return (
-        <div key={i} className={`landing-hero__slide${i === idx ? ' is-active' : ''}`}>
-          <img
-            src={file}
-            onError={(e) => {
-              const target = e.currentTarget
-              if (target.src !== slide.src) target.src = slide.src
-            }}
-            alt={locale === 'zh' ? slide.alt.zh : slide.alt.en}
-          />
-        </div>
-        )
-      })}
-      <div className="landing-hero__dots">
-        {Array.from({ length: slideCount }, (_, i) => (
-          <button
-            key={i}
-            type="button"
-            className={`landing-hero__dot${i === idx ? ' is-active' : ''}`}
-            onClick={() => setIdx(i)}
-            aria-label={t('landing.hero.slide', { n: i + 1 })}
-          />
-        ))}
-        <button
-          type="button"
-          className="landing-hero__pause"
-          onClick={() => setPaused((v) => !v)}
-          aria-label={paused ? t('landing.hero.resume') : t('landing.hero.pause')}
-          title={paused ? t('landing.hero.resume') : t('landing.hero.pause')}
-        >
-          {paused ? <Play size={13} fill="currentColor" /> : <Pause size={13} fill="currentColor" />}
-        </button>
-      </div>
+      <img
+        className="landing-hero__slide landing-hero__slide--static"
+        src={src}
+        onError={(e) => {
+          const target = e.currentTarget
+          if (target.src !== slide.src) target.src = slide.src
+        }}
+        alt=""
+      />
     </div>
   )
 }
@@ -138,8 +99,8 @@ export default function LandingPage(): JSX.Element {
     return o ? (locale === 'zh' ? o.zh : o.en) : t(key)
   }
 
-  /** Admin-edited hero slides (data URLs) or null to keep the bundled photos. */
-  const heroSlides = state.homeContent?.heroImages?.filter((v): v is string => typeof v === 'string' && v.length > 0)
+  /** Admin-edited hero slides (data URLs) — preserved for admin content
+   *  compatibility; the hero renders a single static photo regardless. */
   const instructorsList = state.homeContent?.instructors?.length ? state.homeContent.instructors : null
   // While the public data is still loading, hide the seed instructor placeholder.
   const placeholderInstructor = visitor && !publicReady
@@ -164,18 +125,14 @@ export default function LandingPage(): JSX.Element {
   /** Every active course — desktop shows them all in a horizontal rail.
    *  §Trial: the Trial Lesson (体验课) always comes first. */
   const allCourses = visitor && !publicReady ? [] : sortCoursesForDisplay(state.courses.filter((c) => c.active))
-  /** Mobile shows a few cards + a "view all" entry to the /courses page. */
+  /** §C: no per-card "popular" badges or duplicate Book buttons on the homepage —
+   *  every card links to the course; one view-all CTA below the rail. */
   const shownCourses = isMobile ? allCourses.slice(0, 3) : allCourses
-  // §C: primary button = first course of each (courseType+license) group —
-  // never positional, so adding/reordering courses can't change button colors.
-  const firstOfGroup = (c: { id: string; course_type?: string; type?: string; license_class?: string; examCar?: boolean }): boolean => {
-    const key = `${c.course_type ?? (c.examCar ? 'ROAD_TEST_CAR' : c.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${c.license_class ?? (c.examCar ? 'NONE' : c.type === 'package' ? 'G2' : 'G2')}`
-    const idx = shownCourses.findIndex((x) => {
-      const kx = `${x.course_type ?? (x.examCar ? 'ROAD_TEST_CAR' : x.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON')}|${x.license_class ?? (x.examCar ? 'NONE' : x.type === 'package' ? 'G2' : 'G2')}`
-      return kx === key
-    })
-    return idx === shownCourses.findIndex((x) => x.id === c.id)
-  }
+  /** Hero price: the trial lesson's price (default $30 per the course list). */
+  const trialPrice = useMemo(() => {
+    const trial = allCourses.find((c) => courseTypeOf(c) === 'TRIAL_LESSON')
+    return trial ? trialPriceOf(trial) : 30
+  }, [allCourses])
   /** Videos with the homepage toggle on, ordered by the instructor. */
   const homeVideos = (visitor && !publicReady ? [] : state.videos)
     .filter((v) => v.active)
@@ -187,15 +144,20 @@ export default function LandingPage(): JSX.Element {
       <LandingSubHeader />
 
       <main>
-        {/* ---- Hero: full-bleed HD carousel + headline (Apple-style) ---- */}
+        {/* ---- Hero: one static Tesla photo + headline + trial price + ONE CTA ---- */}
         <section className="landing-hero">
-          <HeroCarousel slides={heroSlides} />
+          <HeroMedia />
           <div className="landing-hero__content container">
             <LandingBadge tone="success" dot className="landing-hero__badge">
               {t('landing.badge')} · {t('landing.instructors.years', { years: instructorYears })}
             </LandingBadge>
             <h1 className="landing-hero__title">{c('landing.hero.title')}</h1>
             <p className="landing-hero__subtitle">{c('landing.hero.subtitle')}</p>
+            <div className="landing-hero__price">
+              <span className="landing-hero__price-amount tabular-nums">${trialPrice}</span>
+              <span className="landing-hero__price-note">{t('landing.hero.trialFrom')}</span>
+              <span className="landing-hero__price-tax">{t('landing.priceTaxNote')}</span>
+            </div>
             <div className="landing-hero__ctas">
               <Button size="lg" to="/student/book">
                 {t('landing.cta.book')}
@@ -262,7 +224,6 @@ export default function LandingPage(): JSX.Element {
                   <CourseCard
                     key={course.id}
                     course={course}
-                    popular={firstOfGroup(course)}
                     to={`/student/book?course=${course.id}`}
                     t={t}
                     pick={pick}
@@ -555,22 +516,39 @@ export default function LandingPage(): JSX.Element {
             </div>
             <div className="landing-footer__col">
               <h4>{t('landing.footer.contact')}</h4>
-              <a href={`mailto:${instructorEmail}`}>
-                <Mail size={15} />
-                {instructorEmail}
-              </a>
-              <a href={`tel:${instructorPhone.replace(/\s/g, '')}`}>
-                <Phone size={15} />
-                {maskPhone(instructorPhone)}
-              </a>
-              <span className="landing-footer__contact-line">
-                <MapPin size={15} />
+              {/* § P0: the public API never returns the instructor's personal
+                  email/phone — visitors get the map + booking CTA instead. */}
+              {instructorEmail ? (
+                <a href={`mailto:${instructorEmail}`}>
+                  <Mail size={15} />
+                  {instructorEmail}
+                </a>
+              ) : null}
+              {instructorPhone ? (
+                <a href={`tel:${instructorPhone.replace(/\s/g, '')}`}>
+                  <Phone size={15} />
+                  {instructorPhone}
+                </a>
+              ) : null}
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(t('ics.location'))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Navigation size={15} />
                 {t('ics.location')}
-              </span>
+              </a>
             </div>
           </div>
           <div className="landing-footer__bottom">
             <span>{t('landing.footer.rights')}</span>
+            <span className="landing-footer__legal">
+              <Link to="/legal/privacy">{t('legal.privacy')}</Link>
+              <span aria-hidden="true">·</span>
+              <Link to="/legal/terms">{t('legal.terms')}</Link>
+              <span aria-hidden="true">·</span>
+              <Link to="/legal/cancellation">{t('legal.cancellation')}</Link>
+            </span>
           </div>
         </div>
       </footer>

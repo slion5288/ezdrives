@@ -20,6 +20,8 @@ export interface ApiState {
   state?: unknown
   token?: string
   user?: ApiUser
+  /** Monotonic server state version (GET /api/state, POST /api/instructor/actions). */
+  version?: number
 }
 
 async function request<T = ApiState>(path: string, options: { method?: string; body?: unknown; token?: string } = {}): Promise<T> {
@@ -44,6 +46,16 @@ export async function apiSendCode(phone: string): Promise<{ ok: boolean; error?:
   return request('/auth/send-code', { method: 'POST', body: { phone } })
 }
 
+/** POST /api/auth/forgot — start a password reset (SMS code) */
+export async function apiForgot(phone: string): Promise<{ ok: boolean; error?: string }> {
+  return request('/auth/forgot', { method: 'POST', body: { phone } })
+}
+
+/** POST /api/auth/reset — verify SMS code + set a new password */
+export async function apiReset(phone: string, code: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  return request('/auth/reset', { method: 'POST', body: { phone, code, password } })
+}
+
 /** POST /api/auth/register */
 export async function apiRegister(body: { role: string; name: string; email?: string; phone: string; password: string; address?: string }): Promise<ApiState> {
   return request('/auth/register', { method: 'POST', body })
@@ -61,9 +73,10 @@ export async function apiFetchState(token: string): Promise<ApiState> {
   return request(`/state?tz=${tz}`, { token })
 }
 
-/** PUT /api/state — instructor full save */
-export async function apiPutState(token: string, state: unknown): Promise<ApiState> {
-  return request('/state', { method: 'PUT', body: { state }, token })
+/** § P0: fine-grained instructor writes — ONE entity per call, versioned.
+ *  Replaces the abolished full-state PUT /api/state. */
+export async function apiInstructorAction(token: string, action: string, args: Record<string, unknown>): Promise<ApiState> {
+  return request('/instructor/actions', { method: 'POST', body: { action, args }, token })
 }
 
 /** POST /api/student/actions — student & instructor mutations */

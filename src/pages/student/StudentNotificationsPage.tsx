@@ -14,6 +14,7 @@ import { StudentShell } from './StudentShell'
 import { relativeTime } from './studentFormat'
 import { useToast } from '../../components/shared'
 import { Button } from '../../components/shared/Button'
+import { useNavigate } from 'react-router-dom'
 import './student.css'
 
 type IconTone = 'success' | 'danger' | 'info' | 'warning'
@@ -48,6 +49,7 @@ function StudentNotificationsContent(): JSX.Element {
   const locale = useLocale()
   const state = useAppState()
   const { showToast } = useToast()
+  const navigate = useNavigate()
 
   const session = getSession()
   const studentId = session.studentId ?? ''
@@ -59,6 +61,13 @@ function StudentNotificationsContent(): JSX.Element {
   const handleMarkAllRead = (): void => {
     markAllRead()
     showToast('success', t('common.toast.saved'))
+  }
+
+  /** § P2: tapping a notification marks it read AND jumps to the related
+   *  lesson — the dashboard's calendar auto-centres on the next booked day. */
+  const openNotification = (n: { id: string; read: boolean }): void => {
+    if (!n.read) markNotificationRead(n.id)
+    navigate('/student')
   }
 
   return (
@@ -81,9 +90,7 @@ function StudentNotificationsContent(): JSX.Element {
                 <button
                   type="button"
                   className={`student-notif-card${n.read ? '' : ' unread'}`}
-                  onClick={() => {
-                    if (!n.read) markNotificationRead(n.id)
-                  }}
+                  onClick={() => openNotification(n)}
                 >
                   <span className={`student-notif-icon ${tone}`}>
                     <Icon size={16} />

@@ -59,11 +59,14 @@ interface ModalFrameProps {
   onClose: () => void
   footer?: ReactNode
   children: ReactNode
+  /** 'dialog' = centered modal (default); 'drawer' = bottom sheet on mobile. */
+  variant?: 'dialog' | 'drawer'
+  maxHeight?: number | string
 }
 
-export function ModalFrame({ open, title, onClose, footer, children }: ModalFrameProps): JSX.Element | null {
+export function ModalFrame({ open, title, onClose, footer, children, variant, maxHeight }: ModalFrameProps): JSX.Element | null {
   return (
-    <SharedModal open={open} title={title} onClose={onClose} footer={footer}>
+    <SharedModal open={open} title={title} onClose={onClose} footer={footer} variant={variant} maxHeight={maxHeight}>
       {children}
     </SharedModal>
   )

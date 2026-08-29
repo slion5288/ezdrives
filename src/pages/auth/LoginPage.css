@@ -176,3 +176,20 @@
   outline-offset: 2px;
   border-color: var(--color-accent);
 }
+
+/* § P1: forgot password link — quiet, above the register switch */
+.login__forgot {
+  display: block;
+  margin: var(--space-2) 0 0;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.login__forgot:hover {
+  color: var(--color-accent-hover);
+}

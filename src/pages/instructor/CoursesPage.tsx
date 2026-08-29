@@ -330,6 +330,15 @@ export default function CoursesPage({ state }: { state: AppState }): JSX.Element
       await new Promise((r) => setTimeout(r, 50))
       const updated = formRef.current
       if (updated) {
+        // § P1: never fail the save on a failed translation — but never stay
+        // silent about it either. Missing English (esp. package lesson names)
+        // shows a clear "英文未生成，可重试" warning.
+        const stillMissingEn =
+          !updated.nameEn.trim() || !updated.descEn.trim() ||
+          (updated.courseType === 'TEN_HOUR_PACKAGE' && updated.lessons.some((l) => !l.nameEn.trim() || !l.descEn.trim()))
+        if (stillMissingEn) {
+          toast.push({ tone: 'info', title: t('instructor.courses.enMissingWarn') })
+        }
         doSave(updated)
         return
       }

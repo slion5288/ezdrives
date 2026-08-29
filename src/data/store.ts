@@ -34,7 +34,7 @@ import {
   startOfDay,
   toLocalISO,
 } from './timeEngine'
-import { apiAction, apiFetchState, apiLogin, apiLogout, apiPublicHome, apiPutState, apiRegister, apiSendCode } from './api'
+import { apiAction, apiFetchState, apiForgot, apiInstructorAction, apiLogin, apiLogout, apiPublicHome, apiRegister, apiReset, apiSendCode } from './api'
 import type { ApiUser } from './api'
 
 export type { AppState, Appointment, Course, CourseLesson, CourseType, DayException, DiscountConfig, Enrollment, HomeContent, HomeInstructor, InstructorBank, LessonSnapshot, LicenseClass, Notification, PayApiConfig, Payment, PaymentMethod, Student, TeachingVideo, Vehicle, WeeklyRule } from './types'
@@ -142,6 +142,8 @@ function readSession(): Session {
 let state: AppState = seed()
 let stateLoaded = false
 let lastSyncISO: string = toLocalISO(new Date())
+/** § P0: last server state version — monotonic guard for polls + saves. */
+let stateVersion = 0
 
 let session: Session = readSession()
 
@@ -168,25 +170,46 @@ const notifyListeners = (): void => {
   listeners.forEach((l) => l())
 }
 
-/** Deep-clone → mutate → refresh sync stamp → notify → persist (instructor). */
+/** Deep-clone → mutate → refresh sync stamp → notify (optimistic local UI). */
 function mutate(fn: (draft: AppState) => void): void {
   const draft = cloneState(state)
   fn(draft)
   state = draft
   lastSyncISO = toLocalISO(new Date())
   notifyListeners()
-  pushState()
 }
 
-/** After an instructor mutation, persist the whole state to the backend. */
-function pushState(): void {
+/** § P0: serialized queue of fine-grained instructor writes. Each call
+ *  persists ONE entity server-side; responses never clobber the optimistic
+ *  local state (the 30s poll applies authoritative state with a version guard).
+ *  Student-created appointments/payments are never touched by these writes. */
+let saveChain: Promise<void> = Promise.resolve()
+function persist(action: string, args: Record<string, unknown>): void {
   if (!session.token) return
-  const snapshot = state
-  apiPutState(session.token, snapshot)
+  const token = session.token
+  saveChain = saveChain
+    .then(() => apiInstructorAction(token, action, args))
     .then((res) => {
-      if (!res.ok) console.error('[store] pushState failed:', res.error)
+      if (!res.ok) {
+        console.error(`[store] persist ${action} failed:`, res.error)
+      } else if (typeof res.version === 'number') {
+        stateVersion = Math.max(stateVersion, res.version)
+      }
     })
-    .catch((e) => console.error('[store] pushState error:', e))
+    .catch((e) => console.error(`[store] persist ${action} error:`, e))
+}
+
+/** Apply a server response only when it is not older than what we have. */
+function applyState(res: { ok?: boolean; state?: unknown; version?: number }): boolean {
+  if (!res.ok || !res.state) return false
+  const v = typeof res.version === 'number' ? res.version : stateVersion + 1
+  if (v < stateVersion) return false
+  state = res.state as AppState
+  stateVersion = v
+  stateLoaded = true
+  lastSyncISO = toLocalISO(new Date())
+  notifyListeners()
+  return true
 }
 
 /**
@@ -198,10 +221,8 @@ export async function initStateFromServer(): Promise<boolean> {
   try {
     const res = await apiFetchState(session.token)
     if (res.ok && res.state) {
-      state = res.state as AppState
-      stateLoaded = true
-      lastSyncISO = toLocalISO(new Date())
-      notifyListeners()
+      const applied = applyState(res)
+      if (!applied) return false
       return true
     }
     if (res.error === 'Not authenticated') clearSession()
@@ -399,15 +420,8 @@ function lessonState(source: AppState, studentId: string, courseId: string, less
 
 // --- Appointments (server-backed) ---
 
-async function applyServerState(res: { ok?: boolean; state?: unknown; error?: string }): Promise<boolean> {
-  if (res.ok && res.state) {
-    state = res.state as AppState
-    stateLoaded = true
-    lastSyncISO = toLocalISO(new Date())
-    notifyListeners()
-    return true
-  }
-  return false
+async function applyServerState(res: { ok?: boolean; state?: unknown; version?: number; error?: string }): Promise<boolean> {
+  return applyState(res)
 }
 
 export async function bookAppointment(
@@ -548,6 +562,7 @@ export function setWeeklyRules(rules: WeeklyRule[]): void {
     draft.weeklyRules = rules
     autoCancelUnfit(draft)
   })
+  persist('saveWeeklyRules', { rules })
 }
 
 /** Set the mandatory break (minutes) between lessons of different students. */
@@ -555,6 +570,7 @@ export function setBreakMin(breakMin: number): void {
   mutate((draft) => {
     draft.instructor.breakMin = Math.max(0, Math.min(60, Math.round(breakMin)))
   })
+  persist('updateReceiveSettings', { settings: { breakMin } })
 }
 
 /** Instructor uploads their personal WeChat Pay receive QR (data URL). */
@@ -562,6 +578,7 @@ export function setWechatQr(dataUrl: string): void {
   mutate((draft) => {
     draft.instructor.wechatQr = dataUrl || undefined
   })
+  persist('updateReceiveSettings', { settings: { wechatQr: dataUrl || undefined } })
 }
 
 /** Instructor sets the Interac e-Transfer receiving email. */
@@ -569,6 +586,7 @@ export function setEmtEmail(email: string): void {
   mutate((draft) => {
     draft.instructor.emtEmail = email.trim() || undefined
   })
+  persist('updateReceiveSettings', { settings: { emtEmail: email.trim() || undefined } })
 }
 
 /** § payment overhaul: instructor saves their WeChat ID (微信号). */
@@ -576,31 +594,36 @@ export function setWechatId(wechatId: string): void {
   mutate((draft) => {
     draft.instructor.wechatId = wechatId.trim() || undefined
   })
+  persist('updateReceiveSettings', { settings: { wechatId: wechatId.trim() || undefined } })
 }
 
 /** Instructor saves their bank account details. */
 export function setBank(bank: InstructorBank): void {
+  const clean = {
+    bankName: bank.bankName?.trim() || undefined,
+    holderName: bank.holderName?.trim() || undefined,
+    transit: bank.transit?.trim() || undefined,
+    institution: bank.institution?.trim() || undefined,
+    account: bank.account?.trim() || undefined,
+  }
   mutate((draft) => {
-    draft.instructor.bank = {
-      bankName: bank.bankName?.trim() || undefined,
-      holderName: bank.holderName?.trim() || undefined,
-      transit: bank.transit?.trim() || undefined,
-      institution: bank.institution?.trim() || undefined,
-      account: bank.account?.trim() || undefined,
-    }
+    draft.instructor.bank = clean
   })
+  persist('updateReceiveSettings', { settings: { bank: clean } })
 }
 
 /** Instructor saves online payment API credentials (Stripe / PayPal). */
 export function setPayConfig(cfg: PayApiConfig): void {
+  const clean = {
+    stripeKey: cfg.stripeKey?.trim() || undefined,
+    stripeUrl: cfg.stripeUrl?.trim() || undefined,
+    paypalClientId: cfg.paypalClientId?.trim() || undefined,
+    paypalUrl: cfg.paypalUrl?.trim() || undefined,
+  }
   mutate((draft) => {
-    draft.instructor.payConfig = {
-      stripeKey: cfg.stripeKey?.trim() || undefined,
-      stripeUrl: cfg.stripeUrl?.trim() || undefined,
-      paypalClientId: cfg.paypalClientId?.trim() || undefined,
-      paypalUrl: cfg.paypalUrl?.trim() || undefined,
-    }
+    draft.instructor.payConfig = clean
   })
+  persist('updateReceiveSettings', { settings: { payConfig: clean } })
 }
 
 /** Upsert an exception by date; existing bookings that no longer fit auto-cancel. */
@@ -611,12 +634,14 @@ export function addException(exp: DayException): void {
     else draft.exceptions.push(exp)
     autoCancelUnfit(draft)
   })
+  persist('saveException', { exception: exp })
 }
 
 export function removeException(date: string): void {
   mutate((draft) => {
     draft.exceptions = draft.exceptions.filter((e) => e.date !== date)
   })
+  persist('removeException', { date })
 }
 
 /** Instructor saves their own public profile (name / phone / email / bio). */
@@ -624,6 +649,7 @@ export function updateInstructorProfile(profile: Partial<AppState['instructor']>
   mutate((draft) => {
     draft.instructor = { ...draft.instructor, ...profile }
   })
+  persist('updateInstructorProfile', { profile })
 }
 
 // --- Courses ---
@@ -635,6 +661,7 @@ export function saveCourse(input: Course): Course {
     if (idx >= 0) draft.courses[idx] = course
     else draft.courses.push(course)
   })
+  persist('saveCourse', { course })
   return course
 }
 
@@ -646,6 +673,7 @@ export function deleteCourse(id: string): void {
     if (referenced) draft.courses[idx] = { ...draft.courses[idx], active: false }
     else draft.courses.splice(idx, 1)
   })
+  persist('deleteCourse', { id })
 }
 
 export function toggleCourse(id: string): void {
@@ -653,6 +681,7 @@ export function toggleCourse(id: string): void {
     const course = draft.courses.find((c) => c.id === id)
     if (course) course.active = !course.active
   })
+  persist('toggleCourse', { id })
 }
 
 // --- Vehicles ---
@@ -664,6 +693,7 @@ export function saveVehicle(input: Vehicle): Vehicle {
     if (idx >= 0) draft.vehicles[idx] = vehicle
     else draft.vehicles.push(vehicle)
   })
+  persist('saveVehicle', { vehicle })
   return vehicle
 }
 
@@ -672,6 +702,7 @@ export function deleteVehicle(id: string): void {
     const idx = draft.vehicles.findIndex((v) => v.id === id)
     if (idx >= 0) draft.vehicles.splice(idx, 1)
   })
+  persist('deleteVehicle', { id })
 }
 
 // --- Teaching videos (homepage 视频) ---
@@ -688,6 +719,7 @@ export function saveVideo(input: TeachingVideo): TeachingVideo {
     if (idx >= 0) draft.videos[idx] = video
     else draft.videos.push(video)
   })
+  persist('saveVideo', { video })
   return video
 }
 
@@ -696,6 +728,7 @@ export function deleteVideo(id: string): void {
     const idx = draft.videos.findIndex((v) => v.id === id)
     if (idx >= 0) draft.videos.splice(idx, 1)
   })
+  persist('deleteVideo', { id })
 }
 
 // --- Payments (现金 / 微信支付 / 在线支付, confirmed by the instructor) ---
@@ -732,6 +765,7 @@ export function setPaymentMethods(methods: PaymentMethod[]): void {
   mutate((draft) => {
     draft.instructor.paymentMethods = next
   })
+  persist('updateReceiveSettings', { settings: { paymentMethods: next } })
 }
 
 const METHOD_LABELS_EN: Record<PaymentMethod, string> = {
@@ -948,6 +982,16 @@ export async function login(phone: string, password: string): Promise<LoginResul
 /** Request an SMS verification code (Twilio). */
 export async function sendVerificationCode(phone: string): Promise<{ ok: boolean; error?: string }> {
   return apiSendCode(phone)
+}
+
+/** § P1: forgot password — request an SMS reset code. */
+export async function requestPasswordReset(phone: string): Promise<{ ok: boolean; error?: string }> {
+  return apiForgot(phone)
+}
+
+/** § P1: forgot password — verify the SMS code and set a new password. */
+export async function resetPassword(phone: string, code: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  return apiReset(phone, code, password)
 }
 
 /** Real registration via the backend (student, SMS-verified). */

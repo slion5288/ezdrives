@@ -375,13 +375,6 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
         <CertificateUploadCard course={course} studentId={studentId} t={t} />
       ) : (
       <>
-      {/* Instructor break notice — links the break setting to available times */}
-      {(state.instructor.breakMin ?? 0) > 0 ? (
-        <div className="course-booking__break">
-          <Coffee size={15} aria-hidden="true" />
-          <span>{t('student.booking.breakInfo', { break: state.instructor.breakMin })}</span>
-        </div>
-      ) : null}
       {!purchased ? (
         <div className="course-booking__locked">
           <p>
@@ -509,6 +502,14 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
         }}
       />
 
+      {/* § P2: same-day booking is never allowed — say WHY, not just hide it */}
+      {dateKey(selectedDate) === dateKey(new Date()) ? (
+        <div className="course-booking__today-note">
+          <CalendarClock size={15} aria-hidden="true" />
+          <span>{t('student.booking.todayReason')}</span>
+        </div>
+      ) : null}
+
       <WeekCalendar
         weekStart={weekStart}
         state={state}
@@ -524,6 +525,15 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
         onSelectSlot={bookingLocked ? undefined : (slot) => setSelectedStart(slot)}
         onSelectAppointment={(appt) => setDetailAppt(appt)}
       />
+
+      {/* § user decision: the break notice sits BELOW the calendar so the
+          course chips stay visually attached to the time grid. */}
+      {(state.instructor.breakMin ?? 0) > 0 ? (
+        <div className="course-booking__break">
+          <Coffee size={15} aria-hidden="true" />
+          <span>{t('student.booking.breakInfo', { break: state.instructor.breakMin })}</span>
+        </div>
+      ) : null}
 
       {/* Appointment detail — click an existing lesson to see full info */}
       {detailAppt ? (

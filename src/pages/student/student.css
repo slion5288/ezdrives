@@ -326,19 +326,16 @@
 
   .student-bottom-nav {
     position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 50;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    background: color-mix(in srgb, var(--color-surface) 84%, transparent);
-    -webkit-backdrop-filter: blur(18px) saturate(1.6);
-    backdrop-filter: blur(18px) saturate(1.6);
-    border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
-    border-radius: 20px;
-    box-shadow: var(--shadow-pop);
-    overflow: hidden;
+    /* § redesign: simple solid bar — no glass, no floating pill */
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .student-bottom-link {
@@ -346,8 +343,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 3px;
-    padding: 8px 0 6px;
+    height: 56px;
+    padding: 6px 0;
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
     color: var(--color-text-muted);
@@ -1777,23 +1776,36 @@
   color: var(--color-text-soft);
 }
 .course-booking__courses-list {
-  display: flex;
-  flex-wrap: wrap;
+  /* § user decision: every course box has the SAME size — a uniform row of
+     equal-width cards (mainstream), not text-sized pills. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--space-2);
 }
 .course-booking__chip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  padding: 7px 12px;
+  min-height: 48px;
+  padding: 8px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   color: var(--color-text);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  /* long course names never stretch the box */
+  overflow: hidden;
+}
+.course-booking__chip > span:not(.course-booking__chip-dot):not(.course-booking__chip-status) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .course-booking__chip:hover {
   border-color: var(--color-accent-soft);
@@ -1802,6 +1814,7 @@
   border-color: var(--color-accent);
   background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
   color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 .course-booking__chip-dot {
   width: 9px;
@@ -1815,6 +1828,7 @@
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   margin-left: 2px;
+  white-space: nowrap;
 }
 .course-booking__chip-status.is-none {
   color: var(--color-text-soft);
@@ -2146,6 +2160,32 @@
   justify-content: flex-end;
   gap: var(--space-2);
 }
+/* § P0: payment content must never overflow the screen at 390px —
+   long emails / WeChat IDs / memo strings wrap instead of sliding out. */
+.student-payment,
+.student-payment__info,
+.student-payment__wechat,
+.student-payment__emt-box,
+.student-payment__result {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.student-payment__actions--row {
+  flex-wrap: wrap;
+}
+@media (max-width: 420px) {
+  .student-payment__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .student-payment__actions .btn {
+    width: 100%;
+  }
+  .student-payment__wechat-id {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
 
 /* --- Public catalog nav (no login) --- */
 .student-public-nav {
@@ -2167,6 +2207,42 @@
   color: var(--color-text-muted);
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-md);
+}
+
+/* § P1: deep-link preselection banner for logged-out visitors */
+.student-deeplink {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: var(--space-4) 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+.student-deeplink__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.student-deeplink__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.student-deeplink__name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+.student-deeplink__price {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 /* --- Payment modal: method grid + wechat QR --- */
@@ -2524,11 +2600,12 @@
   font-size: var(--font-size-sm);
 }
 
-/* --- Break notice (课间休息 linking) --- */
+/* --- Break notice (课间休息 linking) — BELOW the calendar (user decision) --- */
 .course-booking__break {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  margin-top: var(--space-3);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-warning) 10%, transparent);
@@ -2798,4 +2875,18 @@
   margin-top: var(--space-2);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+}
+
+/* § P2: same-day booking is never allowed — show the reason */
+.course-booking__today-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-warning);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
 }

@@ -17,6 +17,7 @@ import InstructorDashboardPage from './pages/instructor/InstructorDashboardPage'
 import LandingPage from './pages/landing/LandingPage'
 import CoursesPage from './pages/landing/CoursesPage'
 import VideosPage from './pages/landing/VideosPage'
+import LegalPage from './pages/legal/LegalPage'
 // G1 carries a ~3.7 MB embedded question bank (base64 images) — lazy-load it
 // so the main bundle stays small and the first paint stays fast.
 const G1MockPage = lazy(() => import('./pages/g1/G1MockPage'))
@@ -54,6 +55,7 @@ export default function App(): JSX.Element {
           <Route path="/" element={<LandingPage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/videos" element={<VideosPage />} />
+          <Route path="/legal/:doc" element={<LegalPage />} />
           <Route path="/g1" element={<Suspense fallback={<G1Fallback />}><G1MockPage /></Suspense>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/student" element={<StudentDashboardPage />} />

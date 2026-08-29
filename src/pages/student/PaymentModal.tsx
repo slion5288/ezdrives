@@ -280,7 +280,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
   const memo = `${proofName.trim() || (locale === 'zh' ? '学员' : 'Student')} - ${locale === 'zh' ? course.name.zh : course.name.en}`
 
   return (
-    <ModalFrame open={open} title={t('payment.title')} onClose={handleClose}>
+    <ModalFrame open={open} title={t('payment.title')} onClose={handleClose} variant="drawer" maxHeight="92vh">
       <div className="student-payment">
         {/* ===== result view after order creation ===== */}
         {createdOrder ? (

@@ -65,16 +65,39 @@ export async function readFullState(env) {
   return state
 }
 
-/** Public view for unauthenticated visitors (landing + courses pages). */
+/** Public view for unauthenticated visitors (landing + courses pages).
+ *  § P0 SECURITY: NEVER expose payment/contact details to the public API —
+ *  WeChat QR / WeChat ID / e-Transfer email / bank / pay config / personal
+ *  email / phone are all stripped. Visitors only see the profile, courses,
+ *  vehicles, videos, schedule and admin-edited homepage content. */
 export function publicView(state) {
+  const ins = state.instructor
+  const safeInstructor = ins
+    ? {
+        id: ins.id,
+        name: ins.name,
+        bio: ins.bio,
+        avatarColor: ins.avatarColor,
+        yearsExperience: ins.yearsExperience ?? ins.years ?? 0,
+        rating: ins.rating ?? 0,
+        // §: years/city must have ONE source of truth — serviceCities stays
+        // the single canonical list shown publicly (KWCG by default).
+        serviceCities: ins.serviceCities ?? [],
+      }
+    : null
+  // § P0: admin hero slides are data-URL images — never ship them in the
+  // public JSON (the landing hero is a single static photo now).
+  const publicHomeContent = state.homeContent
+    ? { ...state.homeContent, heroImages: undefined }
+    : null
   return {
-    instructor: state.instructor,
+    instructor: safeInstructor,
     weeklyRules: state.weeklyRules,
     exceptions: state.exceptions,
     courses: (state.courses || []).filter((c) => c.active),
     vehicles: (state.vehicles || []).filter((v) => v.active),
     videos: state.videos || [],
-    homeContent: state.homeContent || null,
+    homeContent: publicHomeContent,
   }
 }
 

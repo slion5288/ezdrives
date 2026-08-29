@@ -20,7 +20,7 @@ import {
 } from '../../data/store'
 import type { Payment } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
-import { Eye, Settings2, Wallet, X } from 'lucide-react'
+import { Eye, Settings2, ShieldCheck, Wallet, X } from 'lucide-react'
 import { PaymentMethodBrand } from '../../components/payment/PaymentBrandIcons'
 import { Avatar, Badge, EmptyState } from './ui'
 import { useToast } from '../../components/shared'
@@ -38,6 +38,10 @@ type MethodFilter = 'all' | 'wechat' | 'cash' | 'emt'
 
 const PENDING_STATUSES = ['pending', 'cash_pending', 'wechat_pending', 'emt_pending', 'cash_approved']
 
+/** § P0: every money confirmation happens inside a review step that shows the
+ *  order number (参考号) + proof screenshot — never a blind one-click row. */
+type ConfirmStep = 'markReceived' | 'approveCash' | null
+
 export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Element {
   const t = useT()
   const locale = useLocale()
@@ -48,6 +52,8 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
   const [methodFilter, setMethodFilter] = useState<MethodFilter>('all')
   const [openId, setOpenId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [confirmStep, setConfirmStep] = useState<ConfirmStep>(null)
+  const [busy, setBusy] = useState(false)
 
   const payments = useMemo(() => {
     let list = [...state.payments]
@@ -62,16 +68,32 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
 
   const open = openId ? state.payments.find((p) => p.id === openId) ?? null : null
 
+  /** § P0: run a confirmation AFTER the instructor reviewed the reference. */
   const run = async (fn: () => Promise<{ ok: boolean; error?: string }>, okTitle: string): Promise<void> => {
+    setBusy(true)
     const result = await fn()
+    setBusy(false)
     toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? okTitle : (result.error || t('common.toast.error')) })
-    if (result.ok) setOpenId(null)
+    if (result.ok) {
+      setOpenId(null)
+      setConfirmStep(null)
+      setRejectReason('')
+    }
   }
 
   const rejectWithReason = async (id: string): Promise<void> => {
+    setBusy(true)
     const r = await rejectPayment(id, rejectReason.trim() || undefined)
+    setBusy(false)
     toast.push({ tone: r.ok ? 'success' : 'error', title: r.ok ? t('instructor.payments.reject') : (r.error || t('common.toast.error')) })
-    if (r.ok) { setOpenId(null); setRejectReason('') }
+    if (r.ok) { setOpenId(null); setConfirmStep(null); setRejectReason('') }
+  }
+
+  /** Open the detail modal and prime it for a specific confirmation step. */
+  const openWith = (id: string, step: ConfirmStep): void => {
+    setOpenId(id)
+    setConfirmStep(step)
+    setRejectReason('')
   }
 
   const statusMeta = (p: Payment): { tone: 'success' | 'info' | 'warning' | 'neutral'; label: string } => {
@@ -111,6 +133,13 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
       </div>
     )
   }
+
+  const confirmable = open
+    ? open.status === 'cash_approved' || open.status === 'submitted' || open.status === 'wechat_pending' || open.status === 'emt_pending'
+    : false
+  const cashApprovable = open ? open.status === 'cash_pending' : false
+  const rejectable = open ? PENDING_STATUSES.includes(open.status) || open.status === 'submitted' : false
+  const proofUrl = open?.proof?.dataUrl
 
   return (
     <div className="ins-payments">
@@ -167,7 +196,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
               const student = state.students.find((s) => s.id === p.studentId)
               const date = fromServerISO(p.createdAt)
               const meta = statusMeta(p)
-              const confirmable =
+              const rowConfirmable =
                 p.status === 'cash_approved' || p.status === 'submitted' || p.status === 'wechat_pending' || p.status === 'emt_pending'
               return (
                 <tr key={p.id}>
@@ -191,12 +220,14 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                   <td className="tabular-nums">{locale === 'zh' ? formatDateZh(date) : formatDateEn(date)}</td>
                   <td>
                     <div className="ins-pay-actions">
-                      {confirmable ? (
-                        <Button variant="primary" size="sm" onClick={() => void run(() => markPaymentReceived(p.id), t('instructor.payments.markReceived'))}>
+                      {/* § P0: row-level confirm buttons open the review step —
+                          no blind one-click confirmations. */}
+                      {rowConfirmable ? (
+                        <Button variant="primary" size="sm" onClick={() => openWith(p.id, 'markReceived')}>
                           {t('instructor.payments.markReceived')}
                         </Button>
                       ) : p.status === 'cash_pending' ? (
-                        <Button variant="primary" size="sm" onClick={() => void run(() => approveCashPayment(p.id), t('instructor.payments.approveCash'))}>
+                        <Button variant="primary" size="sm" onClick={() => openWith(p.id, 'approveCash')}>
                           {t('instructor.payments.approveCash')}
                         </Button>
                       ) : null}
@@ -205,12 +236,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           {t('instructor.payments.sendReminder')}
                         </Button>
                       ) : null}
-                      {(PENDING_STATUSES.includes(p.status) || p.status === 'submitted') ? (
-                        <Button variant="dangerGhost" size="sm" onClick={() => { setOpenId(p.id); setRejectReason('') }}>
-                          {t('instructor.payments.reject')}
-                        </Button>
-                      ) : null}
-                      <Button variant="ghost" size="sm" onClick={() => { setOpenId(p.id); setRejectReason('') }}>
+                      <Button variant="ghost" size="sm" onClick={() => openWith(p.id, null)}>
                         <Eye size={14} /> {t('instructor.payments.view')}
                       </Button>
                     </div>
@@ -224,13 +250,13 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
 
       {/* § payment overhaul: order detail modal (proof, student info, actions) */}
       {open ? (
-        <div className="ins-detail-scrim" onMouseDown={() => setOpenId(null)}>
+        <div className="ins-detail-scrim" onMouseDown={() => { setOpenId(null); setConfirmStep(null); setRejectReason('') }}>
           <div className="ins-detail-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="ins-detail-modal__head">
               <span className="ins-detail-modal__title">
                 {open.order_no || open.id} · {courseName(open)}
               </span>
-              <button type="button" className="ins-icon-btn" onClick={() => setOpenId(null)} aria-label={t('common.close')}>
+              <button type="button" className="ins-icon-btn" onClick={() => { setOpenId(null); setConfirmStep(null); setRejectReason('') }} aria-label={t('common.close')}>
                 <X size={18} />
               </button>
             </div>
@@ -240,6 +266,10 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                 <span className="ins-detail-value">
                   <Badge tone={statusMeta(open).tone}>{statusMeta(open).label}</Badge>
                 </span>
+              </div>
+              <div className="ins-detail-row">
+                <span className="ins-detail-label">{t('instructor.payments.orderNo')}</span>
+                <span className="ins-detail-value tabular-nums">{open.order_no || open.id}</span>
               </div>
               <div className="ins-detail-row">
                 <span className="ins-detail-label">{t('student.profile.name')}</span>
@@ -283,55 +313,107 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                   <span className="ins-detail-value ins-detail-value--bad">{open.rejectReason}</span>
                 </div>
               ) : null}
-              {open.proof?.dataUrl ? (
+              {proofUrl ? (
                 <div className="ins-detail-row ins-detail-row--block">
                   <span className="ins-detail-label">{t('payment.proofUpload')}</span>
                   <span className="ins-detail-value">
-                    <img src={open.proof.dataUrl} alt="proof" className="ins-pay-proof" />
+                    <img src={proofUrl} alt="proof" className="ins-pay-proof" />
                   </span>
                 </div>
               ) : null}
             </div>
-            <div className="ins-detail-modal__foot">
-              {rejectReason ? (
-                <div className="ins-pay-reject">
-                  <input
-                    className="ins-input"
-                    placeholder={t('instructor.payments.rejectReasonPlaceholder')}
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                  />
+
+            {/* § P0: confirmation review step — shows the reference + proof and
+                asks for explicit confirmation before any money state change. */}
+            {confirmStep ? (
+              <div className="ins-pay-review">
+                <span className="ins-pay-review__icon">
+                  <ShieldCheck size={20} />
+                </span>
+                <p className="ins-pay-review__title">
+                  {confirmStep === 'approveCash'
+                    ? t('instructor.payments.confirmCashTitle')
+                    : t('instructor.payments.confirmReceivedTitle')}
+                </p>
+                <p className="ins-pay-review__body">
+                  {t('instructor.payments.confirmBody', { order: open.order_no || open.id })}
+                </p>
+                <div className="ins-pay-review__ref">
+                  <span className="ins-detail-label">{t('instructor.payments.orderNo')}</span>
+                  <b className="tabular-nums">{open.order_no || open.id}</b>
                 </div>
-              ) : null}
-              <div className="ins-pay-actions">
-                <Button variant="ghost" size="sm" onClick={() => setOpenId(null)}>
-                  {t('common.close')}
-                </Button>
-                {open.status === 'cash_pending' ? (
-                  <Button variant="primary" size="sm" onClick={() => void run(() => approveCashPayment(open.id), t('instructor.payments.approveCash'))}>
-                    {t('instructor.payments.approveCash')}
+                {proofUrl ? (
+                  <div className="ins-pay-review__proof">
+                    <img src={proofUrl} alt="proof" className="ins-pay-proof" />
+                  </div>
+                ) : null}
+                <div className="ins-pay-review__actions">
+                  <Button variant="secondary" size="sm" disabled={busy} onClick={() => setConfirmStep(null)}>
+                    {t('common.back')}
                   </Button>
-                ) : null}
-                {open.status === 'cash_approved' || open.status === 'submitted' || open.status === 'wechat_pending' || open.status === 'emt_pending' ? (
-                  <Button variant="primary" size="sm" onClick={() => void run(() => markPaymentReceived(open.id), t('instructor.payments.markReceived'))}>
-                    {t('instructor.payments.markReceived')}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(
+                        confirmStep === 'approveCash'
+                          ? () => approveCashPayment(open.id)
+                          : () => markPaymentReceived(open.id),
+                        confirmStep === 'approveCash'
+                          ? t('instructor.payments.approveCash')
+                          : t('instructor.payments.markReceived'),
+                      )
+                    }
+                  >
+                    {busy ? t('common.loading') : t('instructor.payments.confirmAction')}
                   </Button>
-                ) : null}
-                {PENDING_STATUSES.includes(open.status) || open.status === 'submitted' ? (
-                  <>
-                    {!rejectReason ? (
-                      <Button variant="dangerGhost" size="sm" onClick={() => setRejectReason(' ')}>
-                        {t('instructor.payments.reject')}
-                      </Button>
-                    ) : (
-                      <Button variant="danger" size="sm" onClick={() => void rejectWithReason(open.id)}>
-                        {t('instructor.payments.rejectConfirm')}
-                      </Button>
-                    )}
-                  </>
-                ) : null}
+                </div>
               </div>
-            </div>
+            ) : rejectReason !== '' && rejectReason !== ' ' ? (
+              /* § P0: reject step — replaces the footer entirely so confirm and
+                  reject can never sit side by side. */
+              <div className="ins-pay-reject-step">
+                <p className="ins-pay-reject-step__label">{t('instructor.payments.rejectReasonPlaceholder')}</p>
+                <input
+                  className="ins-input"
+                  placeholder={t('instructor.payments.rejectReasonPlaceholder')}
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                />
+                <div className="ins-pay-review__actions">
+                  <Button variant="secondary" size="sm" disabled={busy} onClick={() => setRejectReason('')}>
+                    {t('common.back')}
+                  </Button>
+                  <Button variant="danger" size="sm" disabled={busy || !rejectReason.trim()} onClick={() => void rejectWithReason(open.id)}>
+                    {busy ? t('common.loading') : t('instructor.payments.rejectConfirm')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="ins-detail-modal__foot">
+                <div className="ins-pay-actions">
+                  <Button variant="ghost" size="sm" onClick={() => { setOpenId(null); setConfirmStep(null); setRejectReason('') }}>
+                    {t('common.close')}
+                  </Button>
+                  {cashApprovable ? (
+                    <Button variant="primary" size="sm" onClick={() => setConfirmStep('approveCash')}>
+                      {t('instructor.payments.approveCash')}
+                    </Button>
+                  ) : null}
+                  {confirmable ? (
+                    <Button variant="primary" size="sm" onClick={() => setConfirmStep('markReceived')}>
+                      {t('instructor.payments.markReceived')}
+                    </Button>
+                  ) : null}
+                  {rejectable ? (
+                    <Button variant="dangerGhost" size="sm" onClick={() => { setConfirmStep(null); setRejectReason(' ') }}>
+                      {t('instructor.payments.reject')}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

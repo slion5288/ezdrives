@@ -32,6 +32,8 @@ const VARIABLES = [
   // § Final Payment Fix: payment receipt details (method / CNY / received at/by)
   'payment_method', 'payment_amount', 'payment_amount_cny', 'payment_received_at', 'payment_received_by',
   'company_name', 'company_email', 'company_phone', 'website_url',
+  // § Cron daily schedule email
+  'schedule_summary',
 ]
 
 function pad2(n) { return String(n).padStart(2, '0') }
@@ -98,6 +100,7 @@ export function buildContext(ctx) {
     company_email: COMPANY.email,
     company_phone: COMPANY.phone,
     website_url: 'https://ezdrives.net',
+    schedule_summary: ctx.scheduleSummary || '',
   }
 }
 

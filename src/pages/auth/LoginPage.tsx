@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Field, Input, LanguageSwitcher, Logo, ThemeToggle, useToast } from '../../components/shared'
-import { getSession, login, register, sendVerificationCode } from '../../data/store'
+import { getSession, login, register, requestPasswordReset, resetPassword, sendVerificationCode } from '../../data/store'
 import { useT } from '../../i18n'
 import './LoginPage.css'
 
@@ -97,8 +97,16 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
   const [codeCountdown, setCodeCountdown] = useState(0)
   const [errors, setErrors] = useState<{ phone?: string; password?: string; name?: string; code?: string; email?: string }>({})
   const [busy, setBusy] = useState(false)
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   const timerRef = useRef<number | null>(null)
+
+  // § P1: forgot password — phone + SMS code + new password.
+  const [forgotPhone, setForgotPhone] = useState('')
+  const [forgotCountry, setForgotCountry] = useState('+1')
+  const [forgotCode, setForgotCode] = useState('')
+  const [forgotPassword, setForgotPassword] = useState('')
+  const [forgotCodeSent, setForgotCodeSent] = useState(false)
+  const [forgotCountdown, setForgotCountdown] = useState(0)
 
   // Clear the resend-countdown timer on unmount (no setState-after-unmount).
   useEffect(() => {
@@ -182,6 +190,56 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
     }
   }
 
+  const sendForgotCode = async (): Promise<void> => {
+    if (!validPhone(forgotPhone)) {
+      setErrors({ phone: t('auth.error.phone') })
+      return
+    }
+    setErrors({})
+    setBusy(true)
+    const res = await requestPasswordReset((forgotCountry + forgotPhone).trim())
+    setBusy(false)
+    if (res.ok) {
+      setForgotCodeSent(true)
+      setForgotCountdown(60)
+      if (timerRef.current) window.clearInterval(timerRef.current)
+      timerRef.current = window.setInterval(() => {
+        setForgotCountdown((s) => {
+          if (s <= 1) {
+            if (timerRef.current) window.clearInterval(timerRef.current)
+            timerRef.current = null
+            return 0
+          }
+          return s - 1
+        })
+      }, 1000)
+    } else {
+      setErrors({ phone: res.error || t('auth.error.network') })
+    }
+  }
+
+  const submitForgot = async (e: FormEvent): Promise<void> => {
+    e.preventDefault()
+    const next: { phone?: string; password?: string; code?: string } = {}
+    if (!validPhone(forgotPhone)) next.phone = t('auth.error.phone')
+    if (!/^\d{6}$/.test(forgotCode.trim())) next.code = t('auth.error.code')
+    if (forgotPassword.length < 6) next.password = t('auth.error.passwordShort')
+    setErrors(next)
+    if (Object.keys(next).length > 0) return
+    setBusy(true)
+    const res = await resetPassword((forgotCountry + forgotPhone).trim(), forgotCode.trim(), forgotPassword)
+    setBusy(false)
+    if (res.ok) {
+      toast.success(t('auth.forgot.success'))
+      setMode('login')
+      setLoginPhone(forgotPhone)
+      setLoginCountry(forgotCountry)
+      setForgotPhone(''); setForgotCode(''); setForgotPassword(''); setForgotCodeSent(false)
+    } else {
+      setErrors({ code: res.error || t('auth.error.network') })
+    }
+  }
+
   return (
     <>
       {mode === 'login' ? (
@@ -209,11 +267,15 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
           <Button type="submit" className="login__submit" disabled={busy}>
             {busy ? t('auth.login.loading') : t('auth.login.submit')}
           </Button>
+          {/* § P1: forgot password */}
+          <button type="button" className="login__forgot" onClick={() => { setMode('forgot'); setErrors({}) }}>
+            {t('auth.forgot.link')}
+          </button>
           <button type="button" className="login__switch" onClick={() => setMode('register')}>
             {t('auth.login.switch')}
           </button>
         </form>
-      ) : (
+      ) : mode === 'register' ? (
         <form className="login__form" onSubmit={submitRegister}>
           <Field label={t('auth.register.name')} error={errors.name} htmlFor="reg-name">
             <Input
@@ -283,6 +345,59 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
           </Button>
           <button type="button" className="login__switch" onClick={() => setMode('login')}>
             {t('auth.register.switch')}
+          </button>
+        </form>
+      ) : (
+        <form className="login__form" onSubmit={(e) => void submitForgot(e)}>
+          <p className="login__section-sub">{t('auth.forgot.subtitle')}</p>
+          <Field label={t('auth.register.phone')} error={errors.phone} htmlFor="forgot-phone">
+            <PhoneField
+              id="forgot-phone"
+              value={forgotPhone}
+              onChange={setForgotPhone}
+              country={forgotCountry}
+              onCountry={setForgotCountry}
+              placeholder="416 555 0100"
+            />
+          </Field>
+          <Field label={t('auth.register.code')} error={errors.code} htmlFor="forgot-code">
+            <div className="login__code-row">
+              <Input
+                id="forgot-code"
+                inputMode="numeric"
+                maxLength={6}
+                value={forgotCode}
+                invalid={errors.code != null}
+                onChange={(e) => setForgotCode(e.target.value)}
+                placeholder="6-digit code"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={busy || forgotCountdown > 0}
+                onClick={() => void sendForgotCode()}
+                icon={<Send size={14} aria-hidden="true" />}
+              >
+                {forgotCountdown > 0 ? `${forgotCountdown}s` : forgotCodeSent ? t('auth.register.resend') : t('auth.forgot.sendCode')}
+              </Button>
+            </div>
+          </Field>
+          <Field label={t('auth.register.password')} error={errors.password} htmlFor="forgot-password">
+            <Input
+              id="forgot-password"
+              type="password"
+              value={forgotPassword}
+              invalid={errors.password != null}
+              onChange={(e) => setForgotPassword(e.target.value)}
+              placeholder={t('auth.register.passwordHint')}
+            />
+          </Field>
+          <Button type="submit" className="login__submit" disabled={busy}>
+            {busy ? t('auth.login.loading') : t('auth.forgot.reset')}
+          </Button>
+          <button type="button" className="login__switch" onClick={() => setMode('login')}>
+            {t('auth.back')}
           </button>
         </form>
       )}

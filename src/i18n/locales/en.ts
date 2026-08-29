@@ -8,9 +8,8 @@ export const messages = {
   // --- landing ---
   'landing.badge': 'Licensed in Canada',
   'landing.hero.title': 'Drive with confidence.',
-  'landing.hero.pause': 'Pause slideshow',
-  'landing.hero.resume': 'Resume slideshow',
-  'landing.hero.slide': 'Slide {n}',
+  'landing.hero.trialFrom': 'from the trial lesson',
+  'landing.priceTaxNote': 'CAD · HST included',
   'landing.hero.subtitle': 'Book a lesson with a certified instructor in under a minute. Real-time availability, transparent CAD pricing and reminders before every lesson.',
   'landing.cta.book': 'Book a lesson',
   'landing.cta.instructor': 'Instructor login',
@@ -27,7 +26,7 @@ export const messages = {
   'landing.steps.3.body': 'Your booking is confirmed on the spot, with reminders before every lesson.',
   'landing.courses.title': 'Course introduction',
   'landing.courses.subtitle': 'Transparent CAD pricing. Every course includes a modern dual-control vehicle.',
-  'landing.courses.popular': 'Most popular',
+  'landing.courses.details': 'View details',
   'landing.courses.viewAll': 'View all courses',
   'landing.videos.title': 'Teaching videos',
   'landing.videos.subtitle': 'Watch course intros, parking tips and road-test walkthroughs before you book.',
@@ -41,17 +40,21 @@ export const messages = {
   'landing.instructors.title': 'Meet your instructor',
   'landing.instructors.subtitle': 'Calm, patient and obsessed with building real confidence behind the wheel.',
   'landing.instructors.book': 'Book',
-  'landing.testimonials.title': 'Loved by drivers across the GTA',
+  'landing.testimonials.title': 'Loved by drivers across the KWCG area',
   'landing.testimonials.1.quote': 'Michael is so patient. I passed my G2 on the first try after only six lessons.',
   'landing.testimonials.1.author': 'Aisha K. — G2 passed',
   'landing.testimonials.2.quote': 'The online booking is brilliant. I rescheduled twice and everything just worked.',
   'landing.testimonials.2.author': 'Liam C. — Student driver',
   'landing.testimonials.3.quote': 'Highway lessons changed everything for me. I actually enjoy driving now.',
   'landing.testimonials.3.author': 'Priya P. — Highway graduate',
-  'landing.footer.tagline': 'Licensed, insured and trusted by students across the GTA since 2015.',
+  'landing.footer.tagline': 'Licensed, insured and trusted by students across the KWCG area since 2015.',
   'landing.footer.links': 'Quick links',
   'landing.footer.contact': 'Contact',
   'landing.footer.rights': '© 2025 EZDRIVES. All rights reserved.',
+  'legal.privacy': 'Privacy Policy',
+  'legal.terms': 'Terms of Service',
+  'legal.cancellation': 'Cancellation Policy',
+  'legal.updated': 'Last updated',
   'landing.footer.language': 'Available in English & 中文',
   'landing.cta.availability': 'See availability',
   'landing.availability.title': 'Next available slots',
@@ -67,7 +70,7 @@ export const messages = {
   'landing.faq.3.q': 'Do I need my own car?',
   'landing.faq.3.a': 'No. Every lesson uses a modern dual-control vehicle, so you only need your G1 or G2 licence.',
   'landing.faq.4.q': 'Where do lessons take place?',
-  'landing.faq.4.a': 'Across the GTA — downtown Toronto, North York, Scarborough, Mississauga and Vaughan.',
+  'landing.faq.4.a': 'Across the KWCG area — Kitchener, Waterloo, Cambridge and Guelph.',
 
   // --- nav ---
   'nav.brand': 'EZDRIVES',
@@ -134,6 +137,12 @@ export const messages = {
 
   'auth.error.session': 'Please log in to continue.',
   'auth.back': 'Back',
+  // § P1: forgot password (phone + SMS code)
+  'auth.forgot.link': 'Forgot password?',
+  'auth.forgot.subtitle': 'Enter your registered phone number to reset the password via SMS code.',
+  'auth.forgot.sendCode': 'Send code',
+  'auth.forgot.reset': 'Reset password',
+  'auth.forgot.success': 'Password reset — please log in with your new password.',
   'auth.switchRole': 'Switch role',
   'auth.loggedInAs': 'Logged in as {name}',
 
@@ -169,6 +178,9 @@ export const messages = {
   'student.booking.publicTitle': 'Course booking',
   'student.booking.title': 'My lessons',
   'student.booking.subtitle': 'Choose a course, then tap a start-time box on the calendar. Grey hours are closed; booked lessons are cards.',
+  // § P1: visitor deep link ?course= preselection
+  'student.booking.selectedCourse': 'Your selected course',
+  'student.booking.loginToBuy': 'Log in to buy',
   'student.booking.pickSlot': 'Pick a slot',
   // § unified multi-course calendar
   'student.booking.selectCourse': 'Select course',
@@ -180,6 +192,7 @@ export const messages = {
   'student.booking.cancelPairNote': 'These two consecutive lessons were booked together — both will be cancelled.',
   // §: same-day booking is never allowed (instructor needs time to prepare)
   'student.booking.today': 'Same-day booking is not available. Please choose tomorrow or later.',
+  'student.booking.todayReason': 'Same-day booking is unavailable: the instructor needs time to prepare. Please pick tomorrow or later.',
   'student.booking.manageHint': 'You have a booked lesson. Tap its card on the calendar to view, reschedule or cancel it.',
   'student.booking.pickCourse': 'Choose a course',
   'student.booking.summary': 'Booking summary',
@@ -229,6 +242,18 @@ export const messages = {
 
   // --- instructor.overview ---
   'instructor.overview.title': 'Overview',
+  // § instructor "Today": next lesson + call + navigation (not charts)
+  'instructor.today.title': 'Today',
+  'instructor.today.nextLesson': 'Next lesson',
+  'instructor.today.noNext': 'No upcoming lessons',
+  'instructor.today.noNextBody': 'New bookings will appear here.',
+  'instructor.today.scheduleTitle': "Today's lessons",
+  'instructor.today.noToday': 'No lessons today',
+  'instructor.today.noTodayBody': 'Enjoy the day off, or check the schedule for this week.',
+  'instructor.today.call': 'Call',
+  'instructor.today.navigate': 'Directions',
+  'instructor.more': 'More',
+  'student.booking.lessonNo': 'Lesson {n}',
   'instructor.overview.lessons': 'Lessons this month',
   'instructor.overview.revenue': 'Revenue',
   'instructor.overview.newStudents': 'New students',
@@ -416,6 +441,7 @@ export const messages = {
   // --- courses (shared, student-facing) ---
   'courses.duration': '{duration} min',
   'courses.perLesson': 'per lesson',
+  'courses.packageTotal': '{count} lessons total',
   'courses.from': 'From',
   'courses.book': 'Book this course',
   'courses.unavailable': 'Currently unavailable',
@@ -433,6 +459,8 @@ export const messages = {
   'common.close': 'Close',
   'common.confirm': 'Confirm',
   'common.back': 'Back',
+  'common.yes': 'Yes',
+  'common.no': 'No',
   'common.edit': 'Edit',
   'common.delete': 'Delete',
   'common.add': 'Add',
@@ -462,7 +490,7 @@ export const messages = {
   'ics.google': 'Google Calendar',
   'ics.summary': '{course} with EZDRIVES',
   'ics.description': 'Driving lesson booked with EZDRIVES.',
-  'ics.location': 'Toronto, ON',
+  'ics.location': 'Kitchener-Waterloo, ON',
   'ics.howTo': 'Open the downloaded file to add the lesson to your calendar.',
   'ics.addToCalendar': 'Add to calendar',
   'ics.addLater': 'Not now',
@@ -540,6 +568,7 @@ export const messages = {
   'instructor.courses.autoTranslate': 'English is auto-translated from Chinese. Leave English empty — it will be filled automatically.',
   'instructor.courses.autoTranslated': 'Auto-translated',
   'instructor.courses.autoTranslatedEn': 'Auto-translated EN',
+  'instructor.courses.enMissingWarn': 'English was not generated — you can retry (course saved; English may stay empty)',
   'instructor.courses.descEnPh': 'Desc EN',
   'instructor.courses.translateFailed': 'Auto-translate failed — you can save anyway; English will be filled later.',
   'instructor.courses.mockTest': 'Free Mock Test',
@@ -577,7 +606,7 @@ export const messages = {
   'student.booking.packageNote': 'From lesson {n} · {count} lessons',
   'student.booking.lessonDone': 'Done',
   'student.profile.address': 'Pickup address',
-  'student.profile.addressPlaceholder': 'e.g. 88 King St W, Toronto, ON',
+  'student.profile.addressPlaceholder': 'e.g. 88 King St W, Kitchener, ON',
   'landing.courses.examCar': 'Exam car rental',
 
   // --- student book catalog + my lessons ---
@@ -766,6 +795,7 @@ export const messages = {
 
   // --- instructor payments ---
   'instructor.payments.title': 'Payments',
+  'instructor.nav.payments': 'Payments',
   'instructor.payments.empty': 'No payments yet',
   'instructor.payments.confirm': 'Confirm payment',
   'instructor.payments.approveCash': 'Approve Cash Payment',
@@ -789,6 +819,12 @@ export const messages = {
   'instructor.payments.submittedAt': 'Submitted',
   'instructor.payments.rejectReasonPlaceholder': 'Reason for rejecting (shown to the student)',
   'instructor.payments.rejectConfirm': 'Confirm Reject',
+  // § P0: confirmations must show the order reference + proof screenshot
+  'instructor.payments.orderNo': 'Order No.',
+  'instructor.payments.confirmCashTitle': 'Confirm cash received?',
+  'instructor.payments.confirmReceivedTitle': 'Confirm payment received?',
+  'instructor.payments.confirmBody': 'Check order {order} and the proof before confirming. Once confirmed the student can book lessons; this cannot be undone.',
+  'instructor.payments.confirmAction': 'Confirm Received',
   'instructor.settings.wechatId': 'WeChat ID (微信号)',
   'instructor.settings.wechatIdHint': 'Mobile students copy this ID and pay inside WeChat.',
   'instructor.notifications.details': 'Notification details',

@@ -37,7 +37,7 @@ export function seed(): AppState {
     phone: '+1 416-555-0142',
     email: 'michael@ezdrives.ca',
     bio: {
-      en: 'Certified driving instructor with 9 years of experience across the GTA. Patient, calm, and focused on building real confidence behind the wheel.',
+      en: 'Certified driving instructor with 9 years of experience across the KWCG area. Patient, calm, and focused on building real confidence behind the wheel.',
       zh: '持牌驾驶教练，在多伦多地区拥有 9 年教学经验。耐心、沉稳，专注于帮助学员建立真正的驾驶自信。',
     },
     rating: 4.9,
@@ -48,7 +48,7 @@ export function seed(): AppState {
 
   // --- Students ---
   const students: Student[] = [
-    { id: 's1', name: 'Aisha Khan', phone: '+1 416-555-0131', address: '88 King St W, Toronto, ON', registeredAt: at(-40, 10), avatarColor: '#3B82F6', email: 'aisha.khan@example.ca' },
+    { id: 's1', name: 'Aisha Khan', phone: '+1 519-555-0131', address: '88 King St W, Kitchener, ON', registeredAt: at(-40, 10), avatarColor: '#3B82F6', email: 'aisha.khan@example.ca' },
     { id: 's2', name: 'Liam Chen', phone: '+1 647-555-0148', address: '4200 Yonge St, North York, ON', registeredAt: at(-25, 9), avatarColor: '#F59E0B' },
     { id: 's3', name: 'Yuki Tanaka', phone: '+1 905-555-0167', address: '505 Hwy 7, Vaughan, ON', registeredAt: at(-18, 14), avatarColor: '#8B5CF6', email: 'yuki.tanaka@example.ca' },
     { id: 's4', name: 'Omar Hassan', phone: '+1 416-555-0189', address: '3660 Midland Ave, Scarborough, ON', registeredAt: at(-12, 11), avatarColor: '#EC4899' },

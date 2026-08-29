@@ -28,6 +28,7 @@ import { Button } from '../../components/shared/Button'
 
 export default function StudentBookingPage(): JSX.Element {
   const t = useT()
+  const locale = useLocale()
   const state = useAppState()
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -56,6 +57,7 @@ export default function StudentBookingPage(): JSX.Element {
 
   // Public (not logged in): course selection FIRST, then register/login.
   if (!studentId) {
+    const deepCourse = courseParam ? activeCourses.find((c) => c.id === courseParam) ?? null : null
     return (
       <div className="student-page">
         <header className="student-page-head">
@@ -74,6 +76,26 @@ export default function StudentBookingPage(): JSX.Element {
         </header>
         <h1>{t('student.booking.publicTitle')}</h1>
         <p className="student-page-sub">{t('student.booking.subtitle')}</p>
+
+        {/* § P1: a deep link ?course= must PRESELECT that course for visitors —
+            it is never "any course", and never the $30 trial by accident. */}
+        {deepCourse ? (
+          <div className="student-deeplink">
+            <div className="student-deeplink__copy">
+              <span className="student-deeplink__label">{t('student.booking.selectedCourse')}</span>
+              <span className="student-deeplink__name">
+                {locale === 'zh' ? deepCourse.name.zh : deepCourse.name.en}
+              </span>
+              <span className="student-deeplink__price tabular-nums">
+                {formatPrice(deepCourse.price)} {t('common.cad')} · {t('landing.priceTaxNote')}
+              </span>
+            </div>
+            <Button to={`/login?role=student&course=${deepCourse.id}`} variant="primary">
+              {t('student.booking.loginToBuy')}
+            </Button>
+          </div>
+        ) : null}
+
         <CourseCatalog
           studentId={null}
           onPick={() => undefined}

@@ -417,6 +417,13 @@ html[data-theme='dark'] .landing-badge--info {
   height: 100%;
   object-fit: cover;
 }
+/* § redesign: the hero is ONE static photo — always visible, fills the media */
+.landing-hero__slide--static {
+  opacity: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 /* Scrim for headline legibility */
 .landing-hero__media::after {
   content: '';
@@ -424,22 +431,10 @@ html[data-theme='dark'] .landing-badge--info {
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(9, 14, 20, 0.52) 0%,
-    rgba(9, 14, 20, 0.38) 45%,
-    rgba(9, 14, 20, 0.66) 100%
+    rgba(9, 14, 20, 0.5) 0%,
+    rgba(9, 14, 20, 0.34) 45%,
+    rgba(9, 14, 20, 0.64) 100%
   );
-}
-/* Ambient brand glow — blue→purple light bleeding from the corners */
-.landing-hero__media::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    radial-gradient(42% 55% at 12% 18%, rgba(59, 130, 246, 0.38) 0%, transparent 70%),
-    radial-gradient(46% 60% at 88% 82%, rgba(139, 92, 246, 0.34) 0%, transparent 72%);
-  mix-blend-mode: screen;
-  pointer-events: none;
 }
 .landing-hero__dots {
   position: absolute;
@@ -503,13 +498,9 @@ html[data-theme='dark'] .landing-badge--info {
   letter-spacing: -0.035em;
   margin: var(--space-5) 0 var(--space-4);
   text-wrap: balance;
-  /* Apple-style gradient headline: white → soft violet */
-  background: linear-gradient(180deg, #ffffff 55%, rgba(226, 198, 255, 0.9) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  /* § redesign: clean white headline — no violet gradient */
   color: #fff;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.3);
 }
 @media (max-width: 768px) {
   .landing-hero__title {
@@ -540,6 +531,33 @@ html[data-theme='dark'] .landing-badge--info {
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--space-4);
+}
+
+/* § redesign: trial price under the headline — one clear amount */
+.landing-hero__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+}
+.landing-hero__price-amount {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  color: #fff;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+}
+.landing-hero__price-note {
+  font-size: var(--font-size-lg);
+  color: rgba(255, 255, 255, 0.85);
+}
+.landing-hero__price-tax {
+  font-size: var(--font-size-sm);
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 2px 10px;
 }
 
 .landing-hero__trust {
@@ -1048,6 +1066,7 @@ html[data-theme='dark'] .landing-badge--info {
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
+  color: inherit;
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
@@ -1057,19 +1076,14 @@ html[data-theme='dark'] .landing-badge--info {
 .landing-courses__card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-pop);
+  border-color: var(--color-border-strong);
 }
-
-.landing-courses__card--popular {
-  margin-top: var(--space-3);
-  border: 2px solid var(--color-accent);
-  background: var(--color-surface);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent-soft) 35%, var(--color-surface)), var(--color-surface));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent), var(--shadow-pop);
-  transform: translateY(-4px);
+.landing-courses__card:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
-
-.landing-courses__card--popular:hover {
-  transform: translateY(-6px);
+.landing-courses__card:hover .landing-courses__cta {
+  color: var(--color-accent);
 }
 
 .landing-courses__badge {
@@ -1119,6 +1133,13 @@ html[data-theme='dark'] .landing-badge--info {
   color: var(--color-text-muted);
 }
 
+/* §: CAD + HST note under every price */
+.landing-courses__tax {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-soft);
+}
+
 .landing-courses__features {
   display: flex;
   flex-direction: column;
@@ -1143,6 +1164,16 @@ html[data-theme='dark'] .landing-badge--info {
 .landing-courses__cta {
   margin-top: auto;
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
 }
 
 /* --- Instructor --- */
@@ -1508,6 +1539,22 @@ html[data-theme='dark'] .landing-badge--info {
   border-top: 1px solid var(--color-border);
   font-size: var(--font-size-sm);
   color: var(--color-text-soft);
+}
+.landing-footer__legal {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.landing-footer__legal a {
+  color: var(--color-text-muted);
+}
+.landing-footer__legal a:hover {
+  color: var(--color-accent);
+}
+.landing-footer__contact-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* --- Responsive --- */

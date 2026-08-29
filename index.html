@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="EZDRIVES — book driving lessons online with a licensed instructor. 在线预约驾校课程。" />
-    <meta name="theme-color" content="#7C3AED" />
+    <meta name="theme-color" content="#0F5C4C" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -26,6 +26,21 @@
     <meta name="twitter:image" content="https://ezdrives.net/icons/icon-512.png" />
     <title>EZDRIVES · Driving Lessons</title>
     <script>
+      // §: www → apex redirect (the apex is canonical). The www hostname still
+      // needs a DNS record in the Cloudflare dashboard; once it resolves this
+      // script sends every www visitor to https://ezdrives.net.
+      (function () {
+        try {
+          if (window.location.protocol === 'file:') return
+          if (window.location.hostname === 'www.ezdrives.net') {
+            window.location.replace(
+              'https://ezdrives.net' + window.location.pathname + window.location.search + window.location.hash,
+            )
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      })()
       // HashRouter deep-link support: a path like /login (no hash) is served by
       // the SPA fallback — rewrite it to /#/login so direct links land on the
       // right page instead of the home route.

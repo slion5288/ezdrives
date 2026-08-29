@@ -11,7 +11,7 @@
 // Usage: npm run make:preview   (runs `npm run build` first, then this script)
 // ============================================================================
 
-import { readFileSync, writeFileSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, rmSync, readdirSync, mkdirSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -62,4 +62,21 @@ if (!/type="module"/.test(html) || !/<style>/.test(html)) {
 const out = join(root, 'Preview.html')
 writeFileSync(out, html)
 console.log(`✓ Wrote ${out} (${(html.length / 1024).toFixed(0)} KB, single self-contained file)`)
+
+// § file:// support: the hero photo must sit NEXT TO Preview.html — copy the
+// public/hero folder to the project root so double-clicked previews show the
+// Tesla hero image (the app also falls back to the bundled base64 on error).
+const heroSrc = join(root, 'public', 'hero')
+const heroDst = join(root, 'hero')
+try {
+  const files = readdirSync(heroSrc)
+  mkdirSync(heroDst, { recursive: true })
+  for (const f of files) {
+    writeFileSync(join(heroDst, f), readFileSync(join(heroSrc, f)))
+  }
+  console.log(`✓ Copied public/hero → ${heroDst} (next to Preview.html)`)
+} catch (e) {
+  console.warn(`⚠ hero folder copy skipped: ${e.message}`)
+}
+
 console.log('  → Double-click Preview.html to open the app in your browser.')

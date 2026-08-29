@@ -1986,33 +1986,28 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
   .ins-header-nav {
     display: none;
   }
+  /* § redesign: simple solid bottom bar — no glass, no floating pill */
   .ins-bottom-nav {
     display: flex;
     position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 50;
-    overflow-x: auto;
-    background: color-mix(in srgb, var(--color-surface) 84%, transparent);
-    -webkit-backdrop-filter: blur(18px) saturate(1.6);
-    backdrop-filter: blur(18px) saturate(1.6);
-    border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
-    border-radius: 20px;
-    box-shadow: var(--shadow-pop);
-    scrollbar-width: none;
-  }
-  .ins-bottom-nav::-webkit-scrollbar {
-    display: none;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .ins-bottom-item {
-    flex: 0 0 auto;
-    min-width: 64px;
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 3px;
-    padding: 8px 10px 6px;
+    height: 56px;
+    padding: 6px 4px;
     border: none;
     background: transparent;
     color: var(--color-text-muted);
@@ -2672,4 +2667,221 @@ input[type='date'].ins-input::-webkit-calendar-picker-indicator {
 }
 .ins-pay-reject .ins-input {
   flex: 1;
+}
+
+/* § P0: payment confirmation review step (order ref + proof) */
+.ins-pay-review,
+.ins-pay-reject-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+}
+.ins-pay-review__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.ins-pay-review__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+.ins-pay-review__body {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-base);
+}
+.ins-pay-review__ref {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.ins-pay-review__ref b {
+  font-size: var(--font-size-lg);
+  color: var(--color-accent);
+}
+.ins-pay-review__proof img {
+  max-height: 220px;
+}
+.ins-pay-review__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.ins-pay-reject-step__label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* --- § redesign: 更多 menu (desktop header dropdown) --- */
+.ins-more-wrap {
+  position: relative;
+}
+.ins-more-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  min-width: 200px;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ins-more-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 10px var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  cursor: pointer;
+}
+.ins-more-item:hover {
+  background: var(--color-surface-2);
+}
+.ins-more-item.is-active {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.ins-more-item .ins-nav-badge {
+  margin-left: auto;
+}
+
+/* --- § redesign: 更多 bottom sheet (mobile) --- */
+.ins-more-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--color-overlay);
+  display: flex;
+  align-items: flex-end;
+}
+.ins-more-sheet {
+  width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--space-4) var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-pop);
+  animation: dw-drawer-in var(--transition-base);
+}
+.ins-more-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+/* --- § redesign: Today page (下一节课 + 电话 + 导航) --- */
+.ins-today {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.ins-today__card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+}
+.ins-today__when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ins-today__date {
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+}
+.ins-today__time {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+}
+.ins-today__main {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ins-today__student {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+.ins-today__course {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.ins-today__student-phone {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-soft);
+}
+.ins-today__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.ins-today__price {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+.ins-today__actions {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5) var(--space-5);
+}
+.ins-today__actions a.btn {
+  flex: 1;
+}
+@media (max-width: 640px) {
+  .ins-today__card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .ins-today__side {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .ins-today__actions {
+    flex-direction: column;
+    padding: 0 var(--space-4) var(--space-4);
+  }
 }
