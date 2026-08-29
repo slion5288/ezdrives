@@ -50,15 +50,22 @@ export async function onRequestPut({ env, request }) {
   if (!enabled && SECURE_TYPES.has(existing.type)) return fail('This security-critical template cannot be disabled.')
 
   // § user decision: the admin edits CHINESE ONLY; English is auto-translated
-  // here (same chain as the rest of the site) before the bilingual email is
-  // rebuilt. Legacy raw editing (subject/html_body/text_body) still works when
-  // no Chinese fields are provided.
+  // before the bilingual email is rebuilt. The frontend translates in the
+  // browser (MyMemory from the admin's IP — reliable); when only Chinese is
+  // sent the server tries its own chain as a fallback. Legacy raw editing
+  // (subject/html_body/text_body) still works when no Chinese fields are sent.
   if (typeof body.subject_zh === 'string' && typeof body.body_zh === 'string') {
     const zhSubject = body.subject_zh.trim().slice(0, 200)
     const zhBody = body.body_zh.trim().slice(0, 5000)
     if (!zhSubject) return fail('请填写中文主题。')
-    const { translateZhToEn } = await import('../../../lib/translate.js')
-    const [enSubject, enBody] = await translateZhToEn(env, [zhSubject, zhBody])
+    let enSubject = typeof body.subject_en === 'string' ? body.subject_en.trim() : ''
+    let enBody = typeof body.body_en === 'string' ? body.body_en.trim() : ''
+    if (!enSubject || !enBody) {
+      const { translateZhToEn } = await import('../../../lib/translate.js')
+      const [s, b] = await translateZhToEn(env, [zhSubject, zhBody])
+      enSubject = enSubject || s
+      enBody = enBody || b
+    }
     if (!enSubject || !enBody) return fail('英文自动翻译失败，请重试。')
     const built = buildBilingual(zhSubject, zhBody, enSubject, enBody)
     await env.DB.prepare(

@@ -96,14 +96,49 @@ export default function AdminTemplates({ token }: { token: string }): JSX.Elemen
     setPreview(null)
   }
 
-  /** § Chinese-only save → server translates zh→en and rebuilds the email. */
+  /** § zh → en in the BROWSER (MyMemory, admin's own IP — reliable). The
+   *  server builds the bilingual email from what we send; no cloud-edge
+   *  translation needed. Falls back to the server chain when the browser
+   *  cannot translate. */
+  const browserTranslate = async (texts: string[]): Promise<(string | null)[]> => {
+    const out: (string | null)[] = new Array(texts.length).fill(null)
+    const worker = async (i: number): Promise<void> => {
+      try {
+        const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(texts[i])}&langpair=zh-CN|en`)
+        if (!r.ok) throw new Error('http ' + r.status)
+        const d = await r.json()
+        if (d?.responseStatus !== 200) throw new Error('resp ' + d?.responseStatus)
+        out[i] = (d?.responseData?.translatedText || '').trim() || null
+      } catch {
+        out[i] = null
+      }
+    }
+    let cursor = 0
+    const run = async (): Promise<void> => {
+      while (cursor < texts.length) {
+        const i = cursor++
+        await worker(i)
+      }
+    }
+    await Promise.all([run(), run(), run()])
+    return out
+  }
+
+  /** § Chinese-only save → English auto-translated (browser) → server rebuilds
+   *  the bilingual email. */
   const save = async (): Promise<void> => {
     if (!draft) return
     setBusy(true)
+    setNotice('')
+    const zhSubject = (draft.subject_zh || draft.subject || '').trim()
+    const zhBody = (draft.body_zh || draft.text_body || '').trim()
+    const [enSubject, enBody] = await browserTranslate([zhSubject, zhBody])
     const res = await apiAdminPutTemplate(token, {
       id: draft.id,
-      subject_zh: draft.subject_zh || draft.subject || '',
-      body_zh: draft.body_zh || draft.text_body || '',
+      subject_zh: zhSubject,
+      body_zh: zhBody,
+      subject_en: enSubject || undefined,
+      body_en: enBody || undefined,
       enabled: draft.enabled,
     })
     setBusy(false)
