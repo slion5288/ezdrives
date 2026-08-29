@@ -12,7 +12,10 @@ database_id = "5fcae10e-7f1b-4457-927a-42f34ac249a5"
 migrations_dir = "migrations"
 
 # § Cron: lesson reminders every 30 min + daily schedule at 07:00 America/Toronto.
-# The handler lives in functions/cron.js (onRequestSchedule).
+# The handler lives in functions/cron.js (onRequestSchedule). NOTE: Pages cron
+# triggers are registered in the Cloudflare DASHBOARD (Pages → ezdrives →
+# Settings → Cron Triggers) — this block documents the schedule for `pages dev`
+# and is NOT applied by pages-action CI deploys.
 [triggers]
 crons = ["*/30 * * * *", "0 7 * * *"]
 
