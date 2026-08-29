@@ -100,7 +100,7 @@ export default function CoursesPage(): JSX.Element {
       <footer className="landing-footer">
         <div className="container">
           <div className="landing-footer__bottom">
-            <span>{t('landing.footer.rights')}</span>
+            <span>{String(new Date().getFullYear())} © EZDRIVES</span>
             <span className="landing-footer__legal">
               <Link to="/legal/privacy">{t('legal.privacy')}</Link>
               <span aria-hidden="true">·</span>

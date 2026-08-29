@@ -90,7 +90,12 @@ export default function OverviewPage({ state, onNavigate }: { state: AppState; o
                   </div>
                   <div className="ins-upcoming-side">
                     <Badge tone={a.status === 'confirmed' ? 'success' : 'warning'}>{statusLabel(a.status, t)}</Badge>
-                    <span className="ins-upcoming-price tabular-nums">{course ? formatMoney(course.price) : ''}</span>
+                    {/* § P1#17: show the PER-LESSON price captured at booking —
+                        never the full package total for one lesson. */}
+                    <span className="ins-upcoming-price tabular-nums">
+                      {formatMoney(a.price ?? (course ? course.price : 0))}
+                      {course && course.type === 'package' ? ` /${t('courses.perLesson')}` : ''}
+                    </span>
                   </div>
                 </li>
               )

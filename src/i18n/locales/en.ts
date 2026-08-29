@@ -14,6 +14,9 @@ export const messages = {
   'landing.cta.book': 'Book a lesson',
   'landing.cta.instructor': 'Instructor login',
   'landing.trust.students': '500+ students',
+  'landing.trust.studentsCount': '{count} students',
+  'landing.trust.lessonsCount': '{count} lessons',
+  'landing.trust.ratingCount': '{rating} rating',
   'landing.trust.lessons': '12,000+ lessons taught',
   'landing.trust.rating': '4.9 average rating',
   'landing.steps.title': 'How it works',
@@ -95,6 +98,8 @@ export const messages = {
 
   // --- auth ---
   'auth.login.title': 'Welcome back',
+  'auth.register.title': 'Create account',
+  'auth.register.subtitle': 'Register to pick a course and book your lesson time.',
   'auth.login.subtitle': 'Log in to manage your lessons and bookings.',
   'auth.role.student': "I'm a student",
   'auth.role.instructor': "I'm the instructor",
@@ -176,6 +181,8 @@ export const messages = {
 
   // --- student.booking ---
   'student.booking.publicTitle': 'Course booking',
+  'student.booking.publicSubtitle': 'Pick a course — log in to choose your lesson time.',
+  'student.booking.loginToPick': 'Log in to pick your lesson time.',
   'student.booking.title': 'My lessons',
   'student.booking.subtitle': 'Choose a course, then tap a start-time box on the calendar. Grey hours are closed; booked lessons are cards.',
   // § P1: visitor deep link ?course= preselection
@@ -507,7 +514,7 @@ export const messages = {
   // --- g1 mock test page ---
   'g1.title': 'G1 Mock Test',
   'g1.subtitle': 'Real-style written test questions with instant correct/wrong feedback.',
-  'g1.zh': '中文题库',
+  'g1.zh': 'Chinese bank',
   'g1.en': 'English bank',
   'g1.zhBody': '{count} questions · Chinese',
   'g1.enBody': '{count} questions · English',
@@ -650,6 +657,7 @@ export const messages = {
 
   // --- payments (purchase flow) ---
   'payment.title': 'Payment',
+  'payment.studentYes': 'I am a student (discount applies)',
   'payment.method': 'Payment method',
   'payment.cash': 'Cash',
   'payment.cashDesc': 'Pay the instructor in person.',

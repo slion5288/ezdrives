@@ -114,6 +114,9 @@ export default function LandingPage(): JSX.Element {
    *  (the instructor picks the order by dragging in 课程管理). */
   const allCourses = visitor && !publicReady ? [] : sortCoursesForDisplay(state.courses.filter((c) => c.active))
   const shownCourses = allCourses.slice(0, 3)
+  /** § P1#30: trust bar shows REAL numbers (students / lessons / rating). */
+  const realStudents = state.students?.length ?? 0
+  const realLessons = (state.appointments ?? []).filter((a) => a.status !== 'cancelled').length
   /** Hero price: the trial lesson's price (default $30 per the course list). */
   const trialPrice = useMemo(() => {
     const trial = allCourses.find((c) => courseTypeOf(c) === 'TRIAL_LESSON')
@@ -152,17 +155,17 @@ export default function LandingPage(): JSX.Element {
             <div className="landing-hero__trust">
               <span className="landing-hero__trust-item">
                 <Users size={18} strokeWidth={2} className="landing-hero__trust-icon" />
-                {t('landing.trust.students')}
+                {t('landing.trust.studentsCount', { count: realStudents })}
               </span>
               <span className="landing-hero__trust-sep" aria-hidden="true" />
               <span className="landing-hero__trust-item">
                 <CalendarCheck size={18} strokeWidth={2} className="landing-hero__trust-icon" />
-                {t('landing.trust.lessons')}
+                {t('landing.trust.lessonsCount', { count: realLessons })}
               </span>
               <span className="landing-hero__trust-sep" aria-hidden="true" />
               <span className="landing-hero__trust-item">
                 <Star size={18} strokeWidth={2} className="landing-hero__trust-icon" />
-                {t('landing.trust.rating')}
+                {t('landing.trust.ratingCount', { rating: instructorRating.toFixed(1) })}
               </span>
             </div>
           </div>
@@ -527,7 +530,7 @@ export default function LandingPage(): JSX.Element {
             </div>
           </div>
           <div className="landing-footer__bottom">
-            <span>{t('landing.footer.rights')}</span>
+            <span>{String(new Date().getFullYear())} © EZDRIVES</span>
             <span className="landing-footer__legal">
               <Link to="/legal/privacy">{t('legal.privacy')}</Link>
               <span aria-hidden="true">·</span>

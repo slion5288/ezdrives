@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { courseRepeatable, getSession, hasPendingPayment, isCoursePurchased, useAppState } from '../../data/store'
+import { courseRepeatable, getSession, hasPendingPayment, initPublicHome, isCoursePurchased, isPublicReady, useAppState } from '../../data/store'
 import type { Course } from '../../data/store'
 import { useLocale, useT } from '../../i18n'
 import { COURSE_IMAGES } from '../../data/assets'
@@ -36,7 +36,14 @@ export default function StudentBookingPage(): JSX.Element {
 
   const session = getSession()
   const studentId = session.studentId ?? ''
-  const activeCourses = (state.courses ?? []).filter((c) => c.active)
+
+  // § P0: visitors must never see the seed catalogue — load the real public
+  // data and render a skeleton until it is ready.
+  useEffect(() => {
+    if (!studentId && !isPublicReady()) initPublicHome().catch(() => undefined)
+  }, [studentId])
+  const publicReady = studentId || isPublicReady()
+  const activeCourses = publicReady ? (state.courses ?? []).filter((c) => c.active) : []
 
   const [payCourse, setPayCourse] = useState<Course | null>(null)
 
@@ -58,6 +65,29 @@ export default function StudentBookingPage(): JSX.Element {
   // Public (not logged in): course selection FIRST, then register/login.
   if (!studentId) {
     const deepCourse = courseParam ? activeCourses.find((c) => c.id === courseParam) ?? null : null
+    if (!isPublicReady()) {
+      return (
+        <div className="student-page">
+          <header className="student-page-head">
+            <div className="student-public-nav">
+              <Link to="/">
+                <Logo size="sm" />
+              </Link>
+              <div className="student-public-actions">
+                <LanguageSwitcher />
+                <ThemeToggle />
+              </div>
+            </div>
+          </header>
+          <h1>{t('student.booking.publicTitle')}</h1>
+          <div className="student-catalog-skeleton" aria-hidden="true">
+            <div className="student-catalog-skeleton__card" />
+            <div className="student-catalog-skeleton__card" />
+            <div className="student-catalog-skeleton__card" />
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="student-page">
         <header className="student-page-head">
@@ -75,7 +105,7 @@ export default function StudentBookingPage(): JSX.Element {
           </div>
         </header>
         <h1>{t('student.booking.publicTitle')}</h1>
-        <p className="student-page-sub">{t('student.booking.subtitle')}</p>
+        <p className="student-page-sub">{t('student.booking.publicSubtitle')}</p>
 
         {/* § P1: a deep link ?course= must PRESELECT that course for visitors —
             it is never "any course", and never the $30 trial by accident. */}
@@ -87,7 +117,7 @@ export default function StudentBookingPage(): JSX.Element {
                 {locale === 'zh' ? deepCourse.name.zh : deepCourse.name.en}
               </span>
               <span className="student-deeplink__price tabular-nums">
-                {formatPrice(deepCourse.price)} {t('common.cad')} · {t('landing.priceTaxNote')}
+                {formatPrice(deepCourse.price)} · {t('landing.priceTaxNote')}
               </span>
             </div>
             <Button to={`/login?role=student&course=${deepCourse.id}`} variant="primary">
@@ -96,11 +126,16 @@ export default function StudentBookingPage(): JSX.Element {
           </div>
         ) : null}
 
-        <CourseCatalog
-          studentId={null}
-          onPick={() => undefined}
-          onBuy={(id) => navigate(`/login?role=student&course=${id}`)}
-        />
+        {/* § P1#19: with a preselected course, do not list every course again */}
+        {!deepCourse ? (
+          <CourseCatalog
+            studentId={null}
+            onPick={() => undefined}
+            onBuy={(id) => navigate(`/login?role=student&course=${id}`)}
+          />
+        ) : (
+          <p className="student-muted-note">{t('student.booking.loginToPick')}</p>
+        )}
       </div>
     )
   }

@@ -206,7 +206,7 @@ export function deleteVehicle(id: string): void
 
 export function addStudent(name: string, phone: string): Student
   // registers a new Student and AUTO-LOGS-IN as them (demo register flow); returns the new Student.
-export function loginInstructor(password: string): boolean // true iff password === 'demo123'
+// instructor login: phone/email + password against the real backend (users table)
 export function loginAsStudent(id: string): void
 export function logout(): void
 export function getSession(): { role: 'student' | 'instructor' | null; studentId?: string }
@@ -352,7 +352,7 @@ export function setLocale(l: 'en' | 'zh'): void      // re-renders all consumers
 | Path | Main page component (default export) | File | Guard |
 | --- | --- | --- | --- |
 | `/` | `LandingPage` | `src/pages/landing/LandingPage.tsx` | public |
-| `/login` | `LoginPage` | `src/pages/auth/LoginPage.tsx` | public — role select; student demo login/register with mock SMS code shown in a toast; instructor password `demo123` + one-click demo button |
+| `/login` | `LoginPage` | `src/pages/auth/LoginPage.tsx` | public — role select; student phone+password login / SMS-verified registration; instructor phone-or-email + password |
 | `/student` | `StudentDashboardPage` | `src/pages/student/StudentDashboardPage.tsx` | student session, else `/login?role=student` |
 | `/student/book` | `StudentBookingPage` | `src/pages/student/StudentBookingPage.tsx` | student session, else `/login?role=student` |
 | `/student/profile` | `StudentProfilePage` | `src/pages/student/StudentProfilePage.tsx` | student session, else `/login?role=student` |
@@ -364,10 +364,10 @@ export function setLocale(l: 'en' | 'zh'): void      // re-renders all consumers
 
 ## 9. DEMO AUTH MODEL
 
-No real backend, no passwords stored. Session state lives in localStorage key **`dw.session.v1`** via `getSession()`/`loginAsStudent`/`loginInstructor`/`logout` (§4).
+Real backend auth (PBKDF2 hashes in D1, server sessions). Session state is stored in localStorage `dw.session.v2`.
 
 - **Student demo login:** pick one of the seeded students (list rendered from `state.students`, one tap logs in as them), **OR** register: name + phone + a **mock 6-digit SMS code** that the UI generates and displays in a toast labeled **"demo code"** (e.g. "Demo code: 482913"); the student enters it, `addStudent(name, phone)` registers and auto-logs-in.
-- **Instructor demo login:** password `demo123` (`loginInstructor`), plus a **one-click "Demo" button** that logs in without typing the password.
+- **Instructor login:** phone or email + password against the real backend (no demo button).
 - Logout clears the session but never the data. `resetDemo()` restores the seed and clears the session.
 
 ---

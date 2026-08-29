@@ -2801,7 +2801,7 @@ export const G1_BANK_EN: G1Question[] = [
     id: "en-172",
     img: null,
     question: "Most automobile skids are the result of:",
-    options: ["Driving too fast", "Hard breaking on the road", "Aggressive turning on the road", "Making U-Turns"],
+    options: ["Driving too fast", "Hard braking on the road", "Aggressive turning on the road", "Making U-Turns"],
     answer: 0,
   },
   {

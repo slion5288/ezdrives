@@ -26,27 +26,25 @@ npm run make:preview # build + inline everything into a single Preview.html (scr
 - `npm run reset` is not provided — use the **Reset demo** button on the instructor
   dashboard to restore seed data.
 
-## Demo accounts
+## Accounts
 
-**Instructor (single account)**
-- Password: `demo123` (there is also a one-click **Demo** button on the login page that
-  signs you in without typing it).
+- **Instructor (single account)** — logs in on the「教练工作台」entry with the phone
+  number or email registered for the instructor account + password (set by the site
+  owner; never committed to this repo).
+- **Students** — register on the「课程预约」page with name + email + phone + a real
+  SMS verification code (Twilio Verify) + password; then log in with phone + password.
 
-**Students (demo logins)**
-- Pick any seeded student from the list on the login page (one tap logs in as them):
-  Aisha Khan, Liam Chen, Yuki Tanaka, Omar Hassan, Emma Wilson, Priya Patel.
-- **Register:** name + phone + a mock 6-digit SMS code. The code is generated in the UI
-  and shown in a toast labeled "Demo code" — enter it to register and auto-login.
+## What is real
 
-## What is simulated
-
-- **Auth** — no real backend or stored passwords; role/session is a localStorage flag.
-- **SMS** — the 6-digit registration code is generated and displayed in a toast (demo).
-- **Google Sheets sync** — there is no Google Sheets API. The store simulates the
-  `WorkingHours / Appointments / Students / Notifications / Courses` tables locally and
-  the "Synced" badge in the instructor shell just reflects the last mutation timestamp.
-- **Calendar subscription** — the student profile shows a demo calendar-subscription
-  link (Apple/Google style) plus a real client-side **ICS file export** (`src/utils/ics.ts`).
+- **Auth** — real backend (Cloudflare Pages Functions + D1): PBKDF2-hashed passwords,
+  server sessions, phone/SMS verification via Twilio Verify, password reset via SMS.
+- **Data** — courses / vehicles / videos / students / appointments / payments /
+  notifications / enrollments all persist in D1; instructor writes go through the
+  fine-grained `POST /api/instructor/actions` (versioned), student actions through
+  `POST /api/student/actions`.
+- **Payments** — cash / WeChat Pay / Interac e-Transfer only; the instructor confirms
+  receipt before lessons unlock; students can never mark an order as paid themselves.
+- **Calendar subscription** — real client-side **ICS file export** (`src/utils/ics.ts`).
 - **CSV export** — instructor schedule tab exports appointment records via
   `src/utils/csv.ts` (UTF-8 BOM for Excel).
 

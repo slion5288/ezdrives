@@ -207,7 +207,9 @@ function persist(action: string, args: Record<string, unknown>): void {
 function applyState(res: { ok?: boolean; state?: unknown; version?: number }): boolean {
   if (!res.ok || !res.state) return false
   const v = typeof res.version === 'number' ? res.version : stateVersion + 1
-  if (v < stateVersion) return false
+  // § P1#18: an EQUAL version means nothing changed server-side — never let a
+  // 30s poll overwrite optimistic local edits that have not been persisted.
+  if (v <= stateVersion && stateLoaded) return false
   state = res.state as AppState
   stateVersion = v
   stateLoaded = true

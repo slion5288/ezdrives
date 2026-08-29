@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Play } from 'lucide-react'
 import { useLocale, useT } from '../../i18n'
-import { getSession, initPublicHome, isPublicReady, useAppState } from '../../data/store'
+import { initPublicHome, isPublicReady, useAppState } from '../../data/store'
 import type { TeachingVideo } from '../../data/store'
 
 import LandingSubHeader from './LandingSubHeader'
@@ -22,16 +22,19 @@ export default function VideosPage(): JSX.Element {
   const state = useAppState()
   const [playingVideo, setPlayingVideo] = useState<TeachingVideo | null>(null)
 
-  // Visitors load the real public catalogue (never the seed placeholder).
+  // § P1#14: EVERY role loads the public catalogue — a logged-in visitor whose
+  // session state is still loading must never see an empty/seed list here.
   useEffect(() => {
-    if (!getSession().token) initPublicHome().catch(() => undefined)
+    if (!isPublicReady()) initPublicHome().catch(() => undefined)
   }, [])
 
   const videos = isPublicReady()
     ? state.videos.filter((v) => v.active).sort((a, b) => a.order - b.order || a.addedAt.localeCompare(b.addedAt))
     : []
 
-  const pick = (pair: { en: string; zh: string }): string => (locale === 'zh' ? pair.zh : pair.en)
+  // § P1#14: empty English falls back to Chinese (never a blank title).
+  const pick = (pair: { en: string; zh: string }): string =>
+    locale === 'zh' ? pair.zh : pair.en || pair.zh
 
   return (
     <div className="landing-page landing-page--sub">

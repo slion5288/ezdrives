@@ -1,9 +1,11 @@
 // ============================================================================
 // EZDRIVES — InstructorDashboardPage (instructor-owned)
-// The instructor "control room": top header (logo → home, centered tab menu,
+// The instructor "control room": top header (logo → home, tab menu,
 // language/theme toggles, avatar) + content area. Requires an instructor
-// session, else redirects to /login?role=instructor. Internal tab state drives
-// the seven sub-pages.
+// session, else redirects to /login?role=instructor.
+// § redesign: the bottom bar (and the desktop header) show at most 5 items —
+// 今天 / 日程 / 收款 / 学员 / 更多. 更多 opens a sheet with 总览 / 课程 / 通知 / 设置,
+// so every capability stays one tap away.
 // ============================================================================
 
 import { useEffect, useState } from 'react'
@@ -20,15 +22,18 @@ import {
   Loader2,
   LogOut,
   Moon,
+  MoreHorizontal,
   Settings2,
   Sun,
+  SunMedium,
   Users,
   Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Avatar } from './ui'
-import { TAB_KEYS } from './helpers'
+import { MAIN_TABS, MORE_TABS, TAB_KEYS } from './helpers'
 import type { InstructorTab } from './helpers'
+import TodayPage from './TodayPage'
 import OverviewPage from './OverviewPage'
 import SchedulePage from './SchedulePage'
 import CoursesPage from './CoursesPage'
@@ -52,31 +57,42 @@ function loadTheme(): Theme {
   return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
 }
 
-const NAV: { id: InstructorTab; icon: LucideIcon }[] = [
-  { id: 'overview', icon: LayoutDashboard },
-  { id: 'schedule', icon: CalendarDays },
-  { id: 'courses', icon: GraduationCap },
-  { id: 'students', icon: Users },
-  { id: 'payments', icon: Wallet },
-  { id: 'notifications', icon: Bell },
-  { id: 'settings', icon: Settings2 },
-]
+/** § P0: 更多 menu — desktop uses the header dropdown ONLY, mobile uses the
+ *  bottom sheet ONLY. They must never render together. */
+function useIsDesktop(): boolean {
+  const [desktop, setDesktop] = useState<boolean>(() => {
+    try { return window.matchMedia('(min-width: 901px)').matches } catch { return true }
+  })
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 901px)')
+    const onChange = (): void => setDesktop(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return desktop
+}
+
+const ICONS: Record<InstructorTab, LucideIcon> = {
+  today: SunMedium,
+  overview: LayoutDashboard,
+  schedule: CalendarDays,
+  courses: GraduationCap,
+  students: Users,
+  payments: Wallet,
+  notifications: Bell,
+  settings: Settings2,
+}
 
 export default function InstructorDashboardPage(): JSX.Element {
   const state = useAppState()
   const t = useT()
   const locale = useLocale()
-  const [tab, setTab] = useState<InstructorTab>('overview')
-  const [scheduleFocus, setScheduleFocus] = useState<Date | undefined>(undefined)
+  const [tab, setTab] = useState<InstructorTab>('today')
+  const [moreOpen, setMoreOpen] = useState(false)
+  const isDesktop = useIsDesktop()
   const [theme, setTheme] = useState<Theme>(loadTheme)
   const [ready, setReady] = useState<boolean>(() => isStateLoaded())
   const [loadError, setLoadError] = useState(false)
-
-  /** § user decision: switch tab with an optional calendar focus date. */
-  const go = (next: InstructorTab, focusDate?: Date): void => {
-    setScheduleFocus(focusDate)
-    setTab(next)
-  }
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -114,6 +130,15 @@ export default function InstructorDashboardPage(): JSX.Element {
     return () => window.clearInterval(id)
   }, [])
 
+  // Close the 更多 sheet when a tab is picked from it (or Escape).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   const session = getSession()
   if (session.role !== 'instructor') return <Navigate to="/login?role=instructor" replace />
   if (!ready) {
@@ -136,6 +161,28 @@ export default function InstructorDashboardPage(): JSX.Element {
   const instructor = state.instructor
   const unread = state.notifications.filter((n) => n.role === 'instructor' && n.recipientId === 'instructor' && !n.read).length
   const syncTime = formatHM(fromLocalISO(getLastSyncISO()))
+  const inMore = MORE_TABS.includes(tab)
+
+  /** §: the bottom bar uses short nav labels (今天/日程/收款/学员/更多). */
+  const navLabel = (id: InstructorTab): string => (id === 'payments' ? t('instructor.nav.payments') : t(TAB_KEYS[id]))
+
+  const pick = (id: InstructorTab): void => {
+    setTab(id)
+    setMoreOpen(false)
+  }
+
+  const tabContent = (): JSX.Element | null => {
+    switch (tab) {
+      case 'today': return <TodayPage state={state} onNavigate={pick} />
+      case 'overview': return <OverviewPage state={state} onNavigate={pick} />
+      case 'schedule': return <SchedulePage state={state} />
+      case 'courses': return <CoursesPage state={state} />
+      case 'settings': return <SettingsPage state={state} />
+      case 'students': return <StudentsPage state={state} />
+      case 'payments': return <PaymentsPage onNavigate={pick} />
+      case 'notifications': return <NotificationsPage state={state} />
+    }
+  }
 
   return (
     <>
@@ -146,18 +193,52 @@ export default function InstructorDashboardPage(): JSX.Element {
           </Link>
 
           <nav className="ins-header-nav" aria-label={t('nav.instructor')}>
-            {NAV.map((item) => (
+            {MAIN_TABS.map((id) => {
+              const Icon = ICONS[id]
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={`ins-header-item${tab === id ? ' is-active' : ''}`}
+                  onClick={() => pick(id)}
+                >
+                  <Icon size={18} />
+                  <span className="ins-header-label">{navLabel(id)}</span>
+                </button>
+              )
+            })}
+            {/* 更多: overflow menu with the remaining capabilities */}
+            <div className="ins-more-wrap">
               <button
-                key={item.id}
                 type="button"
-                className={`ins-header-item${tab === item.id ? ' is-active' : ''}`}
-                onClick={() => setTab(item.id)}
+                className={`ins-header-item${inMore ? ' is-active' : ''}`}
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((v) => !v)}
               >
-                <item.icon size={18} />
-                <span className="ins-header-label">{t(TAB_KEYS[item.id])}</span>
-                {item.id === 'notifications' && unread > 0 ? <span className="ins-nav-badge tabular-nums">{unread}</span> : null}
+                <MoreHorizontal size={18} />
+                <span className="ins-header-label">{t('instructor.more')}</span>
               </button>
-            ))}
+              {moreOpen && isDesktop ? (
+                <div className="ins-more-panel" role="menu">
+                  {MORE_TABS.map((id) => {
+                    const Icon = ICONS[id]
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        role="menuitem"
+                        className={`ins-more-item${tab === id ? ' is-active' : ''}`}
+                        onClick={() => pick(id)}
+                      >
+                        <Icon size={16} />
+                        <span>{t(TAB_KEYS[id])}</span>
+                        {id === 'notifications' && unread > 0 ? <span className="ins-nav-badge tabular-nums">{unread}</span> : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </div>
           </nav>
 
           <div className="ins-header-actions">
@@ -202,33 +283,66 @@ export default function InstructorDashboardPage(): JSX.Element {
               </span>
             </div>
           </div>
-          <div className="ins-content">
-            {tab === 'overview' ? <OverviewPage state={state} onNavigate={go} /> : null}
-            {tab === 'schedule' ? <SchedulePage state={state} initialFocus={scheduleFocus} /> : null}
-            {tab === 'courses' ? <CoursesPage state={state} /> : null}
-            {tab === 'settings' ? <SettingsPage state={state} /> : null}
-            {tab === 'students' ? <StudentsPage state={state} /> : null}
-            {tab === 'payments' ? <PaymentsPage onNavigate={setTab} /> : null}
-            {tab === 'notifications' ? <NotificationsPage state={state} /> : null}
-          </div>
+          <div className="ins-content">{tabContent()}</div>
         </main>
       </div>
 
-      {/* Always-on mobile bottom menu (same style as the student menu) */}
+      {/* Always-on mobile bottom bar — at most 5 items */}
       <nav className="ins-bottom-nav" aria-label={t('nav.instructor')}>
-        {NAV.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`ins-bottom-item${tab === item.id ? ' is-active' : ''}`}
-            onClick={() => setTab(item.id)}
-          >
-            <item.icon size={18} />
-            <span className="ins-bottom-label">{t(TAB_KEYS[item.id])}</span>
-            {item.id === 'notifications' && unread > 0 ? <span className="ins-bottom-badge tabular-nums">{unread}</span> : null}
-          </button>
-        ))}
+        {MAIN_TABS.map((id) => {
+          const Icon = ICONS[id]
+          return (
+            <button
+              key={id}
+              type="button"
+              className={`ins-bottom-item${tab === id ? ' is-active' : ''}`}
+              onClick={() => pick(id)}
+            >
+              <Icon size={18} />
+              <span className="ins-bottom-label">{navLabel(id)}</span>
+            </button>
+          )
+        })}
+        <button
+          type="button"
+          className={`ins-bottom-item${inMore ? ' is-active' : ''}`}
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          <MoreHorizontal size={18} />
+          <span className="ins-bottom-label">{t('instructor.more')}</span>
+        </button>
       </nav>
+
+      {/* 更多 bottom sheet (mobile) */}
+      {moreOpen && !isDesktop ? (
+        <div className="ins-more-scrim" onMouseDown={() => setMoreOpen(false)}>
+          <div className="ins-more-sheet" onMouseDown={(e) => e.stopPropagation()} role="menu">
+            <div className="ins-more-sheet__head">
+              <span>{t('instructor.more')}</span>
+              <button type="button" className="ins-icon-btn" onClick={() => setMoreOpen(false)} aria-label={t('common.close')}>
+                ✕
+              </button>
+            </div>
+            {MORE_TABS.map((id) => {
+              const Icon = ICONS[id]
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitem"
+                  className={`ins-more-item${tab === id ? ' is-active' : ''}`}
+                  onClick={() => pick(id)}
+                >
+                  <Icon size={18} />
+                  <span>{t(TAB_KEYS[id])}</span>
+                  {id === 'notifications' && unread > 0 ? <span className="ins-nav-badge tabular-nums">{unread}</span> : null}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
     </>
   )
 }

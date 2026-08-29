@@ -16,7 +16,6 @@ import { dateKey, formatHM, fromLocalISO, fromServerISO, getLessonStarts, parseD
 import { useLocale, useT } from '../../i18n'
 import { downloadICS } from '../../utils/ics'
 import type { IcsEvent } from '../../utils/ics'
-import { GEOAPIFY_API_KEY } from '../../config'
 import { Avatar, ConfirmModal, EmptyState, ModalFrame, StatusBadge } from './StudentShared'
 import type { BadgeTone } from './StudentShared'
 import { StudentShell } from './StudentShell'
@@ -173,21 +172,17 @@ function StudentProfileContent(): JSX.Element {
   const [emailEditing, setEmailEditing] = useState(false)
   const [emailDraft, setEmailDraft] = useState<string>('')
 
-  /** Geoapify autocomplete (free, Canada-biased) — debounced by the caller. */
+  /** § P0: address autocomplete goes through the server proxy (/api/geocode)
+   *  — the Geoapify API key never ships in the browser bundle. */
   const fetchAddressSuggestions = (input: string): void => {
-    if (!GEOAPIFY_API_KEY || input.trim().length < 3) {
+    if (input.trim().length < 3) {
       setAddressSuggestions([])
       return
     }
-    const url =
-      'https://api.geoapify.com/v1/geocode/autocomplete' +
-      `?text=${encodeURIComponent(input)}` +
-      `&apiKey=${encodeURIComponent(GEOAPIFY_API_KEY)}` +
-      '&limit=5&lang=en&filter=countrycode:ca'
-    fetch(url)
+    fetch(`/api/geocode?text=${encodeURIComponent(input)}`)
       .then((r) => r.json().catch(() => ({})))
-      .then((data: { features?: { properties?: { formatted?: string } }[] }) => {
-        const list = (data.features || []).map((f) => f.properties?.formatted || '').filter(Boolean)
+      .then((data: { suggestions?: { formatted?: string }[] }) => {
+        const list = (data.suggestions || []).map((f) => f.formatted || '').filter(Boolean)
         setAddressSuggestions(list)
       })
       .catch(() => setAddressSuggestions([]))
@@ -336,7 +331,7 @@ function StudentProfileContent(): JSX.Element {
                         aria-label={t('student.profile.address')}
                         aria-expanded={addressSuggestions.length > 0}
                       />
-                      {GEOAPIFY_API_KEY && addressSuggestions.length > 0 ? (
+                      {addressSuggestions.length > 0 ? (
                         <ul className="student-address-suggest" role="listbox" aria-label={t('student.profile.address')}>
                           {addressSuggestions.map((s) => (
                             <li key={s} role="option">

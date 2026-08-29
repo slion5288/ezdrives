@@ -90,12 +90,19 @@ export function publicView(state) {
   const publicHomeContent = state.homeContent
     ? { ...state.homeContent, heroImages: undefined }
     : null
+  // § P0: course covers / vehicle photos are instructor-uploaded DATA URLs that
+  // can bloat the public payload to ~1MB. The public API ships NO data-URL
+  // images — the frontend falls back to the bundled course images.
+  const stripImages = (rows) => (rows || []).map((row) => {
+    const { imageUrl, photos, photoUrl, ...rest } = row
+    return rest
+  })
   return {
     instructor: safeInstructor,
     weeklyRules: state.weeklyRules,
     exceptions: state.exceptions,
-    courses: (state.courses || []).filter((c) => c.active),
-    vehicles: (state.vehicles || []).filter((v) => v.active),
+    courses: stripImages((state.courses || []).filter((c) => c.active)),
+    vehicles: stripImages((state.vehicles || []).filter((v) => v.active)),
     videos: state.videos || [],
     homeContent: publicHomeContent,
   }

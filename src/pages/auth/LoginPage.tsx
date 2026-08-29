@@ -12,8 +12,10 @@ import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge, Button, Card, Field, Input, LanguageSwitcher, Logo, ThemeToggle, useToast } from '../../components/shared'
 import { getSession, login, register, requestPasswordReset, resetPassword, sendVerificationCode } from '../../data/store'
-import { useT } from '../../i18n'
+import { apiPublicHome } from '../../data/api'
+import { useLocale, useT } from '../../i18n'
 import './LoginPage.css'
+import { formatPrice } from '../student/studentFormat'
 
 type Role = 'student' | 'instructor'
 
@@ -78,7 +80,8 @@ function PhoneField({
 // Student: login (phone + password) or register (name + SMS-verified phone).
 // ---------------------------------------------------------------------------
 
-function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
+function StudentLogin({ onLoggedIn, courseForLogin }: { onLoggedIn: () => void; courseForLogin: { id: string; name: { en: string; zh: string }; price: number } | null }): JSX.Element {
+  const locale = useLocale()
   const t = useT()
   const toast = useToast()
 
@@ -242,6 +245,31 @@ function StudentLogin({ onLoggedIn }: { onLoggedIn: () => void }): JSX.Element {
 
   return (
     <>
+      {/* § P1#15: mode-aware title + the preselected course (never just 欢迎回来) */}
+      <h2 className="login__heading">
+        {mode === 'register'
+          ? t('auth.register.title')
+          : mode === 'forgot'
+            ? t('auth.forgot.link')
+            : t('auth.login.title')}
+      </h2>
+      <p className="login__sub">
+        {mode === 'register'
+          ? t('auth.register.subtitle')
+          : mode === 'forgot'
+            ? t('auth.forgot.subtitle')
+            : t('auth.login.subtitle')}
+      </p>
+      {courseForLogin ? (
+        <div className="login__course">
+          <span className="login__course-name">
+            {locale === 'zh' ? courseForLogin.name.zh : courseForLogin.name.en}
+          </span>
+          <span className="login__course-price tabular-nums">
+            {formatPrice(courseForLogin.price)} · {t('landing.priceTaxNote')}
+          </span>
+        </div>
+      ) : null}
       {mode === 'login' ? (
         <form className="login__form" onSubmit={submitLogin}>
           <Field label={t('auth.login.phone')} error={errors.phone} htmlFor="login-phone">
@@ -491,6 +519,20 @@ export default function LoginPage(): JSX.Element {
   const [params] = useSearchParams()
   const roleParam = params.get('role')
   const [role, setRole] = useState<Role>(() => (roleParam === 'instructor' ? 'instructor' : 'student'))
+  const [courseForLogin, setCourseForLogin] = useState<{ id: string; name: { en: string; zh: string }; price: number } | null>(null)
+
+  // § P1#15: show the preselected course (name + price) on the login page.
+  useEffect(() => {
+    const courseParam = params.get('course')
+    if (!courseParam || role !== 'student') return
+    apiPublicHome()
+      .then((res) => {
+        const found = ((res.state as { courses?: { id: string; name: { en: string; zh: string }; price: number }[] } | undefined)?.courses || [])
+          .find((c) => c.id === courseParam)
+        if (found) setCourseForLogin(found)
+      })
+      .catch(() => undefined)
+  }, [params, role])
 
   useEffect(() => {
     if (roleParam === 'instructor' || roleParam === 'student') setRole(roleParam)
@@ -532,13 +574,10 @@ export default function LoginPage(): JSX.Element {
           <ThemeToggle />
         </div>
         <Card className="login__card">
-          <h2 className="login__heading">{t('auth.login.title')}</h2>
-          <p className="login__sub">{t('auth.login.subtitle')}</p>
-
           {role === 'student' ? (
             <>
               <p className="login__section-sub">{t('auth.student.subtitle')}</p>
-              <StudentLogin onLoggedIn={onLoggedIn} />
+              <StudentLogin onLoggedIn={onLoggedIn} courseForLogin={courseForLogin} />
             </>
           ) : (
             <>

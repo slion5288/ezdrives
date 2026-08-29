@@ -348,7 +348,7 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
               checked={isStudent === 'yes'}
               onChange={() => setIsStudent(isStudent === 'yes' ? null : 'yes')}
             />
-            <span>{t('common.yes')}</span>
+            <span>{t('payment.studentYes')}</span>
           </label>
           {course.studentDiscount ? (
             <p className="student-payment__hint">

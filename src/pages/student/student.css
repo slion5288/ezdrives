@@ -2890,3 +2890,22 @@
   font-size: var(--font-size-sm);
   line-height: 1.45;
 }
+
+/* § P0: skeleton while the real public data loads (never render seed courses) */
+.student-catalog-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+.student-catalog-skeleton__card {
+  height: 150px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: dw-skeleton 1.2s ease-in-out infinite;
+}
+@keyframes dw-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

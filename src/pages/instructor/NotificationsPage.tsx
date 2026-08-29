@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import type { AppState, Notification } from '../../data/store'
-import { confirmPayment, markAllRead, markNotificationRead, paymentMethodLabel, rejectPayment } from '../../data/store'
+import { approveCashPayment, confirmPayment, markAllRead, markNotificationRead, markPaymentReceived, paymentMethodLabel, rejectPayment } from '../../data/store'
 import { formatDateEn, formatDateZh, formatHM, fromServerISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
 import {
@@ -58,13 +58,24 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
   }
 
   const linkedPayment = detail?.paymentId ? state.payments.find((p) => p.id === detail.paymentId) : undefined
-  const isPendingPayment = detail?.type === 'payment_pending' && linkedPayment?.status === 'pending'
+  // § P1#16: recognize every real pending status (cash_pending / submitted /
+  // wechat_pending / emt_pending / cash_approved) — not just legacy `pending`.
+  const ACTIONABLE = ['pending', 'cash_pending', 'wechat_pending', 'emt_pending', 'submitted', 'cash_approved']
+  const isPendingPayment = detail?.type === 'payment_pending' && !!linkedPayment && ACTIONABLE.includes(linkedPayment.status)
+  const confirmLabel = linkedPayment?.status === 'cash_pending'
+    ? t('instructor.payments.approveCash')
+    : t('instructor.payments.confirm')
 
   const handleConfirm = (): void => {
     if (!linkedPayment) return
     void (async () => {
-      const result = await confirmPayment(linkedPayment.id)
-      toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.confirm') : t('common.toast.error') })
+      const st = linkedPayment.status
+      const result = st === 'cash_pending'
+        ? await approveCashPayment(linkedPayment.id)
+        : st === 'pending'
+          ? await confirmPayment(linkedPayment.id)
+          : await markPaymentReceived(linkedPayment.id)
+      toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? confirmLabel : t('common.toast.error') })
       if (result.ok) setDetail(null)
     })()
   }
@@ -150,7 +161,7 @@ export default function NotificationsPage({ state }: { state: AppState }): JSX.E
                   {t('instructor.payments.reject')}
                 </Button>
                 <Button variant="primary" onClick={handleConfirm}>
-                  {t('instructor.notifications.confirm')}
+                  {confirmLabel}
                 </Button>
               </>
             ) : (

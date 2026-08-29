@@ -16,6 +16,9 @@ export const messages: Record<MessageKey, string> = {
   'landing.cta.book': '预约课程',
   'landing.cta.instructor': '教练登录',
   'landing.trust.students': '500+ 学员',
+  'landing.trust.studentsCount': '{count} 名学员',
+  'landing.trust.lessonsCount': '已授 {count} 节课',
+  'landing.trust.ratingCount': '评分 {rating}',
   'landing.trust.lessons': '累计授课 12,000+ 节',
   'landing.trust.rating': '平均评分 4.9',
   'landing.steps.title': '如何预约',
@@ -97,6 +100,8 @@ export const messages: Record<MessageKey, string> = {
 
   // --- auth ---
   'auth.login.title': '欢迎回来',
+  'auth.register.title': '创建账号',
+  'auth.register.subtitle': '注册后即可选择课程并预约时间。',
   'auth.login.subtitle': '登录后管理您的课程与预约。',
   'auth.role.student': '我是学员',
   'auth.role.instructor': '我是教练',
@@ -178,6 +183,8 @@ export const messages: Record<MessageKey, string> = {
 
   // --- student.booking ---
   'student.booking.publicTitle': '课程预约',
+  'student.booking.publicSubtitle': '选择课程，登录后即可预约时间。',
+  'student.booking.loginToPick': '登录后即可选择上课时间。',
   'student.booking.title': '我的课程',
   'student.booking.subtitle': '选择课程后，点击日历上的可选时间方框即可预约。灰色时段不可约，已预约课程以卡片显示。',
   // § P1: 游客深链 ?course= 预选
@@ -509,7 +516,7 @@ export const messages: Record<MessageKey, string> = {
   // --- g1 模拟考试页 ---
   'g1.title': 'G1 模拟题库',
   'g1.subtitle': '贴近真题的笔试模拟题，作答后立即显示对错。',
-  'g1.zh': '中文题库',
+  'g1.zh': 'Chinese bank',
   'g1.en': '英文题库',
   'g1.zhBody': '共 {count} 题 · 中文',
   'g1.enBody': '共 {count} 题 · 英文',
@@ -652,6 +659,7 @@ export const messages: Record<MessageKey, string> = {
 
   // --- 支付（购买流程） ---
   'payment.title': '支付',
+  'payment.studentYes': '我是学生（可享优惠）',
   'payment.method': '支付方式',
   'payment.cash': '现金',
   'payment.cashDesc': '当面支付给教练。',

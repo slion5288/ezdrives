@@ -29,6 +29,42 @@ function fromLocal(iso) {
 function dateKeyOf(iso) { return String(iso || '').slice(0, 10) }
 function dayStartMs(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() }
 
+/**
+ * § P0: fill every EMPTY English field on a course before it is published —
+ * translate zh→en, or fall back to the Chinese text as a visible placeholder.
+ * Empty English must never reach the database (it renders blank on the site).
+ */
+async function fillMissingEnglish(env, course) {
+  const texts = []
+  const targets = []
+  const zhText = (v) => (typeof v === 'string' ? v : '')
+  const push = (field) => {
+    const zh = zhText(field.zh)
+    const en = zhText(field.en)
+    if (zh && !en.trim()) {
+      texts.push(zh)
+      targets.push(field)
+    }
+  }
+  push(course.name)
+  push(course.description)
+  if (Array.isArray(course.lessons)) {
+    for (const l of course.lessons) {
+      push(l.name)
+      push(l.description)
+    }
+  }
+  if (texts.length > 0) {
+    const { translateZhToEn } = await import('../../lib/translate.js')
+    const enList = await translateZhToEn(env, texts)
+    targets.forEach((field, i) => {
+      const en = (enList[i] || '').trim()
+      field.en = en || zhText(field.zh) // never empty — zh placeholder fallback
+    })
+  }
+  return course
+}
+
 /** Read + bump the state version (returns the NEW version). */
 async function bumpVersion(env) {
   const row = await env.DB.prepare("SELECT value FROM meta WHERE key = 'state_version'").first()
@@ -98,20 +134,25 @@ function formatDate(d) {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
-/** Effective open interval for a local date ISO (rules + exceptions). */
+/** Effective open interval for a local date ISO (rules + exceptions).
+ *  § P0: reads the model fields exactly — weekly rules use weekday/startMin/
+ *  endMin (no `enabled`/`day`), exceptions use startMin/endMin + closed. */
 function effectiveInterval(dateISO, rules, exceptions) {
-  const dateKey = dateKeyOf(dateISO)
-  const ex = (exceptions || []).find((e) => e.date === dateKey)
-  if (ex && ex.closed) return null
-  if (ex && ex.overrideStartMin !== undefined && ex.overrideEndMin !== undefined) {
-    return { startMin: ex.overrideStartMin, endMin: ex.overrideEndMin }
+  const key = dateKeyOf(dateISO)
+  const ex = (exceptions || []).find((e) => e.date === key)
+  if (ex) {
+    if (ex.closed) return null
+    if (ex.startMin !== undefined && ex.endMin !== undefined) {
+      return { startMin: ex.startMin, endMin: ex.endMin }
+    }
+    return null
   }
   const d = fromLocal(dateISO)
   if (isNaN(d.getTime())) return null
   const dow = d.getDay()
-  const rule = (rules || []).find((r) => r.day === dow)
-  if (!rule || !rule.enabled) return null
-  return { startMin: rule.startMin ?? 540, endMin: rule.endMin ?? 1080 }
+  const rule = (rules || []).find((r) => r.weekday === dow)
+  if (!rule) return null
+  return { startMin: rule.startMin, endMin: rule.endMin }
 }
 
 async function nextSeq(env, table, prefix) {
@@ -142,6 +183,13 @@ export async function onRequestPost({ env, request }) {
   if (action === 'saveCourse') {
     let c = args.course
     if (!c || !c.name) return fail('Invalid course.')
+    // § P0: empty English must never be published — auto-translate (or fall
+    // back to the Chinese text as a visible placeholder) before saving.
+    try {
+      c = await fillMissingEnglish(env, c)
+    } catch (e) {
+      // keep saving the instructor's content even if translation fails
+    }
     if (!c.id) {
       // server-side id allocation (avoids client collisions)
       const row = await env.DB.prepare('SELECT id FROM courses ORDER BY CAST(SUBSTR(id, 2) AS INTEGER) DESC LIMIT 1').first()
