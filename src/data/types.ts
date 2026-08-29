@@ -112,6 +112,9 @@ export interface Appointment {
   lessonCompletion?: { confirmedByInstructor?: boolean; confirmedAt?: string }
   /** Price captured at booking (per lesson for packages). */
   price?: number
+  /** §: package lessons booked together (2 consecutive) share a group id —
+   *  cancelling either one cancels the whole pair. */
+  consecutiveGroup?: string
 }
 
 export interface Student {

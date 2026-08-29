@@ -175,6 +175,11 @@ export const messages: Record<MessageKey, string> = {
   // § 统一多课程日历
   'student.booking.selectCourse': '选择课程',
   'student.booking.hasBooking': '有已预约课程',
+  'student.booking.statusNone': '未预约',
+  'student.booking.statusBooked': '已预约',
+  'student.booking.statusDone': '已完成',
+  'student.booking.pkgFull': '该套餐的课时均已预约或已完成。',
+  'student.booking.cancelPairNote': '这两节连在一起的课程是同时预约的，将一起取消。',
   // §: 不可预约当天（教练需要时间准备）
   'student.booking.today': '无法预约当天时间，请选择明天或之后的时间。',
   'student.booking.manageHint': '您已有一节已预约课程。点击日历中对应的课程卡片可查看、改期或取消。',

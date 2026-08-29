@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, CalendarClock, Coffee } from 'lucide-react'
-import { bookAppointment, bookPackageLessons, cancelAppointment, courseRepeatable, courseTypeOf, getSession, lessonStatus, packageProgress, paymentEligibility, purchaseCount, rescheduleAppointment, uploadCertificateDocs, useAppState } from '../../data/store'
+import { bookAppointment, bookPackageLessons, cancelAppointment, courseRepeatable, courseTypeOf, getSession, isStateLoaded, lessonStatus, packageProgress, paymentEligibility, purchaseCount, rescheduleAppointment, uploadCertificateDocs, useAppState } from '../../data/store'
 import type { Course, Slot } from '../../data/store'
 import { addDays, dateKey, formatHM, fromLocalISO, getEffectiveInterval, parseDateKey, toLocalISO } from '../../data/timeEngine'
 import { useLocale, useT } from '../../i18n'
@@ -49,7 +49,7 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
   const course = courses.find((c) => c.id === selectedCourseId) ?? courses[0]
   if (!course) return <></>
   const courseId = course.id
-  const isPackage = course.type === 'package'
+  const isPackage = courseTypeOf(course) === 'TEN_HOUR_PACKAGE'
   const duration = isPackage ? 60 : course.durationMin
 
   // §28 Purchase gate: 'full' (paid) / 'first' (cash approved → Lesson 1 or
@@ -95,15 +95,21 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
   // Tap-in-list selection: 0 / 1 / 2 consecutive lessons from autoLesson.
   const [selCount, setSelCount] = useState(1)
 
-  /** §: an upcoming live booking for the SELECTED course — one at a time. While
-   *  it exists the student manages it from the calendar popup (cancel/reschedule)
-   *  and the confirm-booking button is hidden. */
+  /** §: an upcoming live booking for the SELECTED course. Individual lessons:
+   *  one at a time — while one exists the student manages it from the calendar
+   *  popup and the confirm-booking button is hidden. Packages book the next
+   *  free lesson(s) sequentially, so the lesson list stays available. */
   const hasActiveBooking = (state.appointments ?? []).some(
     (a) =>
       a.studentId === studentId && a.courseId === courseId &&
       (a.status === 'confirmed' || a.status === 'pending') &&
       fromLocalISO(a.start).getTime() > Date.now(),
   )
+  /** § interaction: individuals lock into "manage mode" while booked; packages
+   *  only lock the booking UI when no lesson is left free (all booked/done). */
+  const manageMode = !isPackage && hasActiveBooking
+  const pkgNothingFree = isPackage && !lessonStatuses.some((s) => s === 'free')
+  const bookingLocked = manageMode || pkgNothingFree
 
   /** §: initial calendar view — jump straight to the next booked lesson's day
    *  (across ALL of the student's courses) when one exists; otherwise today. */
@@ -149,11 +155,13 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId])
 
-  /** § initial all-courses jump — deferred until the real bookings arrive, so
-   *  a seed/first paint (empty appointments) never locks the view on today. */
+  /** § initial all-courses jump — deferred until the REAL bookings arrive, so
+   *  a seed first-paint (demo appointments) never locks the view on the wrong
+   *  day. */
   const jumpedRef = useRef(false)
   useEffect(() => {
     if (jumpedRef.current) return
+    if (!isStateLoaded()) return // wait for the real server state, not the seed
     const live = (state.appointments ?? [])
       .filter(
         (a) =>
@@ -323,12 +331,17 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
         <div className="course-booking__courses-list">
           {courses.map((c) => {
             const active = c.id === courseId
-            const hasBook = (state.appointments ?? []).some(
-              (a) =>
-                a.studentId === studentId && a.courseId === c.id &&
-                (a.status === 'confirmed' || a.status === 'pending') &&
-                fromLocalISO(a.start).getTime() > Date.now(),
-            )
+            // § status shown to the right of each course box (colored text).
+            const st = ((): 'none' | 'booked' | 'done' => {
+              const appts = (state.appointments ?? []).filter(
+                (a) => a.studentId === studentId && a.courseId === c.id && a.status !== 'cancelled',
+              )
+              if (appts.some((a) => fromLocalISO(a.start).getTime() > Date.now())) return 'booked'
+              if (appts.some((a) => fromLocalISO(a.end).getTime() < Date.now())) return 'done'
+              const enroll = (state.enrollments ?? []).find((e) => e.studentId === studentId && e.courseId === c.id)
+              if (enroll && (enroll.completedLessonCount ?? 0) > 0) return 'done'
+              return 'none'
+            })()
             return (
               <button
                 key={c.id}
@@ -338,13 +351,19 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
               >
                 <span className="course-booking__chip-dot" style={{ background: courseColor(state, c.id) }} aria-hidden="true" />
                 <span>{locale === 'zh' ? c.name.zh : c.name.en}</span>
-                {hasBook ? <span className="course-booking__chip-booked" title={t('student.booking.hasBooking')}>●</span> : null}
+                <span className={`course-booking__chip-status is-${st}`}>
+                  {st === 'booked'
+                    ? t('student.booking.statusBooked')
+                    : st === 'done'
+                      ? t('student.booking.statusDone')
+                      : t('student.booking.statusNone')}
+                </span>
               </button>
             )
           })}
         </div>
         <span className="course-booking__courses-sub">
-          {course.type === 'package'
+          {isPackage
             ? t('courses.lessons', { count: course.lessons?.length ?? 10 })
             : courseRepeatable(course)
               ? t('student.dashboard.units', { count: purchaseCount(state, studentId, courseId) })
@@ -386,14 +405,21 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
               <span>{t('student.booking.cashApprovedUnitUsed')}</span>
             </div>
           ) : null}
-          {/* §: a booked lesson exists — manage it from the calendar popup */}
-          {hasActiveBooking ? (
+          {/* §: individual booked → manage from the popup; package fully
+              booked/done → nothing left to book */}
+          {manageMode ? (
             <div className="course-booking__notice">
               <span>{t('student.booking.manageHint')}</span>
             </div>
           ) : null}
-          {/* TOP: per-student sequential lesson progress — tap to select 1 or 2 consecutive */}
-      {isPackage && course.lessons && !hasActiveBooking ? (
+          {pkgNothingFree && !manageMode ? (
+            <div className="course-booking__notice">
+              <span>{t('student.booking.pkgFull')}</span>
+            </div>
+          ) : null}
+          {/* TOP: per-student sequential lesson progress — tap to select 1 or 2 consecutive.
+              Always visible for packages so the 1–10 selection never disappears. */}
+      {isPackage && course.lessons ? (
         <div className="course-booking__select">
           <div className="course-booking__select-head">
             <span className="student-field-label">{t('student.booking.progressRef')}</span>
@@ -495,7 +521,7 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
         selectedSlotId={selectedStart ? slotId(selectedStart) : undefined}
         // §: with an active booking the student manages it from the popup —
         // new start boxes are not offered (confirm button is hidden too).
-        onSelectSlot={hasActiveBooking ? undefined : (slot) => setSelectedStart(slot)}
+        onSelectSlot={bookingLocked ? undefined : (slot) => setSelectedStart(slot)}
         onSelectAppointment={(appt) => setDetailAppt(appt)}
       />
 
@@ -584,6 +610,12 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
             </div>
             <div className="student-detail-card__body">
               <p className="student-confirm-body">{t('student.dashboard.cancelConfirmBody')}</p>
+              {/* §: two package lessons booked together cancel as ONE pair */}
+              {detailAppt.consecutiveGroup ? (
+                <p className="student-confirm-body course-booking__pair-note">
+                  {t('student.booking.cancelPairNote')}
+                </p>
+              ) : null}
               <div className="student-detail-card__actions">
                 <Button variant="secondary" onClick={() => setShowCancelConfirm(false)}>
                   {t('common.cancel')}
@@ -597,8 +629,9 @@ export function CourseBookingPanel({ courses, selectedCourseId, onSelectCourse }
         </div>
       ) : null}
 
-      {/* Confirm footer — §: hidden while an active booking exists (manage via popup) */}
-      {!hasActiveBooking ? (
+      {/* Confirm footer — §: hidden while booking is locked (individual booked
+          → manage via popup; package fully booked/done → nothing to book) */}
+      {!bookingLocked ? (
       <div className="course-booking__foot">
         <div className="course-booking__summary">
           {selectedStart ? (

@@ -8,8 +8,8 @@
 // (cancel / reschedule, same interaction as the instructor).
 // ============================================================================
 
-import { useState } from 'react'
-import { getSession, isCoursePurchased, useAppState } from '../../data/store'
+import { useEffect, useRef, useState } from 'react'
+import { getSession, isCoursePurchased, isStateLoaded, useAppState } from '../../data/store'
 import { useT } from '../../i18n'
 import { CalendarPlus } from 'lucide-react'
 import { StudentShell } from './StudentShell'
@@ -46,7 +46,18 @@ export default function StudentDashboardPage(): JSX.Element {
     return (free ?? purchased[0])?.id ?? ''
   })()
 
-  const [selCourseId, setSelCourseId] = useState<string>(() => defaultCourseId)
+  // §: pick the default course ONCE the real data is present — the seed
+  // first-paint must never lock the selection (it has no real bookings).
+  const [selCourseId, setSelCourseId] = useState<string>('')
+  const defaultPickedRef = useRef(false)
+  useEffect(() => {
+    if (defaultPickedRef.current) return
+    if (!isStateLoaded()) return // wait for real data, not the seed first-paint
+    if (purchased.length === 0) return
+    defaultPickedRef.current = true
+    setSelCourseId(defaultCourseId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purchased.length, defaultCourseId])
   const effectiveId = purchased.some((c) => c.id === selCourseId) ? selCourseId : defaultCourseId
 
   return (
@@ -74,11 +85,13 @@ export default function StudentDashboardPage(): JSX.Element {
           </div>
         ) : (
           <div className="student-lessons-list">
-            <CourseBookingPanel
-              courses={purchased}
-              selectedCourseId={effectiveId}
-              onSelectCourse={setSelCourseId}
-            />
+            {effectiveId ? (
+              <CourseBookingPanel
+                courses={purchased}
+                selectedCourseId={effectiveId}
+                onSelectCourse={setSelCourseId}
+              />
+            ) : null}
           </div>
         )}
       </div>

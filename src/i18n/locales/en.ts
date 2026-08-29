@@ -173,6 +173,11 @@ export const messages = {
   // § unified multi-course calendar
   'student.booking.selectCourse': 'Select course',
   'student.booking.hasBooking': 'Has an upcoming lesson',
+  'student.booking.statusNone': 'Not booked',
+  'student.booking.statusBooked': 'Booked',
+  'student.booking.statusDone': 'Completed',
+  'student.booking.pkgFull': 'All package lessons are booked or completed.',
+  'student.booking.cancelPairNote': 'These two consecutive lessons were booked together — both will be cancelled.',
   // §: same-day booking is never allowed (instructor needs time to prepare)
   'student.booking.today': 'Same-day booking is not available. Please choose tomorrow or later.',
   'student.booking.manageHint': 'You have a booked lesson. Tap its card on the calendar to view, reschedule or cancel it.',

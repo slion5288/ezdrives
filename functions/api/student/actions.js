@@ -454,6 +454,9 @@ export async function onRequestPost({ env, request }) {
         history: [{ at: now, note: { en: 'Booked', zh: '已预约' } }], createdAt: now,
         lessonIndex: slot.lessonIndex, price: slot.price,
         lessonSequence: lessonSeq,
+        // §: package lessons booked together (2 consecutive) share a group id —
+        // cancelling one cancels the whole pair.
+        consecutiveGroup: count > 1 ? `pair-${apptIds[0]}` : undefined,
         lessonTitle: snapTitle ? { en: snapTitle.name.en, zh: snapTitle.name.zh } : undefined,
         courseType: course.course_type || (course.type === 'package' ? 'TEN_HOUR_PACKAGE' : 'INDIVIDUAL_LESSON'),
         licenseClass: course.license_class || 'NONE',
@@ -554,65 +557,110 @@ export async function onRequestPost({ env, request }) {
   }
 
   // ---- cancelAppointment (student: own; instructor: any) ----
+  // §: two package lessons booked together (2 consecutive) are ONE unit —
+  // cancelling either one cancels the whole pair (same consecutiveGroup, or a
+  // legacy back-to-back pair on the same day).
   if (action === 'cancelAppointment') {
     const apptId = String(args.id || '')
     const appt = state.appointments.find((a) => (isInstructor ? a.id === apptId : a.id === apptId && a.studentId === studentId))
     if (!appt) return fail('Appointment not found.')
     const now = nowISO()
-    const updated = {
-      ...appt, status: 'cancelled',
-      history: [...(appt.history || []), { at: now, note: { en: 'Cancelled', zh: '已取消' } }],
-    }
-    const [nId] = await nextSeq(env, 'notifications', 'n')
+    const companions = (state.appointments || []).filter((a) => {
+      if (a.id === appt.id || a.studentId !== appt.studentId || a.courseId !== appt.courseId) return false
+      if (a.status !== 'confirmed' && a.status !== 'pending') return false
+      if (appt.consecutiveGroup && a.consecutiveGroup === appt.consecutiveGroup) return true
+      // Legacy pair booked together: back-to-back on the same day.
+      return a.start === appt.end || a.end === appt.start
+    })
+    const toCancel = [appt, ...companions]
+
     const course = state.courses.find((c) => c.id === appt.courseId)
-    const d = fromLocal(appt.start)
-    const when = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
     // §62: cancelled booking → lesson returns to 'available' (never completed).
-    const restoreStmts = []
     const enrollment = (state.enrollments || []).find((e) => e.studentId === appt.studentId && e.courseId === appt.courseId)
-    if (enrollment && appt.lessonSequence) {
-      const snap = enrollment.lessons.find((l) => l.sequence_number === appt.lessonSequence)
-      if (snap && snap.status === 'booked') {
-        snap.status = 'available'
-        restoreStmts.push(
-          env.DB.prepare('UPDATE enrollments SET payload = ? WHERE id = ?').bind(JSON.stringify(enrollment), enrollment.id),
-        )
+    const restoreStmts = []
+    const cancelledAppts = []
+    const apptStmts = []
+    for (const a of toCancel) {
+      const updatedA = {
+        ...a, status: 'cancelled',
+        history: [...(a.history || []), { at: now, note: { en: 'Cancelled', zh: '已取消' } }],
+      }
+      cancelledAppts.push(updatedA)
+      apptStmts.push(env.DB.prepare('UPDATE appointments SET status = ?, payload = ? WHERE id = ?').bind('cancelled', JSON.stringify(updatedA), a.id))
+      if (enrollment && a.lessonSequence) {
+        const snap = enrollment.lessons.find((l) => l.sequence_number === a.lessonSequence)
+        if (snap && snap.status === 'booked') snap.status = 'available'
       }
     }
+    const snapshotsChanged = toCancel.some((a) => {
+      if (!enrollment || !a.lessonSequence) return false
+      const snap = enrollment.lessons.find((l) => l.sequence_number === a.lessonSequence)
+      return snap && snap.status === 'available'
+    })
+    if (enrollment && snapshotsChanged) {
+      restoreStmts.push(env.DB.prepare('UPDATE enrollments SET payload = ? WHERE id = ?').bind(JSON.stringify(enrollment), enrollment.id))
+    }
+
+    const count = toCancel.length
+    const whenOf = (a) => {
+      const d = fromLocal(a.start)
+      return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+    const whenText = whenOf(appt) + (count > 1 ? ` (+${count - 1})` : '')
+    const [nId] = await nextSeq(env, 'notifications', 'n')
     const notifs = []
+    const nTitle = count > 1
+      ? { en: `${count} lessons cancelled`, zh: `${count} 节课已取消` }
+      : { en: 'Lesson cancelled', zh: '课程已取消' }
     if (isInstructor) {
       const student = state.students.find((s) => s.id === appt.studentId)
       notifs.push(env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
         .bind(nId, 'student', appt.studentId, JSON.stringify({
           id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_cancelled',
-          title: { en: 'Lesson cancelled', zh: '课程已取消' },
-          body: { en: `Your ${course ? course.name.en : ''} lesson on ${when} was cancelled.`, zh: `您${when}的${course ? course.name.zh : ''}课程已被取消。` },
+          title: nTitle,
+          body: count > 1
+            ? { en: `Your ${course ? course.name.en : ''} lessons on ${whenText} were cancelled.`, zh: `您${whenText}的${course ? course.name.zh : ''}课程（共 ${count} 节）已被取消。` }
+            : { en: `Your ${course ? course.name.en : ''} lesson on ${whenText} was cancelled.`, zh: `您${whenText}的${course ? course.name.zh : ''}课程已被取消。` },
           read: false, at: now,
         })))
-      await env.DB.batch([
-        env.DB.prepare('UPDATE appointments SET status = ?, payload = ? WHERE id = ?').bind('cancelled', JSON.stringify(updated), apptId),
-        ...notifs,
-        ...restoreStmts,
-      ])
-      state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
-      state.notifications.unshift({ id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_cancelled', title: { en: 'Lesson cancelled', zh: '课程已取消' }, body: { en: `Your ${course ? course.name.en : ''} lesson on ${when} was cancelled.`, zh: `您${when}的${course ? course.name.zh : ''}课程已被取消。` }, read: false, at: now })
+      await env.DB.batch([...apptStmts, ...notifs, ...restoreStmts])
+      state.appointments = state.appointments.map((a) => {
+        const cancelled = cancelledAppts.find((u) => u.id === a.id)
+        return cancelled || a
+      })
+      state.notifications.unshift({
+        id: nId, role: 'student', recipientId: appt.studentId, type: 'booking_cancelled',
+        title: nTitle,
+        body: count > 1
+          ? { en: `Your ${course ? course.name.en : ''} lessons on ${whenText} were cancelled.`, zh: `您${whenText}的${course ? course.name.zh : ''}课程（共 ${count} 节）已被取消。` }
+          : { en: `Your ${course ? course.name.en : ''} lesson on ${whenText} was cancelled.`, zh: `您${whenText}的${course ? course.name.zh : ''}课程已被取消。` },
+        read: false, at: now,
+      })
       await bestEffortEmail(env, state, 'BOOKING_CANCELLED', student, state.instructor, appt, course, 'cancelled')
       return reply(state)
     }
     notifs.push(env.DB.prepare('INSERT INTO notifications (id, role, recipient_id, payload) VALUES (?, ?, ?, ?)')
       .bind(nId, 'instructor', 'instructor', JSON.stringify({
         id: nId, role: 'instructor', recipientId: 'instructor', type: 'booking_cancelled',
-        title: { en: 'Booking cancelled', zh: '预约已取消' },
-        body: { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${when}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${when}）。` },
+        title: nTitle,
+        body: count > 1
+          ? { en: `${user.name} cancelled ${count} ${course ? course.name.en : ''} lessons (${whenText}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程 ${count} 节（${whenText}）。` }
+          : { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${whenText}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${whenText}）。` },
         read: false, at: now,
       })))
-    await env.DB.batch([
-      env.DB.prepare('UPDATE appointments SET status = ?, payload = ? WHERE id = ?').bind('cancelled', JSON.stringify(updated), apptId),
-      ...notifs,
-      ...restoreStmts,
-    ])
-    state.appointments = state.appointments.map((a) => (a.id === apptId ? updated : a))
-    state.notifications.unshift({ id: nId, role: 'instructor', recipientId: 'instructor', type: 'booking_cancelled', title: { en: 'Booking cancelled', zh: '预约已取消' }, body: { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${when}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${when}）。` }, read: false, at: now })
+    await env.DB.batch([...apptStmts, ...notifs, ...restoreStmts])
+    state.appointments = state.appointments.map((a) => {
+      const cancelled = cancelledAppts.find((u) => u.id === a.id)
+      return cancelled || a
+    })
+    state.notifications.unshift({
+      id: nId, role: 'instructor', recipientId: 'instructor', type: 'booking_cancelled',
+      title: nTitle,
+      body: count > 1
+        ? { en: `${user.name} cancelled ${count} ${course ? course.name.en : ''} lessons (${whenText}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程 ${count} 节（${whenText}）。` }
+        : { en: `${user.name} cancelled their ${course ? course.name.en : ''} lesson (${whenText}).`, zh: `${user.name} 取消了${course ? course.name.zh : ''}课程（${whenText}）。` },
+      read: false, at: now,
+    })
     const cancStudent = state.students.find((s) => s.id === appt.studentId)
     await bestEffortEmail(env, state, 'INSTRUCTOR_BOOKING_CANCELLED', cancStudent, state.instructor, appt, course, 'cancelled')
     return reply(state)
