@@ -1,0 +1,35 @@
+# ============================================================================
+# EZDRIVES — Scheduled reminders (every 30 min)
+# Cloudflare Pages has NO cron triggers (Workers-only feature), so the
+# reminders are driven by GitHub Actions instead: it calls the already-deployed
+# POST /api/cron endpoint (auth: CRON_SECRET). The endpoint itself decides —
+# in America/Toronto time — when to run the 2h-before-lesson reminders (every
+# run) and the 07:00 daily schedule email (only when Toronto hour == 7).
+# ============================================================================
+
+name: EZDRIVES reminders
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+concurrency:
+  group: ezdrives-reminders
+  cancel-in-progress: false
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger lesson reminders + daily schedule
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+          RESP=$(curl -sS -X POST "https://ezdrives.net/api/cron" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -d '{"job":"all"}')
+          echo "$RESP"
+          echo "$RESP" | grep -q '"ok":true'

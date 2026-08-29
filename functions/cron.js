@@ -1,6 +1,7 @@
 // ============================================================================
-// EZDRIVES — Cloudflare Pages Cron trigger entry point.
-// Declared in wrangler.toml [[triggers]] (America/Toronto business time).
+// EZDRIVES — scheduled entry point (kept for reference).
+// Cloudflare Pages does NOT support cron triggers — the reminders are driven
+// by .github/workflows/reminders.yml calling POST /api/cron (CRON_SECRET).
 // Delegates to the shared implementation in functions/api/cron.js.
 // ============================================================================
 
