@@ -637,8 +637,18 @@ export const messages: Record<MessageKey, string> = {
   // §28 现金支付状态
   'payment.paid': '已收款',
   'payment.cashPending': '现金待批准',
+  'payment.wechatPending': '微信待确认',
+  'payment.emtPending': 'EMT 待确认',
   'payment.cashApproved': '现金已批准',
   'payment.cashSubmitted': '现金支付已申请，教练批准后即可进行。',
+  // § 最终支付修复：微信/EMT 申请 + 汇率显示
+  'payment.wechatSubmitted': '微信支付已申请，教练收到款项后确认。',
+  'payment.emtSubmitted': 'EMT 转账已提交，教练收到款项后确认。',
+  'payment.rateCoursePrice': '课程价格：',
+  'payment.rateValue': '汇率：',
+  'payment.rateWechatAmount': '微信支付金额：',
+  'payment.rateLoading': '正在获取最新汇率…',
+  'payment.rateError': '无法获取最新汇率，请稍后重试。',
   'payment.cashPendingNotice': '您的现金支付申请正在等待教练批准。',
   'payment.pendingNotice': '您的支付正在等待教练确认。',
   'payment.notPurchased': '请先购买该课程。',

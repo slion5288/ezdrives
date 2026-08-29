@@ -333,7 +333,7 @@ export function unitStatus(
 export function hasPendingPayment(source: AppState, studentId: string, courseId: string): boolean {
   return (source.payments ?? []).some(
     (p) => p.studentId === studentId && p.courseId === courseId &&
-      (p.status === 'pending' || p.status === 'cash_pending'),
+      (p.status === 'pending' || p.status === 'cash_pending' || p.status === 'wechat_pending' || p.status === 'emt_pending'),
   )
 }
 
@@ -680,16 +680,18 @@ export const ALL_PAYMENT_METHODS: PaymentMethod[] = [
   'paypal',
 ]
 
+/** § Final Payment Fix: the site currently offers ONLY WeChat / Cash / EMT. */
+export const ACTIVE_PAYMENT_METHODS: PaymentMethod[] = ['cash', 'wechat', 'emt']
+
 /**
- * The payment methods the instructor has enabled. When the instructor has not
- * configured a list yet (undefined), every method is available (backward
- * compatible with existing demo data). An explicitly empty list means the
- * instructor disabled everything and nothing is shown to students.
+ * The payment methods offered to students — restricted to WeChat / Cash / EMT,
+ * further filtered by the instructor's enabled list (when configured).
+ * An explicitly empty list means the instructor disabled everything.
  */
 export function enabledPaymentMethods(source: AppState): PaymentMethod[] {
   const list = source.instructor.paymentMethods
-  if (list === undefined) return [...ALL_PAYMENT_METHODS]
-  return ALL_PAYMENT_METHODS.filter((m) => list.includes(m))
+  if (list === undefined) return [...ACTIVE_PAYMENT_METHODS]
+  return ACTIVE_PAYMENT_METHODS.filter((m) => list.includes(m))
 }
 
 /** Instructor replaces the enabled payment-method list (学员端随之变化). */

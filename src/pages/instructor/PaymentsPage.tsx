@@ -39,7 +39,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
   const payments = useMemo(
     () =>
       [...state.payments].sort((a, b) => {
-        const rank = { pending: 0, cash_pending: 0, cash_approved: 1, confirmed: 2, paid: 2, rejected: 3 } as const
+        const rank = { pending: 0, cash_pending: 0, wechat_pending: 0, emt_pending: 0, cash_approved: 1, confirmed: 2, paid: 2, rejected: 3 } as const
         return rank[a.status] - rank[b.status] || b.createdAt.localeCompare(a.createdAt)
       }),
     [state.payments],
@@ -108,7 +108,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           ? 'success'
                           : p.status === 'cash_approved'
                             ? 'info'
-                            : p.status === 'cash_pending' || p.status === 'pending'
+                            : p.status === 'cash_pending' || p.status === 'pending' || p.status === 'wechat_pending' || p.status === 'emt_pending'
                               ? 'warning'
                               : 'neutral'
                       }
@@ -121,9 +121,13 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                             ? t('payment.cashApproved')
                             : p.status === 'cash_pending'
                               ? t('payment.cashPending')
-                              : p.status === 'pending'
-                                ? t('payment.pending')
-                                : t('payment.rejected')}
+                              : p.status === 'wechat_pending'
+                                ? t('payment.wechatPending')
+                                : p.status === 'emt_pending'
+                                  ? t('payment.emtPending')
+                                  : p.status === 'pending'
+                                    ? t('payment.pending')
+                                    : t('payment.rejected')}
                     </Badge>
                   </td>
                   <td className="tabular-nums">{locale === 'zh' ? formatDateZh(date) : formatDateEn(date)}</td>
@@ -151,7 +155,7 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                           {t('instructor.payments.reject')}
                         </Button>
                       </div>
-                    ) : p.status === 'cash_approved' ? (
+                    ) : p.status === 'cash_approved' || p.status === 'wechat_pending' || p.status === 'emt_pending' ? (
                       <div className="ins-pay-actions">
                         <Button variant="primary" size="sm"
                           onClick={() => {
@@ -163,16 +167,18 @@ export default function PaymentsPage({ onNavigate }: PaymentsPageProps): JSX.Ele
                         >
                           {t('instructor.payments.markReceived')}
                         </Button>
-                        <Button variant="secondary" size="sm"
-                          onClick={() => {
-                            void (async () => {
-                              const result = await sendCashReminder(p.id)
-                              toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reminderSent') : t('common.toast.error') })
-                            })()
-                          }}
-                        >
-                          {t('instructor.payments.sendReminder')}
-                        </Button>
+                        {p.status === 'cash_approved' ? (
+                          <Button variant="secondary" size="sm"
+                            onClick={() => {
+                              void (async () => {
+                                const result = await sendCashReminder(p.id)
+                                toast.push({ tone: result.ok ? 'success' : 'error', title: result.ok ? t('instructor.payments.reminderSent') : t('common.toast.error') })
+                              })()
+                            }}
+                          >
+                            {t('instructor.payments.sendReminder')}
+                          </Button>
+                        ) : null}
                         <Button variant="dangerGhost" size="sm"
                           onClick={() => {
                             void (async () => {

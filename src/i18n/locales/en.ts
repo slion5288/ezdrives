@@ -635,8 +635,18 @@ export const messages = {
   // §28 cash payment statuses
   'payment.paid': 'Paid',
   'payment.cashPending': 'Cash pending',
+  'payment.wechatPending': 'WeChat pending',
+  'payment.emtPending': 'EMT pending',
   'payment.cashApproved': 'Cash approved',
   'payment.cashSubmitted': 'Cash payment requested — the instructor will approve it.',
+  // § Final Payment Fix: WeChat / EMT request + exchange-rate display
+  'payment.wechatSubmitted': 'WeChat payment requested — the instructor will confirm once received.',
+  'payment.emtSubmitted': 'e-Transfer submitted — the instructor will confirm once received.',
+  'payment.rateCoursePrice': 'Course Price:',
+  'payment.rateValue': 'Exchange Rate:',
+  'payment.rateWechatAmount': 'WeChat Payment Amount:',
+  'payment.rateLoading': 'Loading the latest exchange rate…',
+  'payment.rateError': 'Unable to retrieve the latest exchange rate. Please try again later.',
   'payment.cashPendingNotice': 'Your cash payment request is awaiting the instructor\u2019s approval.',
   'payment.pendingNotice': 'Your payment is awaiting the instructor\u2019s confirmation.',
   'payment.notPurchased': 'Please purchase this course first.',

@@ -172,13 +172,30 @@ export interface Payment {
   channel?: 'ONLINE' | 'CASH'
   amount: number // CAD (= final_price, kept for backward compat)
   /**
-   * ONLINE: pending → confirmed (= paid) / rejected
-   * CASH:   cash_pending → cash_approved → paid   (paid only by instructor's
-   *         "Mark Payment Received"; cash_approved NEVER auto-becomes paid)
+   * CASH:   cash_pending → cash_approved → paid
+   * WECHAT: wechat_pending → paid
+   * EMT:    emt_pending → paid
+   * (legacy ONLINE: pending → confirmed)
+   * paid is ONLY set server-side by the instructor's "Mark Payment Received".
    */
-  status: 'pending' | 'confirmed' | 'rejected' | 'cash_pending' | 'cash_approved' | 'paid'
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'rejected'
+    | 'cash_pending'
+    | 'cash_approved'
+    | 'wechat_pending'
+    | 'emt_pending'
+    | 'paid'
   createdAt: string // ISO local datetime
   confirmedAt?: string
+  /** § receipt record (paid): when / who confirmed receiving the money. */
+  receivedAt?: string
+  receivedBy?: string
+  /** § WeChat display amount — real-time CAD→CNY rate + 0.5. CAD stays the
+   *  stored price; the ¥ figure is display-only and captured for the email. */
+  wechat_rate?: number
+  wechat_cny_amount?: number
   // —— Price snapshot (§30/§55): immune to later course/discount changes ——
   original_price?: number
   discount_type?: 'STUDENT' | 'REFERRAL' | 'NONE'

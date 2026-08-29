@@ -14,7 +14,7 @@
 // confirms (system notification) — then booking unlocks.
 // ============================================================================
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Lock, ShieldCheck } from 'lucide-react'
 import type { Course, PaymentMethod } from '../../data/store'
 import { addPayment, enabledPaymentMethods, getSession, paymentMethodLabel, useAppState } from '../../data/store'
@@ -57,12 +57,64 @@ interface CardState {
 
 const EMPTY_CARD: CardState = { name: '', number: '', expiry: '', cvc: '', postal: '' }
 
+// § Final Payment Fix: WeChat CAD→CNY rate (real-time + 0.5), cached client-side
+// for 6h so the API is not hit on every page refresh. Failure → null (the UI
+// shows "Unable to retrieve the latest exchange rate…" and blocks WeChat submit).
+const RATE_CACHE_KEY = 'dw.wechatRate'
+const RATE_CACHE_TTL = 6 * 60 * 60 * 1000
+
+async function fetchWechatRate(): Promise<number | null> {
+  try {
+    const res = await fetch('/api/rates')
+    const data = await res.json().catch(() => null)
+    if (data && data.ok && typeof data.rate === 'number' && data.rate > 0) {
+      try {
+        localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ rate: data.rate, at: Date.now() }))
+      } catch {
+        // storage unavailable — in-memory only
+      }
+      return data.rate
+    }
+  } catch {
+    // fall through to cached / null
+  }
+  return null
+}
+
+function readCachedRate(): number | null {
+  try {
+    const raw = localStorage.getItem(RATE_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { rate: number; at: number }
+    if (parsed && typeof parsed.rate === 'number' && parsed.rate > 0 && Date.now() - parsed.at < RATE_CACHE_TTL) {
+      return parsed.rate
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
 export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModalProps): JSX.Element | null {
   const t = useT()
   const locale = useLocale()
   const state = useAppState()
   const { showToast } = useToast()
   const [method, setMethod] = useState<PaymentMethod | null>(null)
+  const [wechatRate, setWechatRate] = useState<number | null>(() => readCachedRate())
+  const [rateLoading, setRateLoading] = useState(false)
+
+  // § WeChat rate: use the cached value first; refresh in the background only
+  // when the modal opens (never on every page refresh).
+  useEffect(() => {
+    if (!open) return
+    if (readCachedRate() !== null) return
+    setRateLoading(true)
+    void fetchWechatRate().then((rate) => {
+      setRateLoading(false)
+      if (rate !== null) setWechatRate(rate)
+    })
+  }, [open])
   const [card, setCard] = useState<CardState>(EMPTY_CARD)
   const [emtEmailInput, setEmtEmailInput] = useState('')
   const [emtRef, setEmtRef] = useState('')
@@ -156,15 +208,22 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
       showToast('error', t('payment.emtInvalid'))
       return
     }
+    if (method === 'wechat' && wechatRate === null) {
+      // § no rate → never show a made-up ¥ amount or accept the payment.
+      showToast('error', t('payment.rateError'))
+      return
+    }
     setProcessing(true)
-    // §28: cash creates a cash_pending REQUEST (approved by the instructor),
-    // then paid after the cash is actually received. Online stays pending → confirmed.
+    // § Final Payment Fix: cash/wechat/emt create their own PENDING request —
+    // nothing is PAID until the instructor marks receipt.
     const result = await addPayment(studentId, (course as Course).id, method, {
       studentStatus: isStudent === 'yes' ? 'yes' : 'no',
       referralPhone: referralPhone.trim(),
     })
     if (result.ok) {
-      showToast('success', method === 'cash' ? t('payment.cashSubmitted') : t('payment.submitted'))
+      const submittedKey =
+        method === 'cash' ? 'payment.cashSubmitted' : method === 'wechat' ? 'payment.wechatSubmitted' : method === 'emt' ? 'payment.emtSubmitted' : 'payment.submitted'
+      showToast('success', t(submittedKey))
       onSubmitted?.()
       onClose()
       reset()
@@ -296,7 +355,27 @@ export function PaymentModal({ open, course, onClose, onSubmitted }: PaymentModa
                     <span>{t('payment.wechatNotSet')}</span>
                   </div>
                 )}
-                <p className="student-payment__scan">{t('payment.scan', { total: formatPrice(course.price) })}</p>
+                {/* § Final Payment Fix: CAD price stays in CAD; CNY is the display
+                    amount at real-time rate + 0.5. Never show a wrong ¥ figure. */}
+                {wechatRate !== null ? (
+                  <div className="student-payment__rate">
+                    <div className="student-payment__rate-row">
+                      <span>{t('payment.rateCoursePrice')}</span>
+                      <b className="tabular-nums">CAD {formatPrice(pricePreview ? pricePreview.final : course.price)}</b>
+                    </div>
+                    <div className="student-payment__rate-row">
+                      <span>{t('payment.rateValue')}</span>
+                      <b className="tabular-nums">1 CAD = {wechatRate.toFixed(2)} CNY</b>
+                    </div>
+                    <div className="student-payment__rate-row student-payment__rate-total">
+                      <span>{t('payment.rateWechatAmount')}</span>
+                      <b className="tabular-nums">¥{((pricePreview ? pricePreview.final : course.price) * wechatRate).toFixed(2)}</b>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="student-payment__rate-err">{rateLoading ? t('payment.rateLoading') : t('payment.rateError')}</p>
+                )}
+                <p className="student-payment__scan">{t('payment.scan', { total: formatPrice(pricePreview ? pricePreview.final : course.price) })}</p>
               </div>
             ) : method === 'cash' ? (
               <div className="student-payment__info">

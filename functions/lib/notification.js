@@ -29,6 +29,8 @@ const VARIABLES = [
   'course_name', 'course_price', 'course_type', 'license_class',
   'lesson_number', 'lesson_title', 'lesson_content',
   'original_price', 'discount_amount', 'final_price',
+  // § Final Payment Fix: payment receipt details (method / CNY / received at/by)
+  'payment_method', 'payment_amount', 'payment_amount_cny', 'payment_received_at', 'payment_received_by',
   'company_name', 'company_email', 'company_phone', 'website_url',
 ]
 
@@ -55,9 +57,12 @@ export function buildContext(ctx) {
   const course = ctx.course || {}
   const lesson = ctx.lesson || {}
   const pricing = ctx.pricing || {}
+  const payment = ctx.payment || {}
   const fullName = student.name || ''
   const parts = fullName.split(/\s+/).filter(Boolean)
   const money = (v) => (v != null && !isNaN(v) ? `$${Number(v)}` : '')
+  const yuan = (v) => (v != null && !isNaN(v) ? `¥${Number(v)}` : '')
+  const methodLabel = payment.method === 'cash' ? 'Cash' : payment.method === 'wechat' ? 'WeChat' : payment.method === 'emt' ? 'e-Transfer' : payment.method || ''
   return {
     student_first_name: parts[0] || fullName,
     student_last_name: parts.slice(1).join(' ') || '',
@@ -84,6 +89,11 @@ export function buildContext(ctx) {
     original_price: money(pricing.originalPrice),
     discount_amount: money(pricing.discountAmount),
     final_price: money(pricing.finalPrice),
+    payment_method: methodLabel,
+    payment_amount: money(payment.amount ?? pricing.finalPrice),
+    payment_amount_cny: yuan(payment.cnyAmount),
+    payment_received_at: payment.receivedAt || '',
+    payment_received_by: payment.receivedBy || '',
     company_name: COMPANY.name,
     company_email: COMPANY.email,
     company_phone: COMPANY.phone,
